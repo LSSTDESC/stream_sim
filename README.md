@@ -8,6 +8,8 @@ TBD (probably via pip and conda)
 
 ## Examples
 
+```
 > ./bin/generate_stream.py config/toy1_config.yaml -o toy1.csv --plot
 > ./bin/generate_stream.py config/toy2_config.yaml -o toy2.csv --plot
 > ./bin/generate_stream.py config/pal5_config.yaml -o pal5.csv --plot
+```
