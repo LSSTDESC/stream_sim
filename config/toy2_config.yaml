@@ -1,0 +1,40 @@
+# Toy stream that is oscillating in density, track, and width.
+
+stream:
+  nstars: 1.0e+4
+
+  density:
+    type: Sinusoid
+    period: 3.0
+    offset: 1.0
+    xmin: -9.0
+    xmax: +9.0
+   
+  track:
+    center:
+      type: Sinusoid
+      period : 9.0
+      amplitude : 0.75
+    spread:
+      type: Sinusoid
+      period: 6.0
+      amplitude: 0.2
+      offset: 0.25
+    sampler: Gaussian
+   
+background:
+  nstars : 1.0e+5
+
+  density:
+    type: Uniform
+    xmin: -10.0
+    xmax: +10.0
+
+  track:
+    center:
+      type: Constant
+      value: 0.0
+    spread:
+      type: Constant
+      value: 4.0
+    sampler: Uniform

@@ -1,0 +1,35 @@
+# Simple stream that is uniform in density, track, and width.
+
+stream:
+  nstars: 5.0e+3
+   
+  density:
+    type: Uniform
+    xmin: -9.0
+    xmax: +9.0
+
+  track:
+    center:
+      type: Constant
+      value: 0.0
+    spread:
+      type: Constant
+      value: 0.2
+    sampler: Gaussian
+   
+background:
+  nstars : 1.0e+5
+
+  density:
+    type: Uniform
+    xmin: -10.0
+    xmax: +10.0
+
+  track:
+    center:
+      type: Constant
+      value: 0.0
+    spread:
+      type: Constant
+      value: 4.0
+    sampler: Uniform
