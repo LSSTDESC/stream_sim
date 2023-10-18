@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy.interpolate
 
+
 def function_factory(type_, **kwargs):
     """ Create a function with given kwargs.
 
@@ -30,10 +31,19 @@ def function_factory(type_, **kwargs):
         func = Interpolation(**kwargs)
     elif type_ in ('file', 'fileinterpolation'):
         func = FileInterpolation(**kwargs)
+    elif type_ in ('cubicsplineinterpolation'):
+        func = CubicSplineInterpolation(**kwargs)
+    elif type_ in ('filecubicsplineinterpolation'):
+        func = FileCubicSplineInterpolation(**kwargs)
+    elif type_ in ('lineardensitycubicsplineinterpolation'):
+        func = LinearDensityCubicSplineInterpolation(**kwargs)
+    elif type_ in ('filelineardensitycubicsplineinterpolation'):
+        func = FileLinearDensityCubicSplineInterpolation(**kwargs)
     else:
         raise Exception(f"Unrecognized function: {type_}")
 
     return func
+
 
 class BoundedFunction(object):
     def __init__(self, xmin=-np.inf, xmax=np.inf):
@@ -68,6 +78,7 @@ class BoundedFunction(object):
 
     def _evaluate(self, xvals):
         pass
+
 
 class Constant(BoundedFunction):
 
@@ -261,7 +272,7 @@ class CubicSplineInterpolation(BoundedFunction):
 
 
 class FileCubicSplineInterpolation(CubicSplineInterpolation):
-    def __init__(self, filename, stream_name=None, type=None,
+    def __init__(self, filename, stream_name=None, spline_type=None,
                  nodes_name="phi1", node_vals_name="mean", **kwargs):
         """
         Initialize a cubic spline interpolation using data from a file.
@@ -288,8 +299,9 @@ class FileCubicSplineInterpolation(CubicSplineInterpolation):
         """
         self._filename = filename
         self._data = pd.read_csv(self._filename)
-        if type:
-            self._data = self._data.loc[self._data["type"]==type,:]
+
+        if spline_type:
+            self._data = self._data.loc[self._data["type"]==spline_type,:]
         if stream_name:
             self._data = self._data.loc[self._data["stream"]==stream_name,:]
 
@@ -327,7 +339,9 @@ class LinearDensityCubicSplineInterpolation():
                                                         intensity_node_values)
         self._spread = CubicSplineInterpolation(spread_nodes,
                                                 spread_node_values)
-
+        # get the smallest range where both splines are defined
+        self.xmin = np.max([intensity_nodes.min(),spread_nodes.min()])
+        self.xmax = np.min([intensity_nodes.max(),spread_nodes.max()])
     def __call__(self, x, **kwargs):
         self.__dict__.update(kwargs)
 

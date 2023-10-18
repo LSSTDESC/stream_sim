@@ -16,6 +16,7 @@ from stream_sim.functions import (Interpolation,
                                   FileLinearDensityCubicSplineInterpolation,
 )
 
+
 def sampler_factory(type_, **kwargs):
     """ Create a sampler with given kwargs.
 
@@ -36,10 +37,16 @@ def sampler_factory(type_, **kwargs):
         sampler = SinusoidSampler(**kwargs)
     elif type_ in ('interpolation'):
         sampler = InterpolationSampler(**kwargs)
-    elif type_ in ('file','fileinterpolation'):
+    elif type_ in ('file', 'fileinterpolation'):
         sampler = FileInterpolationSampler(**kwargs)
-    elif type_ in ('file','FileLinearDensityCubicSplineInterpolation')
-        sampler =
+    elif type_ in ('cubicsplineinterpolation'):
+        sampler = CubicSplineInterpolationSampler(**kwargs)
+    elif type_ in ('filecubicsplineinterpolation'):
+        sampler = FileCubicSplineInterpolationSampler(**kwargs)
+    elif type_ in ('lineardensitycubicsplineinterpolation'):
+        sampler = LinearDensityCubicSplineInterpolationSampler(**kwargs)
+    elif type_ in ('filelineardensitycubicsplineinterpolation'):
+        sampler = FileLinearDensityCubicSplineInterpolationSampler(**kwargs)
     else:
         raise Exception(f"Unrecognized sampler: {type_}")
 
@@ -186,7 +193,7 @@ class CubicSplineInterpolationSampler(InterpolationSampler):
         self.interp = CubicSplineInterpolation(nodes, node_values)
 
 class FileCubicSplineInterpolationSampler(InterpolationSampler):
-    def __init__(self, filename, stream_name=None, type=None):
+    def __init__(self, filename, stream_name=None, spline_type=None):
         """ Sample using Cubic Spline Interpolation from a file.
 
         Parameters
@@ -202,12 +209,13 @@ class FileCubicSplineInterpolationSampler(InterpolationSampler):
         -------
         sampler
         """
-        self.interp = FileCubicSplineInterpolation(filename, stream_name, type)
+        self.interp = FileCubicSplineInterpolation(filename, stream_name, spline_type)
+
 
 class LinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
     def __init__(self, intensity_nodes, intensity_node_values, spread_nodes,
                  spread_node_values):
-         """ Sample using Linear Density Cubic Spline Interpolation method.
+        """ Sample using Linear Density Cubic Spline Interpolation method.
 
         Parameters
         ----------

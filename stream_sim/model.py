@@ -55,6 +55,11 @@ class StreamModel(ConfigurableModel):
         config = self._config.get('density')
         return DensityModel(config)
 
+    def _create_linear_density(self):
+        """to be used with the cubic spline methods"""
+        config = self._config.get('linear_density')
+        return DensityModel(config)
+
     def _create_track(self):
         config = self._config.get('track')
         return TrackModel(config)
@@ -79,6 +84,7 @@ class StreamModel(ConfigurableModel):
             return VelocityModel(config)
         else:
             return None
+
 
     def sample(self, size):
         """
@@ -128,7 +134,7 @@ class DensityModel(ConfigurableModel):
         kwargs = copy.deepcopy(self._config)
         type_ = kwargs.pop('type').lower()
         self.density = sampler_factory(type_, **kwargs)
-        import pdb; pdb.set_trace()
+
     def sample(self, size):
         return self.density.sample(size)
 
@@ -212,29 +218,11 @@ class SplineStreamModel(StreamModel):
         -------
         self : stream model
         """
-        import pdb; pdb.set_trace()
         super().__init__(config, **kwargs)
 
     def _create_model(self):
-        self.density = self._create_density_spline()
+        self.density = self._create_linear_density()
         self.track = self._create_track()
         self.distance = self._create_distance()
         self.isochrone = self._create_isochrone()
         self.velocity = self._create_velocity()
-    def _create_density_spline(self):
-        config = {}
-        config["name"] = self._config.get("name")
-        config["density"] = self._config.get('density')
-        config["spread"] = self._config.get('spread')
-        config["type"] = "peak_density"
-
-        return SplineDensityModel(config)
-
-class SplineDensityModel(DensityModel):
-    def _create_model(self):
-        kwargs = copy.deepcopy(self._config)
-        type_ = kwargs.pop('type').lower()
-        self.density = sampler_factory(type_, **kwargs)
-
-    def sample(self, size):
-        return self.density.sample(size)
