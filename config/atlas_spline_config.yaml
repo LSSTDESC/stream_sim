@@ -1,0 +1,43 @@
+# Example configuration file for  interpolation
+# from Erkal et al. 2016 []
+stream:
+  name: "atlas"
+  filename : &filename ./data/patrick_2022_splines.csv
+  linear_density:
+    type: LinearDensityFileInterpolation
+    peak_intensity:
+      type: SplineFileInterpolation
+      filename : *filename
+      columns : [phi1, mean]
+    spread:
+      type: SplineFileInterpolation
+      filename : *filename
+      columns : [phi1, nstars]
+
+  track:
+    center:
+      type: FileInterpolation
+      filename: *filename
+      columns: [phi1, phi2]
+    spread:
+      type: FileInterpolation
+      filename: *filename
+      columns: [phi1, width]
+    sampler: Gaussian
+
+background:
+  nstars : 1.0e+5
+
+  density:
+    type: Uniform
+    xmin: -10.0
+    xmax: +18.0
+
+  track:
+    center:
+      type: Constant
+      value: 0.0
+    spread:
+      type: Constant
+      value: 4.0
+    sampler: Uniform
