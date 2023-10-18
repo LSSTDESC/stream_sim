@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 
 from importlib import reload
-from stream_sim.functions import function_factory    
-from stream_sim.samplers import sampler_factory    
+from stream_sim.functions import function_factory
+from stream_sim.samplers import sampler_factory
 
 class ConfigurableModel(object):
     """ Baseclass for models built from configs. """
@@ -32,12 +32,12 @@ class StreamModel(ConfigurableModel):
     """ High-level object for the various components of the stream model. """
 
     def __init__(self, config, **kwargs):
-        """ Create the stream from the config object. 
+        """ Create the stream from the config object.
 
         Parameters
         ----------
         config : configuration dictionary
-        
+
         Returns
         -------
         self : stream model
@@ -50,7 +50,7 @@ class StreamModel(ConfigurableModel):
         self.distance = self._create_distance()
         self.isochrone = self._create_isochrone()
         self.velocity = self._create_velocity()
-        
+
     def _create_density(self):
         config = self._config.get('density')
         return DensityModel(config)
@@ -58,7 +58,7 @@ class StreamModel(ConfigurableModel):
     def _create_track(self):
         config = self._config.get('track')
         return TrackModel(config)
-    
+
     def _create_distance(self):
         config = self._config.get('distance')
         if config:
@@ -79,9 +79,9 @@ class StreamModel(ConfigurableModel):
             return VelocityModel(config)
         else:
             return None
-    
+
     def sample(self, size):
-        """ 
+        """
         Sample the stream stellar distribution parameters.
 
         Parameters
@@ -121,14 +121,14 @@ class StreamModel(ConfigurableModel):
                            'mag1': mag1, 'mag2': mag2})
         return df
 
-        
+
 class DensityModel(ConfigurableModel):
 
     def _create_model(self):
         kwargs = copy.deepcopy(self._config)
         type_ = kwargs.pop('type').lower()
         self.density = sampler_factory(type_, **kwargs)
-            
+        import pdb; pdb.set_trace()
     def sample(self, size):
         return self.density.sample(size)
 
@@ -158,7 +158,7 @@ class TrackModel(ConfigurableModel):
             raise Exception(f"Unrecognized sampler: {type_}")
 
         self._sampler = sampler_factory(type_, **kwargs)
-        
+
     def sample(self, x):
         size = len(x)
         self._create_sampler(x)
@@ -199,4 +199,42 @@ class VelocityModel(ConfigurableModel):
 class BackgroundModel(StreamModel):
     """ Background model. """
     pass
-    
+
+class SplineStreamModel(StreamModel):
+    def __init__(self, config, **kwargs):
+        """ Create the stream from the config object.
+
+        Parameters
+        ----------
+        config : configuration dictionary
+
+        Returns
+        -------
+        self : stream model
+        """
+        import pdb; pdb.set_trace()
+        super().__init__(config, **kwargs)
+
+    def _create_model(self):
+        self.density = self._create_density_spline()
+        self.track = self._create_track()
+        self.distance = self._create_distance()
+        self.isochrone = self._create_isochrone()
+        self.velocity = self._create_velocity()
+    def _create_density_spline(self):
+        config = {}
+        config["name"] = self._config.get("name")
+        config["density"] = self._config.get('density')
+        config["spread"] = self._config.get('spread')
+        config["type"] = "peak_density"
+
+        return SplineDensityModel(config)
+
+class SplineDensityModel(DensityModel):
+    def _create_model(self):
+        kwargs = copy.deepcopy(self._config)
+        type_ = kwargs.pop('type').lower()
+        self.density = sampler_factory(type_, **kwargs)
+
+    def sample(self, size):
+        return self.density.sample(size)

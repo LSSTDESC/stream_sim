@@ -15,7 +15,7 @@ def function_factory(type_, **kwargs):
     ----------
     type_ : function type
     kwargs: passed to function init
-    
+
     Returns:
     -------
     func : the function
@@ -48,7 +48,7 @@ class BoundedFunction(object):
         -------
         function
         """
-        
+
         self.xmin = xmin
         self.xmax = xmax
 
@@ -65,7 +65,7 @@ class BoundedFunction(object):
             return ret.item()
         else:
             return ret
-        
+
     def _evaluate(self, xvals):
         pass
 
@@ -94,7 +94,7 @@ class Constant(BoundedFunction):
 
 class Line(BoundedFunction):
     """Line function. Evaluated as:
-    
+
       y(x) = slope*x + intercept
     """
 
@@ -176,13 +176,13 @@ class Interpolation(BoundedFunction):
         kwargs.setdefault('xmin', np.min(xvals))
         kwargs.setdefault('xmax', np.max(xvals))
         super().__init__(**kwargs)
-        
+
     def _evaluate(self, xvals):
         """ Evaluate the method """
         interp = scipy.interpolate.interp1d(self.xvals, self.yvals,
                                             bounds_error=False,
                                             fill_value = np.nan)
-        
+
         return interp(xvals)
 
 
@@ -212,4 +212,143 @@ class FileInterpolation(Interpolation):
         yvals = self._data[yname].values
 
         super().__init__(xvals, yvals, **kwargs)
-        
+
+class CubicSplineInterpolation(BoundedFunction):
+
+    def __init__(self, nodes, node_values, **kwargs):
+        """
+        Cubic spline interpolation given nodes and node values
+
+        Parameters
+        ----------
+        nodes : array_like
+            1-D array of nodes for the spline.
+        node_values : array_like
+            1-D array of node values corresponding to the nodes.
+
+        Returns
+        -------
+        function
+        """
+        self.nodes = np.atleast_1d(nodes)
+        self.node_values = np.atleast_1d(node_values)
+        kwargs.setdefault('xmin', np.min(nodes))
+        kwargs.setdefault('xmax', np.max(nodes))
+        super().__init__(**kwargs)
+
+    def _evaluate(self, xvals):
+        """
+        Evaluate the cubic spline interpolation at given x-values.
+        for xvals outside the interpolation range nan is returned
+
+        Parameters
+        ----------
+        xvals : array_like
+            x-values at which the spline is to be evaluated.
+
+        Returns
+        -------
+        array_like
+            Interpolated values at the given x-values.
+
+        """
+        interp = scipy.interpolate.CubicSpline(self.nodes,
+                                               self.node_values,
+                                               bc_type='natural',
+                                               extrapolate=False)
+        return interp(xvals)
+
+
+class FileCubicSplineInterpolation(CubicSplineInterpolation):
+    def __init__(self, filename, type=None, stream_name=None,nodes_name="phi1",
+                 node_vals_name="mean", **kwargs):
+        """ Interpolation function from file.
+
+        Parameters
+        ----------
+        filename : input filename
+        columns  : list of column names
+        kwargs : passed to baseclass
+
+        Returns
+        -------
+        function
+        """
+        self._filename = filename
+        self._data = pd.read_csv(self._filename)
+        if type:
+            self._data = self._data.loc[self._data["type"]==type,:]
+        if stream_name:
+            self._data = self._data.loc[self._data["stream"]==stream_name,:]
+
+        nodes = self._data[nodes_name].values
+        node_values = self._data[node_vals_name].values
+
+        super().__init__(nodes, node_values, **kwargs)
+
+
+class LinearDensityCubicSplineInterpolation():
+    def __init__(self, intensity_nodes, intensity_node_values, spread_nodes,
+                 spread_node_values, **kwargs):
+        """ Interpolation function from file.
+
+        Parameters
+        ----------
+        filename : input filename
+        columns  : list of column names
+        kwargs : passed to baseclass
+
+        Returns
+        -------
+        function
+        """
+        self._peak_intensity = CubicSplineInterpolation(intensity_nodes,
+                                                        intensity_node_values)
+        self._spread = CubicSplineInterpolation(spread_nodes,
+                                                spread_node_values)
+
+    def __call__(self, x, **kwargs):
+        self.__dict__.update(kwargs)
+
+        xvals = np.atleast_1d(x)
+        yvals = self._evaluate(xvals)
+        return yvals
+
+    def _evaluate(self,xvals):
+        peak_intensity = self._peak_intensity(xvals)
+        spread = self._spread(xvals)
+        return np.sqrt(2 * np.pi) * peak_intensity * spread
+
+
+class FileLinearDensityCubicSplineInterpolation(
+        LinearDensityCubicSplineInterpolation):
+    def __init__(self, filename, stream_name=None, **kwargs):
+        """ Interpolation function from file.
+
+        Parameters
+        ----------
+        filename : input filename
+        columns  : list of column names
+        kwargs : passed to baseclass
+
+        Returns
+        -------
+        function
+        """
+        self._filename = filename
+        self._data = pd.read_csv(self._filename)
+        if stream_name:
+            self._data = self._data.loc[self._data["stream"]==stream_name]
+        sel_intensity = (self._data["type"] == "peak_intensity")
+        intensity_nodes = self._data.loc[sel_intensity, "phi1"].values
+        intensity_node_values = self._data.loc[sel_intensity, "mean"].values
+
+        sel_spread = (self._data["type"] == "spread")
+        spread_nodes = self._data.loc[sel_spread, "phi1"].values
+        spread_node_values = self._data.loc[sel_spread, "mean"].values
+        super().__init__(
+            intensity_nodes=intensity_nodes,
+            intensity_node_values=intensity_node_values,
+            spread_nodes=spread_nodes,
+            spread_node_values=spread_node_values,
+            **kwargs)

@@ -7,8 +7,14 @@ __author__ = "Alex Drlica-Wagner"
 import numpy as np
 import scipy.stats
 
-from stream_sim.functions import Interpolation, FileInterpolation
-from stream_sim.functions import Sinusoid
+from stream_sim.functions import (Interpolation,
+                                  FileInterpolation,
+                                  Sinusoid,
+                                  CubicSplineInterpolation,
+                                  FileCubicSplineInterpolation,
+                                  LinearDensityCubicSplineInterpolation,
+                                  FileLinearDensityCubicSplineInterpolation,
+)
 
 def sampler_factory(type_, **kwargs):
     """ Create a sampler with given kwargs.
@@ -17,7 +23,7 @@ def sampler_factory(type_, **kwargs):
     ----------
     type_ : sampler type
     kwargs: passed to sampler init
-    
+
     Returns:
     -------
     sampler : the sampler
@@ -32,9 +38,11 @@ def sampler_factory(type_, **kwargs):
         sampler = InterpolationSampler(**kwargs)
     elif type_ in ('file','fileinterpolation'):
         sampler = FileInterpolationSampler(**kwargs)
+    elif type_ in ('file','FileLinearDensityCubicSplineInterpolation')
+        sampler =
     else:
         raise Exception(f"Unrecognized sampler: {type_}")
-        
+
     return sampler
 
 def inverse_transform_sample(vals, pdf, size):
@@ -50,7 +58,7 @@ def inverse_transform_sample(vals, pdf, size):
     -------
     samples : samples of vals
     """
-    
+
     cdf = np.cumsum(pdf)
     cdf /= cdf[-1]
     fn = scipy.interpolate.interp1d(cdf, list(range(0, len(cdf))),
@@ -80,7 +88,7 @@ class ScipySampler(Sampler):
 
     def pdf(self, x):
         return self._rv.pdf(x)
-    
+
     def sample(self, size, random_state=None):
         return self._rv.rvs(size=int(size), random_state=random_state)
 
@@ -88,36 +96,36 @@ class UniformSampler(ScipySampler):
     """ Sample from uniform distribution. """
     def __init__(self, xmin, xmax):
         """ Uniform distribution sampled between xmin and xmax.
-        
+
         Parameters
         ----------
         xmin : minimum value of sampled range.
         xmax : maximum value of sampled range.
-        
+
         Returns
         -------
         self
         """
         rv = scipy.stats.uniform(loc=xmin, scale=xmax-xmin)
         super().__init__(rv)
-    
+
 class GaussianSampler(ScipySampler):
     """ Sample from Gaussian. """
     def __init__(self, mu, sigma):
         """ Gaussian distribution described by mean and sigma.
-        
+
         Parameters
         ----------
         mu : mean of Gaussian
         sigma : sigma of Gaussian
-        
+
         Returns
         -------
         self
         """
         rv = scipy.stats.norm(loc=mu, scale=sigma)
         super().__init__(rv)
-    
+
 class InterpolationSampler(Sampler):
     """ Sample from interpolated function. """
     def __init__(self, xvals, yvals, **kwargs):
@@ -146,7 +154,7 @@ class FileInterpolationSampler(InterpolationSampler):
         self.interp = FileInterpolation(filename, columns)
 
 class SinusoidSampler(InterpolationSampler):
-    
+
     def __init__(self, **kwargs):
         """ Sample from Sinusoid function.
 
@@ -159,3 +167,19 @@ class SinusoidSampler(InterpolationSampler):
         sampler
         """
         self.interp = Sinusoid(**kwargs)
+
+class CubicSplineInterpolationSampler(InterpolationSampler):
+    def __init__(self, filename, columns=None):
+        self.interp = CubicSplineInterpolation(filename, columns)
+
+class FileCubicSplineInterpolationSampler(InterpolationSampler):
+    def __init__(self, filename, columns=None):
+        self.interp = FileCubicSplineInterpolation(filename, columns)
+
+class LinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
+    def __init__(self, filename):
+        self.interp = LinearDensityCubicSplineInterpolation(filename)
+
+class FileLinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
+    def __init__(self, filename):
+        self.interp = FileLinearDensityCubicSplineInterpolation(filename)
