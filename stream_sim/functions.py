@@ -213,22 +213,24 @@ class FileInterpolation(Interpolation):
 
         super().__init__(xvals, yvals, **kwargs)
 
+
 class CubicSplineInterpolation(BoundedFunction):
 
     def __init__(self, nodes, node_values, **kwargs):
         """
-        Cubic spline interpolation given nodes and node values
+        Initialize a cubic spline interpolation based on provided nodes and values.
 
         Parameters
         ----------
         nodes : array_like
-            1-D array of nodes for the spline.
+            1-D array containing nodes for the spline.
         node_values : array_like
-            1-D array of node values corresponding to the nodes.
+            1-D array containing values at the nodes.
 
         Returns
         -------
-        function
+        CubicSplineInterpolation
+            Instance of the cubic spline interpolation.
         """
         self.nodes = np.atleast_1d(nodes)
         self.node_values = np.atleast_1d(node_values)
@@ -238,19 +240,18 @@ class CubicSplineInterpolation(BoundedFunction):
 
     def _evaluate(self, xvals):
         """
-        Evaluate the cubic spline interpolation at given x-values.
-        for xvals outside the interpolation range nan is returned
+        Compute the value of the cubic spline interpolation for given x-values.
+        Values outside the interpolation range will return NaN.
 
         Parameters
         ----------
         xvals : array_like
-            x-values at which the spline is to be evaluated.
+            x-values to evaluate the spline.
 
         Returns
         -------
         array_like
-            Interpolated values at the given x-values.
-
+            Values of the spline at the given x-values.
         """
         interp = scipy.interpolate.CubicSpline(self.nodes,
                                                self.node_values,
@@ -260,19 +261,30 @@ class CubicSplineInterpolation(BoundedFunction):
 
 
 class FileCubicSplineInterpolation(CubicSplineInterpolation):
-    def __init__(self, filename, type=None, stream_name=None,nodes_name="phi1",
-                 node_vals_name="mean", **kwargs):
-        """ Interpolation function from file.
+    def __init__(self, filename, stream_name=None, type=None,
+                 nodes_name="phi1", node_vals_name="mean", **kwargs):
+        """
+        Initialize a cubic spline interpolation using data from a file.
 
         Parameters
         ----------
-        filename : input filename
-        columns  : list of column names
-        kwargs : passed to baseclass
+        filename : str
+            Path to the input file.
+        stream_name : str, optional
+            Stream name filter for the data.
+        type : str, optional
+            Type filter for the data.
+        nodes_name : str
+            Name of the column containing nodes.
+        node_vals_name : str
+            Name of the column containing node values.
+        kwargs : dict
+            Additional keyword arguments passed to the base class.
 
         Returns
         -------
-        function
+        FileCubicSplineInterpolation
+            Instance of the file-based cubic spline interpolation.
         """
         self._filename = filename
         self._data = pd.read_csv(self._filename)
@@ -290,17 +302,26 @@ class FileCubicSplineInterpolation(CubicSplineInterpolation):
 class LinearDensityCubicSplineInterpolation():
     def __init__(self, intensity_nodes, intensity_node_values, spread_nodes,
                  spread_node_values, **kwargs):
-        """ Interpolation function from file.
+        """
+        Create an interpolation based on linear density and cubic splines.
 
         Parameters
         ----------
-        filename : input filename
-        columns  : list of column names
-        kwargs : passed to baseclass
+        intensity_nodes : array_like
+            Nodes for peak intensity interpolation.
+        intensity_node_values : array_like
+            Node values for peak intensity interpolation.
+        spread_nodes : array_like
+            Nodes for spread interpolation.
+        spread_node_values : array_like
+            Node values for spread interpolation.
+        kwargs : dict
+            Additional keyword arguments.
 
         Returns
         -------
-        function
+        LinearDensityCubicSplineInterpolation
+            Instance of the linear density cubic spline interpolation.
         """
         self._peak_intensity = CubicSplineInterpolation(intensity_nodes,
                                                         intensity_node_values)
@@ -323,17 +344,22 @@ class LinearDensityCubicSplineInterpolation():
 class FileLinearDensityCubicSplineInterpolation(
         LinearDensityCubicSplineInterpolation):
     def __init__(self, filename, stream_name=None, **kwargs):
-        """ Interpolation function from file.
+        """
+        Create a linear density cubic spline interpolation using data from a file.
 
         Parameters
         ----------
-        filename : input filename
-        columns  : list of column names
-        kwargs : passed to baseclass
+        filename : str
+            Path to the input file.
+        stream_name : str, optional
+            Stream name filter for the data.
+        kwargs : dict
+            Additional keyword arguments passed to the base class.
 
         Returns
         -------
-        function
+        FileLinearDensityCubicSplineInterpolation
+            Instance of the file-based linear density cubic spline interpolation.
         """
         self._filename = filename
         self._data = pd.read_csv(self._filename)
