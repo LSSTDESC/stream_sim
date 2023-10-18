@@ -169,17 +169,77 @@ class SinusoidSampler(InterpolationSampler):
         self.interp = Sinusoid(**kwargs)
 
 class CubicSplineInterpolationSampler(InterpolationSampler):
-    def __init__(self, filename, columns=None):
-        self.interp = CubicSplineInterpolation(filename, columns)
+    def __init__(self, nodes, node_values):
+        """ Sample using Cubic Spline Interpolation method.
+
+        Parameters
+        ----------
+        nodes : array-like
+            The nodes for the interpolation.
+        node_values : array-like
+            The values at the nodes.
+
+        Returns
+        -------
+        sampler
+        """
+        self.interp = CubicSplineInterpolation(nodes, node_values)
 
 class FileCubicSplineInterpolationSampler(InterpolationSampler):
-    def __init__(self, filename, columns=None):
-        self.interp = FileCubicSplineInterpolation(filename, columns)
+    def __init__(self, filename, stream_name=None, type=None):
+        """ Sample using Cubic Spline Interpolation from a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file containing interpolation data.
+        stream_name : str, optional
+            The name of the stream within the file.
+        type : str, optional
+            Type of data stream.
+
+        Returns
+        -------
+        sampler
+        """
+        self.interp = FileCubicSplineInterpolation(filename, stream_name, type)
 
 class LinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
-    def __init__(self, filename):
-        self.interp = LinearDensityCubicSplineInterpolation(filename)
+    def __init__(self, intensity_nodes, intensity_node_values, spread_nodes,
+                 spread_node_values):
+         """ Sample using Linear Density Cubic Spline Interpolation method.
+
+        Parameters
+        ----------
+        intensity_nodes : array-like
+            The nodes for the intensity interpolation.
+        intensity_node_values : array-like
+            The values at the intensity nodes.
+        spread_nodes : array-like
+            The nodes for the spread interpolation.
+        spread_node_values : array-like
+            The values at the spread nodes.
+
+        Returns
+        -------
+        sampler
+        """
+        self.interp = LinearDensityCubicSplineInterpolation(intensity_nodes,
+                        intensity_node_values, spread_nodes, spread_node_values)
 
 class FileLinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
-    def __init__(self, filename):
-        self.interp = FileLinearDensityCubicSplineInterpolation(filename)
+    def __init__(self, filename, stream_name):
+        """ Sample using Linear Density Cubic Spline Interpolation from a file.
+
+        Parameters
+        ----------
+        filename : str
+            The name of the file containing interpolation data.
+        stream_name : str
+            The name of the stream within the file.
+
+        Returns
+        -------
+        sampler
+        """
+        self.interp = FileLinearDensityCubicSplineInterpolation(filename, stream_name)
