@@ -48,9 +48,9 @@ def test_FileCubicSplineInterpolation():
     # using atlas width from patrick_2022.csv
     filepath="./data/patrick_2022_splines.csv"
     stream_name="atlas"
-    itype="spread"
+    spline_type="spread"
 
-    interp=FileCubicSplineInterpolation(filepath, type=itype, stream_name=stream_name)
+    interp=FileCubicSplineInterpolation(filepath, spline_type=spline_type, stream_name=stream_name)
     result=interp(np.linspace(-10,10,20))
 
     np.testing.assert_allclose(result, SPREAD_INTERP_ARRAY)
