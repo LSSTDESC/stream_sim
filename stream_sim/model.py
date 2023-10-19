@@ -10,9 +10,9 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from importlib import reload
 from stream_sim.functions import function_factory
 from stream_sim.samplers import sampler_factory
+
 
 class ConfigurableModel(object):
     """ Baseclass for models built from configs. """
@@ -27,6 +27,7 @@ class ConfigurableModel(object):
 
     def sample(self, size):
         pass
+
 
 class StreamModel(ConfigurableModel):
     """ High-level object for the various components of the stream model. """
@@ -85,7 +86,6 @@ class StreamModel(ConfigurableModel):
         else:
             return None
 
-
     def sample(self, size):
         """
         Sample the stream stellar distribution parameters.
@@ -138,6 +138,7 @@ class DensityModel(ConfigurableModel):
     def sample(self, size):
         return self.density.sample(size)
 
+
 class TrackModel(ConfigurableModel):
 
     def _create_model(self):
@@ -149,9 +150,8 @@ class TrackModel(ConfigurableModel):
         type_ = kwargs.pop('type').lower()
         self.spread = function_factory(type_, **kwargs)
 
-
     def _create_sampler(self, x):
-        type_ = self._config.get('sampler','Gaussian').lower()
+        type_ = self._config.get('sampler', 'Gaussian').lower()
         if type_ == 'gaussian':
             mu = self.center(x)
             sigma = self.spread(x)
@@ -170,7 +170,9 @@ class TrackModel(ConfigurableModel):
         self._create_sampler(x)
         return self._sampler.sample(size)
 
-class DistanceModel(TrackModel): pass
+
+class DistanceModel(TrackModel):
+    pass
 
 
 class IsochroneModel(ConfigurableModel):
@@ -185,7 +187,8 @@ class IsochroneModel(ConfigurableModel):
         else:
             mag1, mag2 = np.nan*np.ones_like([distance, distance])
 
-        return  mag1, mag2
+        return mag1, mag2
+
 
 class VelocityModel(ConfigurableModel):
     """ Placeholder for velocity model. """
@@ -206,6 +209,7 @@ class BackgroundModel(StreamModel):
     """ Background model. """
     pass
 
+
 class SplineStreamModel(StreamModel):
     def __init__(self, config, **kwargs):
         """ Create the stream from the config object.
@@ -218,6 +222,14 @@ class SplineStreamModel(StreamModel):
         -------
         self : stream model
         """
+
+        stream_name = None
+        if config["stream_name"]:
+            stream_name = config["stream_name"]
+
+        config["linear_density"]["stream_name"] = stream_name
+        config["track"]["center"]["stream_name"] = stream_name
+        config["track"]["spread"]["stream_name"] = stream_name
         super().__init__(config, **kwargs)
 
     def _create_model(self):

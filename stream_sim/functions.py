@@ -137,10 +137,11 @@ class Line(BoundedFunction):
 class Sinusoid(BoundedFunction):
     """Sinusoid function. Evaluated as:
 
-       y(x) = amplitude/2 * cos( 2pi*(x - phase)/period ) + amplitude/2 + offset
+       y(x) = amplitude/2 * cos( 2pi*(x - phase)/period ) + amplitude/2+offset
 
     """
-    def __init__(self, amplitude=1.0, period=1.0, phase=0.0, offset=0.0, **kwargs):
+    def __init__(self, amplitude=1.0, period=1.0, phase=0.0, offset=0.0,
+                 **kwargs):
         """ Sinusoid function
 
         Parameters
@@ -164,8 +165,10 @@ class Sinusoid(BoundedFunction):
     def _evaluate(self, xvals):
         """ Evaluate the sinusoid """
         norm = self.amplitude/2.0
-        yvals = norm * np.cos(2*np.pi * (xvals - self.phase)/self.period) + norm + self.offset
+        yvals = norm * np.cos(2*np.pi * (xvals - self.phase)/self.period) + \
+            norm + self.offset
         return yvals
+
 
 class Interpolation(BoundedFunction):
 
@@ -192,7 +195,7 @@ class Interpolation(BoundedFunction):
         """ Evaluate the method """
         interp = scipy.interpolate.interp1d(self.xvals, self.yvals,
                                             bounds_error=False,
-                                            fill_value = np.nan)
+                                            fill_value=np.nan)
 
         return interp(xvals)
 
@@ -215,9 +218,9 @@ class FileInterpolation(Interpolation):
         self._data = pd.read_csv(self._filename)
 
         if columns:
-            xname,yname = columns
+            xname, yname = columns
         else:
-            xname,yname = self._data.columns[[0,1]]
+            xname, yname = self._data.columns[[0, 1]]
 
         xvals = self._data[xname].values
         yvals = self._data[yname].values
@@ -229,7 +232,8 @@ class CubicSplineInterpolation(BoundedFunction):
 
     def __init__(self, nodes, node_values, **kwargs):
         """
-        Initialize a cubic spline interpolation based on provided nodes and values.
+        Initialize a cubic spline interpolation based on provided nodes and
+        values.
 
         Parameters
         ----------
@@ -301,9 +305,9 @@ class FileCubicSplineInterpolation(CubicSplineInterpolation):
         self._data = pd.read_csv(self._filename)
 
         if spline_type:
-            self._data = self._data.loc[self._data["type"]==spline_type,:]
+            self._data = self._data.loc[self._data["type"] == spline_type, :]
         if stream_name:
-            self._data = self._data.loc[self._data["stream"]==stream_name,:]
+            self._data = self._data.loc[self._data["stream"] == stream_name, :]
 
         nodes = self._data[nodes_name].values
         node_values = self._data[node_vals_name].values
@@ -340,8 +344,9 @@ class LinearDensityCubicSplineInterpolation():
         self._spread = CubicSplineInterpolation(spread_nodes,
                                                 spread_node_values)
         # get the smallest range where both splines are defined
-        self.xmin = np.max([intensity_nodes.min(),spread_nodes.min()])
-        self.xmax = np.min([intensity_nodes.max(),spread_nodes.max()])
+        self.xmin = np.max([intensity_nodes.min(), spread_nodes.min()])
+        self.xmax = np.min([intensity_nodes.max(), spread_nodes.max()])
+
     def __call__(self, x, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -349,7 +354,7 @@ class LinearDensityCubicSplineInterpolation():
         yvals = self._evaluate(xvals)
         return yvals
 
-    def _evaluate(self,xvals):
+    def _evaluate(self, xvals):
         peak_intensity = self._peak_intensity(xvals)
         spread = self._spread(xvals)
         return np.sqrt(2 * np.pi) * peak_intensity * spread
@@ -359,7 +364,8 @@ class FileLinearDensityCubicSplineInterpolation(
         LinearDensityCubicSplineInterpolation):
     def __init__(self, filename, stream_name=None, **kwargs):
         """
-        Create a linear density cubic spline interpolation using data from a file.
+        Create a linear density cubic spline interpolation using data from a
+        file.
 
         Parameters
         ----------
@@ -373,12 +379,13 @@ class FileLinearDensityCubicSplineInterpolation(
         Returns
         -------
         FileLinearDensityCubicSplineInterpolation
-            Instance of the file-based linear density cubic spline interpolation.
+            Instance of the file-based linear density cubic spline
+            interpolation.
         """
         self._filename = filename
         self._data = pd.read_csv(self._filename)
         if stream_name:
-            self._data = self._data.loc[self._data["stream"]==stream_name]
+            self._data = self._data.loc[self._data["stream"] == stream_name]
         sel_intensity = (self._data["type"] == "peak_intensity")
         intensity_nodes = self._data.loc[sel_intensity, "phi1"].values
         intensity_node_values = self._data.loc[sel_intensity, "mean"].values

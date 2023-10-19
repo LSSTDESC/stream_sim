@@ -14,7 +14,7 @@ from stream_sim.functions import (Interpolation,
                                   FileCubicSplineInterpolation,
                                   LinearDensityCubicSplineInterpolation,
                                   FileLinearDensityCubicSplineInterpolation,
-)
+                                  )
 
 
 def sampler_factory(type_, **kwargs):
@@ -52,6 +52,7 @@ def sampler_factory(type_, **kwargs):
 
     return sampler
 
+
 def inverse_transform_sample(vals, pdf, size):
     """ Perform inverse transform sampling
 
@@ -70,7 +71,7 @@ def inverse_transform_sample(vals, pdf, size):
     cdf /= cdf[-1]
     fn = scipy.interpolate.interp1d(cdf, list(range(0, len(cdf))),
                                     bounds_error=False,
-                                    fill_value = 0.0)
+                                    fill_value=0.0)
     x_new = scipy.stats.uniform.rvs(size=np.rint(size).astype(int))
     index = np.rint(fn(x_new)).astype(int)
     return vals[index]
@@ -78,6 +79,7 @@ def inverse_transform_sample(vals, pdf, size):
 ############################################################
 # Probabilistic Samplers
 ############################################################
+
 
 class Sampler(object):
     def __init__(self, *args, **kwargs):
@@ -89,6 +91,7 @@ class Sampler(object):
     def sample(self, size):
         pass
 
+
 class ScipySampler(Sampler):
     def __init__(self, rv):
         self._rv = rv
@@ -98,6 +101,7 @@ class ScipySampler(Sampler):
 
     def sample(self, size, random_state=None):
         return self._rv.rvs(size=int(size), random_state=random_state)
+
 
 class UniformSampler(ScipySampler):
     """ Sample from uniform distribution. """
@@ -116,6 +120,7 @@ class UniformSampler(ScipySampler):
         rv = scipy.stats.uniform(loc=xmin, scale=xmax-xmin)
         super().__init__(rv)
 
+
 class GaussianSampler(ScipySampler):
     """ Sample from Gaussian. """
     def __init__(self, mu, sigma):
@@ -132,6 +137,7 @@ class GaussianSampler(ScipySampler):
         """
         rv = scipy.stats.norm(loc=mu, scale=sigma)
         super().__init__(rv)
+
 
 class InterpolationSampler(Sampler):
     """ Sample from interpolated function. """
@@ -155,10 +161,12 @@ class InterpolationSampler(Sampler):
         pdf = self.interp(xvals)
         return inverse_transform_sample(xvals, pdf, size=size)
 
+
 class FileInterpolationSampler(InterpolationSampler):
 
     def __init__(self, filename, columns=None):
         self.interp = FileInterpolation(filename, columns)
+
 
 class SinusoidSampler(InterpolationSampler):
 
@@ -174,6 +182,7 @@ class SinusoidSampler(InterpolationSampler):
         sampler
         """
         self.interp = Sinusoid(**kwargs)
+
 
 class CubicSplineInterpolationSampler(InterpolationSampler):
     def __init__(self, nodes, node_values):
@@ -192,6 +201,7 @@ class CubicSplineInterpolationSampler(InterpolationSampler):
         """
         self.interp = CubicSplineInterpolation(nodes, node_values)
 
+
 class FileCubicSplineInterpolationSampler(InterpolationSampler):
     def __init__(self, filename, stream_name=None, spline_type=None):
         """ Sample using Cubic Spline Interpolation from a file.
@@ -209,7 +219,8 @@ class FileCubicSplineInterpolationSampler(InterpolationSampler):
         -------
         sampler
         """
-        self.interp = FileCubicSplineInterpolation(filename, stream_name, spline_type)
+        self.interp = FileCubicSplineInterpolation(filename, stream_name,
+                                                   spline_type)
 
 
 class LinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
@@ -232,8 +243,10 @@ class LinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
         -------
         sampler
         """
-        self.interp = LinearDensityCubicSplineInterpolation(intensity_nodes,
-                        intensity_node_values, spread_nodes, spread_node_values)
+        self.interp = LinearDensityCubicSplineInterpolation(
+            intensity_nodes, intensity_node_values, spread_nodes,
+            spread_node_values)
+
 
 class FileLinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
     def __init__(self, filename, stream_name):
@@ -250,4 +263,6 @@ class FileLinearDensityCubicSplineInterpolationSampler(InterpolationSampler):
         -------
         sampler
         """
-        self.interp = FileLinearDensityCubicSplineInterpolation(filename, stream_name)
+        self.interp = FileLinearDensityCubicSplineInterpolation(
+            filename,
+            stream_name)
