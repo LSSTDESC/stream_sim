@@ -2,7 +2,6 @@
 """
 Models for simulating streams.
 """
-__author__ = "Alex Drlica-Wagner"
 
 import copy
 import warnings
@@ -10,9 +9,9 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from importlib import reload
-from stream_sim.functions import function_factory    
-from stream_sim.samplers import sampler_factory    
+from stream_sim.functions import function_factory
+from stream_sim.samplers import sampler_factory
+
 
 class ConfigurableModel(object):
     """ Baseclass for models built from configs. """
@@ -28,16 +27,17 @@ class ConfigurableModel(object):
     def sample(self, size):
         pass
 
+
 class StreamModel(ConfigurableModel):
     """ High-level object for the various components of the stream model. """
 
     def __init__(self, config, **kwargs):
-        """ Create the stream from the config object. 
+        """ Create the stream from the config object.
 
         Parameters
         ----------
         config : configuration dictionary
-        
+
         Returns
         -------
         self : stream model
@@ -50,15 +50,20 @@ class StreamModel(ConfigurableModel):
         self.distance = self._create_distance()
         self.isochrone = self._create_isochrone()
         self.velocity = self._create_velocity()
-        
+
     def _create_density(self):
         config = self._config.get('density')
+        return DensityModel(config)
+
+    def _create_linear_density(self):
+        """to be used with the cubic spline methods"""
+        config = self._config.get('linear_density')
         return DensityModel(config)
 
     def _create_track(self):
         config = self._config.get('track')
         return TrackModel(config)
-    
+
     def _create_distance(self):
         config = self._config.get('distance')
         if config:
@@ -79,9 +84,9 @@ class StreamModel(ConfigurableModel):
             return VelocityModel(config)
         else:
             return None
-    
+
     def sample(self, size):
-        """ 
+        """
         Sample the stream stellar distribution parameters.
 
         Parameters
@@ -121,16 +126,17 @@ class StreamModel(ConfigurableModel):
                            'mag1': mag1, 'mag2': mag2})
         return df
 
-        
+
 class DensityModel(ConfigurableModel):
 
     def _create_model(self):
         kwargs = copy.deepcopy(self._config)
         type_ = kwargs.pop('type').lower()
         self.density = sampler_factory(type_, **kwargs)
-            
+
     def sample(self, size):
         return self.density.sample(size)
+
 
 class TrackModel(ConfigurableModel):
 
@@ -143,9 +149,8 @@ class TrackModel(ConfigurableModel):
         type_ = kwargs.pop('type').lower()
         self.spread = function_factory(type_, **kwargs)
 
-
     def _create_sampler(self, x):
-        type_ = self._config.get('sampler','Gaussian').lower()
+        type_ = self._config.get('sampler', 'Gaussian').lower()
         if type_ == 'gaussian':
             mu = self.center(x)
             sigma = self.spread(x)
@@ -158,13 +163,15 @@ class TrackModel(ConfigurableModel):
             raise Exception(f"Unrecognized sampler: {type_}")
 
         self._sampler = sampler_factory(type_, **kwargs)
-        
+
     def sample(self, x):
         size = len(x)
         self._create_sampler(x)
         return self._sampler.sample(size)
 
-class DistanceModel(TrackModel): pass
+
+class DistanceModel(TrackModel):
+    pass
 
 
 class IsochroneModel(ConfigurableModel):
@@ -179,7 +186,8 @@ class IsochroneModel(ConfigurableModel):
         else:
             mag1, mag2 = np.nan*np.ones_like([distance, distance])
 
-        return  mag1, mag2
+        return mag1, mag2
+
 
 class VelocityModel(ConfigurableModel):
     """ Placeholder for velocity model. """
@@ -199,4 +207,33 @@ class VelocityModel(ConfigurableModel):
 class BackgroundModel(StreamModel):
     """ Background model. """
     pass
-    
+
+
+class SplineStreamModel(StreamModel):
+    def __init__(self, config, **kwargs):
+        """ Create the stream from the config object.
+
+        Parameters
+        ----------
+        config : configuration dictionary
+
+        Returns
+        -------
+        self : stream model
+        """
+
+        stream_name = None
+        if config["stream_name"]:
+            stream_name = config["stream_name"]
+
+        config["linear_density"]["stream_name"] = stream_name
+        config["track"]["center"]["stream_name"] = stream_name
+        config["track"]["spread"]["stream_name"] = stream_name
+        super().__init__(config, **kwargs)
+
+    def _create_model(self):
+        self.density = self._create_linear_density()
+        self.track = self._create_track()
+        self.distance = self._create_distance()
+        self.isochrone = self._create_isochrone()
+        self.velocity = self._create_velocity()

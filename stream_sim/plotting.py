@@ -2,7 +2,6 @@
 """
 Plotting functions.
 """
-__author__ = "Alex Drlica-Wagner"
 
 import numpy as np
 import pylab as plt
@@ -60,4 +59,4 @@ def plot_stream(phi1, phi2):
     ax = fig.add_subplot(gs[0, 0])
     hist, xedges, yedges, image = draw_stream(phi1, phi2)
     return fig, ax
-    
+
