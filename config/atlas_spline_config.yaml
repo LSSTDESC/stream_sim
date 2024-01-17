@@ -1,0 +1,38 @@
+# Example configuration file for  interpolation
+# from Erkal et al. 2016 []
+stream:
+  stream_name: "atlas"
+  filename : &filename ./data/patrick_2022_splines.csv
+  nstars: 5.0e+4
+
+  linear_density:
+    type: FileLinearDensityCubicSplineInterpolation
+    filename: *filename
+
+  track:
+    center:
+      type: FileCubicSplineInterpolation
+      filename: *filename
+      spline_type: center
+    spread:
+      type: FileCubicSplineInterpolation
+      filename: *filename
+      spline_type: spread
+    sampler: Gaussian
+
+background:
+  nstars : 1.0e+5
+
+  density:
+    type: Uniform
+    xmin: -18.0
+    xmax: +10.0
+
+  track:
+    center:
+      type: Constant
+      value: 0.0
+    spread:
+      type: Constant
+      value: 4.0
+    sampler: Uniform
