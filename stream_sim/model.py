@@ -2,7 +2,6 @@
 """
 Models for simulating streams.
 """
-__author__ = "Alex Drlica-Wagner"
 
 import copy
 import warnings

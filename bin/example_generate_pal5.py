@@ -2,7 +2,6 @@
 """
 Example of generating a matched filter map for pal 5
 """
-__author__ = "Peter Ferguson"
 
 import matplotlib.pyplot as plt
 import numpy as np

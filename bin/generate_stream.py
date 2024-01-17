@@ -2,7 +2,6 @@
 """
 More modular stream generation example.
 """
-__author__ = "Alex Drlica-Wagner"
 import os
 import copy
 from importlib import reload
@@ -11,30 +10,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.interpolate
-import yaml
+
 
 import stream_sim.model; reload(stream_sim.model)
 from stream_sim.model import StreamModel, BackgroundModel
 import stream_sim.plotting; reload(stream_sim.plotting)
 from stream_sim.plotting import plot_stream
-
-def parse_config(config):
-    """ Parse a yaml formatted file or string into a dict.
-    
-    Parameters
-    ----------
-    config: yaml formatted string or file path
-    
-    Returns
-    -------
-    dict
-    """
-    try:
-        # If `config` is a file
-        return yaml.safe_load(open(config,'r'))
-    except (OSError, FileNotFoundError):
-        # Otherwise assume it is a string
-        return yaml.safe_load(config)
+from stream_sim.utils import parse_config
 
 def generate_stream(config):
     """ Generate the simulated stream.
@@ -42,7 +24,7 @@ def generate_stream(config):
     Parameters
     ----------
     config : configuration file
-    
+
     Return
     ------
     stars_df : output data frame
@@ -61,10 +43,10 @@ def generate_stream(config):
     print("Combining stream and background.")
     out = pd.concat([stream_df, bkg_df])
     out['flag'] = np.hstack([np.ones(len(stream_df),dtype=int),
-                            np.zeros(len(bkg_df),dtype=int)])      
+                            np.zeros(len(bkg_df),dtype=int)])
 
     return out
-    
+
 
 if __name__ == "__main__":
     import argparse
