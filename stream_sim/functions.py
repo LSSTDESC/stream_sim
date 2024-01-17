@@ -2,7 +2,6 @@
 """
 Function definitions.
 """
-__author__ = "Alex Drlica-Wagner"
 
 import numpy as np
 import pandas as pd
