@@ -47,7 +47,7 @@ class StreamModel(ConfigurableModel):
     def _create_model(self):
         self.density = self._create_density()
         self.track = self._create_track()
-        self.distance = self._create_distance()
+        self.distance_modulus = self._create_distance_modulus()
         self.isochrone = self._create_isochrone()
         self.velocity = self._create_velocity()
 
@@ -64,17 +64,19 @@ class StreamModel(ConfigurableModel):
         config = self._config.get('track')
         return TrackModel(config)
 
-    def _create_distance(self):
-        config = self._config.get('distance')
+    def _create_distance_modulus(self):
+        config = self._config.get('distance_modulus')
         if config:
-            return DistanceModel()
+            return TrackModel(config)
         else:
             return None
 
     def _create_isochrone(self):
         config = self._config.get('isochrone')
         if config:
-            return IsochroneModel(config)
+            iso = IsochroneModel(config)
+            iso.create_isochrone(config)
+            return iso
         else:
             return None
 
@@ -103,16 +105,17 @@ class StreamModel(ConfigurableModel):
         phi2 = self.track.sample(phi1)
 
         # Sample distances
-        if self.distance:
-            dist = self.distance.sample(phi1)
+        if self.distance_modulus:
+            dist = self.distance_modulus.sample(phi1)
         else:
             dist = None
 
         # Sample magnitudes from isochrone
         if self.isochrone:
-            mag1, mag2 = self.isochrone.sample(dist)
+            
+            mag_g, mag_r = self.isochrone.sample(size,dist)
         else:
-            mag1, mag2 = None, None
+            mag_g, mag_r = None, None
 
         # Sample kinematics
         if self.velocity:
@@ -123,7 +126,7 @@ class StreamModel(ConfigurableModel):
         # Create the DataFrame of stream stars
         df = pd.DataFrame({'phi1': phi1, 'phi2': phi2, 'dist': dist,
                            'mu1': mu1, 'mu2': mu2, 'rv': rv,
-                           'mag1': mag1, 'mag2': mag2})
+                           'mag_g': mag_g, 'mag_r': mag_r})
         return df
 
 
@@ -169,25 +172,53 @@ class TrackModel(ConfigurableModel):
         self._create_sampler(x)
         return self._sampler.sample(size)
 
+    
+    
+    
+    
 
-class DistanceModel(TrackModel):
+class DistanceModel(ConfigurableModel):
     pass
-
+        
+        
 
 class IsochroneModel(ConfigurableModel):
     """ Placeholder for isochrone model. """
-
-    def sample(self, distance):
-        """ Placeholder """
-        warnings.warn("IsochroneModel not implemented!")
-
-        if np.isscalar(distance):
-            mag1, mag2 = np.nan, np.nan
+    def __init__(self, config, **kwargs):
+        super().__init__(config, **kwargs)
+    
+    def create_isochrone(self,config):
+        import ugali.isochrone
+        self.iso = ugali.isochrone.factory(**config)
+        self.iso.params['distance_modulus'].set_bounds([0,50])
+        if 'distance_modulus' in config:
+            warnings.warn('Please use the "distance_modulus" section of the configuration file, instead of the isochrone section, to define a distance module.')
+        self.iso.distance_modulus = 0
+        
+        
+    def sample(self, nstars,distance_modulus,**kwargs):
+        stellar_mass = nstars * self.iso.stellar_mass()
+        if np.isscalar(distance_modulus):
+            mag_g,mag_r = self.iso.simulate(stellar_mass,distance_modulus=self.iso.distance_modulus)
+            mag_g, mag_r = [mag + np.ones_like(mag)*distance_modulus  for mag in (mag_g, mag_r)]
         else:
-            mag1, mag2 = np.nan*np.ones_like([distance, distance])
+            mag_g,mag_r = self.iso.simulate(stellar_mass,distance_modulus=self.iso.distance_modulus)
+            mag_g, mag_r = [mag + distance_modulus  for mag in (mag_g, mag_r)]
 
-        return mag1, mag2
-
+        return mag_g, mag_r
+    
+    def _dist_to_modulus(self,distance):
+        """
+        Convert physical distances in pc into distance modulus
+        """
+        if distance is None:
+            return 0
+        elif np.all(distance == 0):
+            warnings.warn("Distances are equal to 0, distance modulus has been set to 0.")
+            return 0
+        else:
+            return 5*np.log10(distance)-5
+        
 
 class VelocityModel(ConfigurableModel):
     """ Placeholder for velocity model. """
@@ -195,12 +226,12 @@ class VelocityModel(ConfigurableModel):
     def sample(self, phi1):
         """ Placeholder """
         warnings.warn("VelocityModel not implemented!")
-
+        
         if np.isscalar(phi1):
             mu1, mu2, rv = np.nan, np.nan, np.nan
         else:
             mu1, mu2, rv = np.nan*np.ones_like([phi1, phi1, phi1])
-
+        
         return mu1, mu2, rv
 
 
@@ -234,6 +265,6 @@ class SplineStreamModel(StreamModel):
     def _create_model(self):
         self.density = self._create_linear_density()
         self.track = self._create_track()
-        self.distance = self._create_distance()
+        self.distance_modulus = self._create_distance()
         self.isochrone = self._create_isochrone()
         self.velocity = self._create_velocity()
