@@ -1,53 +1,58 @@
+# Example configuration file for Pal 5 interpolation
+# from Erkal et al. 2016 []
+stream:
+  filename : &filename ./data/erkal_2016_pal_5_input.csv
+  nstars: 1.15e+5
+   
+  density:
+    type: FileInterpolation
+    filename : *filename
+    columns : [phi1, nstars]
+   
+  track:
+    center:
+      type: FileInterpolation
+      filename: *filename
+      columns: [phi1, phi2]
+    spread:
+      type: FileInterpolation
+      filename: *filename
+      columns: [phi1, width]
+    sampler: Gaussian
+  
+  isochrone:
+    name: Bressan2012
+    survey: lsst
+    age: 12.0
+    z: 0.0006
+    band_1 : g
+    band_2 : r
+    band_1_detection : True
+  
+  distance_modulus:
+    center: 
+      type: Line
+      slope: 0.1
+      intercept: 16.5
+    spread:
+      type: Constant
+      value: 0.0001 
+    sampler: Uniform
+
+   
 background:
+  nstars : 1.0e+5
+
   density:
     type: Uniform
-    xmax: 18.0
     xmin: -10.0
-  nstars: 100000.0
+    xmax: +18.0
+
   track:
     center:
       type: Constant
       value: 0.0
-    sampler: Uniform
     spread:
       type: Constant
       value: 4.0
-stream:
-  density:
-    columns:
-    - phi1
-    - nstars
-    filename: ./data/erkal_2016_pal_5_input.csv
-    type: FileInterpolation
-  distance_modulus:
-    center:
-      intercept: 16.5
-      slope: 0.1
-      type: Line
     sampler: Uniform
-    spread:
-      type: Constant
-      value: 0.0001
-  filename: ./data/erkal_2016_pal_5_input.csv
-  isochrone:
-    age: 12.0
-    band_1: g
-    band_1_detection: true
-    band_2: r
-    name: Bressan2012
-    z: 0.0006
-  nstars: 115000.0
-  track:
-    center:
-      columns:
-      - phi1
-      - phi2
-      filename: ./data/erkal_2016_pal_5_input.csv
-      type: FileInterpolation
-    sampler: Gaussian
-    spread:
-      columns:
-      - phi1
-      - width
-      filename: ./data/erkal_2016_pal_5_input.csv
-      type: FileInterpolation
