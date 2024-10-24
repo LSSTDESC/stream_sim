@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # Surveys files
-data/surveys/LSST_DC2/*
+data/surveys/LSST/*

@@ -1,5 +1,5 @@
 # Configuration file for the survey LSST
-name: LSST_DC2
+name: LSST
 survey_files: 
     file_path: ''
     maglim_map_g: supreme_dc2_dr6d_v3_g_maglim_psf_wmean.fits.gz

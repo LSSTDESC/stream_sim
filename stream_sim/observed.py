@@ -68,7 +68,10 @@ class StreamObserved:
 
         self._config = copy.deepcopy(config_data)
 
+
+        
     def load_survey(self):   
+
         """
         Load survey information such as magnitude limits, extinction maps, completeness, etc.
 
@@ -103,6 +106,23 @@ class StreamObserved:
             path = os.path.join(current_dir, '..', 'data/surveys/'+self.survey)
         print("Survey's files are searched at the following path : ", path)
 
+        def load_map(attr_name, reader_func, path=path):
+            if not hasattr(self, attr_name):
+                filename = config.get(attr_name,None)  # Get filename from config, or None if missing
+
+                if filename is None:
+                    print(f"Warning: Missing '{attr_name}' in the configuration file.")
+                    return
+
+                full_path = os.path.join(path, filename)
+
+                if not os.path.exists(full_path):
+                    print(f"Error: File '{full_path}' for {attr_name} does not exist.")
+                    return
+
+                print(f"Reading {attr_name.replace('_', ' ')}: {full_path}...")  
+                setattr(self, attr_name, reader_func(full_path))
+
         survey_files = {
                 'maglim_map_g':  hp.read_map,
                 'maglim_map_r': hp.read_map,
@@ -114,38 +134,13 @@ class StreamObserved:
 
         # Loop through the dictionary and load each file if the attribute doesn't exist
         for attr, reader in survey_files.items():
-            self.load_map(config,attr, reader,path=path)
+            load_map(attr, reader,path=path)
 
         # Load other attributes
         self._load_survey_properties()
 
         print("###################### Reading Survey property files done ######################")
         
-    def load_map(self,config,attr_name, reader_func, path='.'):
-        """
-        Loads information from a configuration file designated by the attribute name and stores it in a new attribute.
-        Args :
-            config ( dict, pandas df ...): configuration file containing survey information.
-            attr_name (str): Name of the attribute to be created
-            reader_func (function): Function used to read information
-            path (str, optional): location of the file to be read. Default value is '.'.
-        """
-        if not hasattr(self, attr_name):
-            filename = config.get(attr_name,None)  # Get filename from config, or None if missing
-
-            if filename is None:
-                print(f"Warning: Missing '{attr_name}' in the configuration file.")
-                return
-
-            full_path = os.path.join(path, filename)
-
-            if not os.path.exists(full_path):
-                print(f"Error: File '{full_path}' for {attr_name} does not exist.")
-                return
-
-            print(f"Reading {attr_name.replace('_', ' ')}: {full_path}...")  
-            setattr(self, attr_name, reader_func(full_path))
-
     def _load_survey_properties(self):
         """
         Load survey properties like extinction coefficients and system error.
@@ -192,8 +187,7 @@ class StreamObserved:
             print("'flag' column not found, skipping filtering.")
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
-        endpoints = kwargs.pop('endpoints',None)
-        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints)
+        self.stream = self.phi_to_radec(data['phi1'],data['phi2'])
         pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
         
         # Estimate the extinction, errors
@@ -250,7 +244,7 @@ class StreamObserved:
         else:
             raise ValueError(f"Unsupported file format")
 
-    def phi_to_radec(self,phi1,phi2,endpoints = None):
+    def phi_to_radec(self,phi1,phi2,random=True):
         """
         Transform coordinates (phi1,phi2) to (ra,dec)
 
@@ -266,7 +260,7 @@ class StreamObserved:
         pix = np.arange(len(hpxmap))
         nside = hp.get_nside(hpxmap)
 
-        if endpoints is None:
+        if random:
             # Find two random points in DC2 as endpoints
             print("Generating random endpoints...")
             np.random.seed(12345)
@@ -276,8 +270,9 @@ class StreamObserved:
         else:
             # Define from predefined endpoints in DC2
             print("Using predefined endpoints...")
-            self.endpoints = endpoints
-
+            self.endpoints = coord.SkyCoord(ra=[55.0, 70.0]*u.deg,
+                                       dec=[-40.0, -30.0]*u.deg
+                                       )
         # Use Gala to create the stream coordinate frame
         print("Creating stream frame...")
         frame = gc.GreatCircleICRSFrame.from_endpoints(self.endpoints[0], self.endpoints[1])
@@ -345,12 +340,12 @@ class StreamObserved:
 
     def detect_flag(self, pix,mag_r,**kwargs):
         """
-        Apply the survey selection over the given stars/pixels.
+        Apply the surve selection over the given stars/pixels.
         Args:
             pix (Healpy pixels)
             mag_r : magnitude in r band
         Returns:
-            boolean list: 1 for detected stars, 0 for the others
+            bolean list: 1 for detected stars, 0 for the others
         """
         maglim0 = kwargs.pop('maglim0',25.0)
         theshold = (np.random.uniform(size=len(mag_r)) < self.completeness(mag_r + (maglim0 - np.clip(self.maglim_map_r[pix], 20., 26.))))
@@ -490,6 +485,7 @@ class StreamObserved:
         ax[0].scatter(self.endpoints.ra.deg, self.endpoints.dec.deg, s=25, c='r')
         ax[0].legend()
     
+
         ax[1].set_title("HR diagram using True magnitudes")
         ax[1].scatter(data['mag_g'] - data['mag_r'], data['mag_g'], s=2, alpha=0.5, color='gray',label = 'Unobserved')
         ax[1].scatter((data['mag_g'] - data['mag_r'])[sel], data['mag_g'][sel], s=4, alpha=1.0, color='black',label = 'Observed')
