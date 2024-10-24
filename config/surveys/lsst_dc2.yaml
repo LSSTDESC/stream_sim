@@ -1,0 +1,15 @@
+# Configuration file for the survey LSST
+name: lsst
+release: dc2
+survey_files: 
+    file_path: ''
+    maglim_map_g: supreme_dc2_dr6d_v3_g_maglim_psf_wmean.fits.gz
+    maglim_map_r: supreme_dc2_dr6d_v3_r_maglim_psf_wmean.fits.gz
+    ebv_map: ebv_sfd98_fullres_nside_4096_ring_equatorial.fits
+    completeness: stellar_efficiency_truth.csv
+    log_photo_error: photoerror_r.csv
+    coverage: supreme_dc2_dr6d_v3_gr_fracdet.fits.gz
+survey_properties: 
+  coeff_extinc_g: 3.237
+  coeff_extinc_r: 2.273
+  sys_error : 0.005
