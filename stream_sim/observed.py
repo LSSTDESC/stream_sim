@@ -15,7 +15,7 @@ class StreamObserved:
     """
     Estimate the observed quantities of stars from a stream for a chosen survey.
     """
-    def __init__(self, survey=None, config_file=None, **kwargs):    
+    def __init__(self, survey=None, release = None, config_file=None, **kwargs):    
         """
         Inputs:
         survey : name of the survey. Available: LSST.
@@ -28,15 +28,13 @@ class StreamObserved:
             self._config = copy.deepcopy(config_file)
 
         elif survey:
-            self._load_survey_config(survey) # Check for the folder of the survey
-            
+            self._load_survey_config(survey,release = release) # Check for the folder of the survey
         else:
             raise ValueError("Either 'survey' or 'config_file' must be provided.")
         self._config.update(**kwargs)
-        self.survey = self._config['name']
         self.load_survey()
 
-    def _load_survey_config(self, survey):
+    def _load_survey_config(self, survey,release = None):
         """
         Verify if the survey is available by finding its folder containing the properties.
 
@@ -48,13 +46,18 @@ class StreamObserved:
         """
         current_dir = os.path.dirname(os.path.abspath(__file__))
         folder_config_path = os.path.join(current_dir, '..', 'config/surveys/')
-        target_file_path = os.path.join(folder_config_path, survey + '.yaml')
-        
+
+        if release is None:
+            self.survey = survey
+        else:
+            self.survey = survey +'_'+release
+
+        target_file_path = os.path.join(folder_config_path, self.survey+ '.yaml')
         # Allow for flexible file types (YAML, JSON)
         if not os.path.exists(target_file_path):
             target_file_path = target_file_path.replace('.yaml', '.json')
             if not os.path.exists(target_file_path):
-                raise FileNotFoundError(f"Config file '{survey}' does not exist in '{folder_config_path}'.")
+                raise FileNotFoundError(f"Config file '{self.survey}' does not exist in '{folder_config_path}'.")
 
         # Load the file based on extension
         if target_file_path.endswith('.yaml'):
@@ -66,7 +69,14 @@ class StreamObserved:
             with open(target_file_path, 'r') as file:
                 config_data = json.load(file)
 
+        # Verify that the survey and release corresponds to the one in config file
+        if survey != config_data.get('name'):
+            raise ValueError(f"The survey name '{survey}' does not correspond to the one specified in the config file '{config_data['name']}'.")
+        if release != config_data.get('release',None):
+            raise ValueError(f"The release '{release}' does not correspond to the one specified in the config file '{config_data['release']}'.")
+
         self._config = copy.deepcopy(config_data)
+
 
 
         
@@ -253,7 +263,7 @@ class StreamObserved:
             phi1, phi2 : coordinates
             endpoints (astropy.coordinates or None, optional): To set the endpoints at specified locations, or, if not provided (None), randomly within the footprint.
         Returns:
-            Aqtropy coord.SkyCoord object: encodes coordinates in (phi1,phi2) and (ra,dec)
+            Astropy coord.SkyCoord object: encodes coordinates in (phi1,phi2) and (ra,dec)
         """
         # Load the DC2 survey map
         hpxmap = self.maglim_map_r
