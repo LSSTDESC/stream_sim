@@ -200,7 +200,7 @@ class StreamObserved:
         endpoints = kwargs.pop('endpoints',None)
         self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints)
         pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
-        
+
         # Estimate the extinction, errors
         extinction_g,extinction_r = self.extinction(pix)
 
@@ -208,8 +208,7 @@ class StreamObserved:
         
         # Sample observed magnitude for every stars
         mag_g_meas,mag_r_meas = self.sample(mag_g=data['mag_g']+extinction_g,mag_r=data['mag_r']+extinction_r,magerr_g=magerr_g,magerr_r=magerr_r)
-        
-        
+
         new_columns = pd.DataFrame({
         'mag_g_meas': mag_g_meas,
         'magerr_g': magerr_g,
@@ -218,11 +217,18 @@ class StreamObserved:
         'ra' :self.stream.icrs.ra.deg,
         'dec':self.stream.icrs.dec.deg
         })
+
+        # Reset the index to force alignment by row position
+        data = data.reset_index(drop=True)
+        new_columns = new_columns.reset_index(drop=True)
+        # Concatenate along axis=1 (columns)
         data = pd.concat([data, new_columns], axis=1)
-        
+
         # Apply detection threshold
-        data['flag_detection']=self.detect_flag(pix,data['mag_r'] )
-        
+        data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],**kwargs)
+        data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],**kwargs)
+        data['flag_detection'] = (data['flag_detection_r']==1)&(data['flag_detection_g']==1)
+
         if kwargs.get('save'):
             self._save_injected_data(data, kwargs.get('folder', None))
 
@@ -346,20 +352,44 @@ class StreamObserved:
         
         return mag_g_meas,mag_r_meas
 
-    def detect_flag(self, pix,mag_r,**kwargs):
-        """
+
+    def detect_flag(self, pix, mag_r=None, mag_g=None, **kwargs):
+        """_summary_
         Apply the survey selection over the given stars/pixels.
         Args:
             pix (Healpy pixels)
-            mag_r : magnitude in r band
+            mag_r (numpy array, optional): magnitude in r band. Defaults to None.
+            mag_g (numpy array, optional): magnitude in g band. Defaults to None.
+        Raises:
+            ValueError: Must provide either mag_g or mag_r values.
         Returns:
             boolean list: 1 for detected stars, 0 for the others
         """
-        maglim0 = kwargs.pop('maglim0',25.0)
-        theshold = (np.random.uniform(size=len(mag_r)) < self.completeness(mag_r + (maglim0 - np.clip(self.maglim_map_r[pix], 20., 26.))))
-        cover = self.coverage[pix]>0.1
-        detected = theshold&cover
-        return detected
+        # Default parameters
+        maglim0 = kwargs.pop('maglim0', 25.0) # magnitude limit in the initial completeness
+        saturation0 = kwargs.pop('saturation0', 16.4) # saturation limit in the initial completeness
+        saturation = kwargs.pop('saturation', 16.0) # saturation limit of the current completeness
+        clipping_bounds = kwargs.pop('clipping_bounds', (20.0, 30.0)) # bounds to current magnitude limit
+
+        if mag_r is None and mag_g is None:
+            raise ValueError("Must provide either mag_g or mag_r values.")
+        
+        # Select the appropriate magnitude and map depending on the band
+        if mag_r is not None:
+            mag = mag_r
+            maglim_map = self.maglim_map_r[pix]
+        else:
+            mag = mag_g
+            maglim_map = self.maglim_map_g[pix]
+
+        # Set the threshold using completeness 1-padded at the bright ends
+        r = mag + (maglim0 -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]))
+        threshold = ( np.random.uniform(size=len(mag)) <= np.where((r < saturation0) & (mag > saturation), 1, self.completeness(r)))
+        threshold &= (mag>=saturation) # objects with brighter than saturation are not observed.
+        threshold &= (maglim_map >= saturation) # select only objects in the covered area
+        return threshold
+
+
     
     def _save_injected_data(self, data, folder):
         """
