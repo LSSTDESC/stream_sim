@@ -200,7 +200,7 @@ class StreamObserved:
         endpoints = kwargs.pop('endpoints',None)
         self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints)
         pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
-        
+
         # Estimate the extinction, errors
         extinction_g,extinction_r = self.extinction(pix)
 
@@ -208,8 +208,7 @@ class StreamObserved:
         
         # Sample observed magnitude for every stars
         mag_g_meas,mag_r_meas = self.sample(mag_g=data['mag_g']+extinction_g,mag_r=data['mag_r']+extinction_r,magerr_g=magerr_g,magerr_r=magerr_r)
-        
-        
+
         new_columns = pd.DataFrame({
         'mag_g_meas': mag_g_meas,
         'magerr_g': magerr_g,
@@ -218,8 +217,13 @@ class StreamObserved:
         'ra' :self.stream.icrs.ra.deg,
         'dec':self.stream.icrs.dec.deg
         })
+
+        # Reset the index to force alignment by row position
+        data = data.reset_index(drop=True)
+        new_columns = new_columns.reset_index(drop=True)
+        # Concatenate along axis=1 (columns)
         data = pd.concat([data, new_columns], axis=1)
-        
+
         # Apply detection threshold
         data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],**kwargs)
         data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],**kwargs)
