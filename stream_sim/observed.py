@@ -382,22 +382,42 @@ class StreamObserved:
 
         return mag_g_meas, mag_r_meas
 
-    def detect_flag(self, pix, mag_r, **kwargs):
+    def detect_flag(self, pix, mag_r=None, mag_g=None, **kwargs):
         """
         Apply the survey selection over the given stars/pixels.
         Args:
             pix (Healpy pixels)
-            mag_r : magnitude in r band
+            mag_r (numpy array, optional): magnitude in r band. Defaults to None.
+            mag_g (numpy array, optional): magnitude in g band. Defaults to None.
+        Raises:
+            ValueError: Must provide either mag_g or mag_r values.
         Returns:
             boolean list: 1 for detected stars, 0 for the others
         """
-        maglim0 = kwargs.pop("maglim0", 25.0)
-        theshold = np.random.uniform(size=len(mag_r)) < self.completeness(
-            mag_r + (maglim0 - np.clip(self.maglim_map_r[pix], 20.0, 26.0))
-        )
-        cover = self.coverage[pix] > 0.1
-        detected = theshold & cover
-        return detected
+        # Default parameters
+        maglim0 = kwargs.pop('maglim0', 25.0) # magnitude limit in the initial completeness
+        saturation0 = kwargs.pop('saturation0', 16.4) # saturation limit in the initial completeness
+        saturation = kwargs.pop('saturation', 16.0) # saturation limit of the current completeness
+        clipping_bounds = kwargs.pop('clipping_bounds', (20.0, 30.0)) # bounds to current magnitude limit
+
+        if mag_r is None and mag_g is None:
+            raise ValueError("Must provide either mag_g or mag_r values.")
+        
+        # Select the appropriate magnitude and map depending on the band
+        if mag_r is not None:
+            mag = mag_r
+            maglim_map = self.maglim_map_r[pix]
+        else:
+            mag = mag_g
+            maglim_map = self.maglim_map_g[pix]
+
+        # Set the threshold using completeness 1-padded at the bright ends
+        r = mag + (maglim0 -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]))
+        threshold = ( np.random.uniform(size=len(mag)) <= np.where((r < saturation0) & (mag > saturation), 1, self.completeness(r)))
+        threshold &= (mag>=saturation) # objects with brighter than saturation are not observed.
+        threshold &= (maglim_map >= saturation) # select only objects in the covered area
+        return threshold
+
 
     def _save_injected_data(self, data, folder):
         """
