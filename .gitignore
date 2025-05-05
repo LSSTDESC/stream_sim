@@ -130,3 +130,7 @@ dmypy.json
 
 # Surveys files
 data/surveys/lsst_dc2/*
+
+#local data files
+data/
+fig/
