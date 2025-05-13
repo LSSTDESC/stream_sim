@@ -1,8 +1,7 @@
 '''
-Set of simulation tools for stellar stream generation. Include:
- - mock stream generation with gala 
- - perturbed stream generation with galpy
- - N-body simulated stellar stream with gala.Nbody() class
+Set of simulation tools to ease stellar stream generation. Include:
+ - mock stream generation with galpy
+ - coordinate conversion
  - gri magnitude sampling
  - velocity dispersion for given potential
  - other
@@ -18,7 +17,9 @@ with acoord.galactocentric_frame_defaults.set("v4.0"):
     galcen_frame = acoord.Galactocentric()
 import warnings
 from ugali.isochrone import factory
-
+from scipy.optimize import least_squares, curve_fit
+from scipy.integrate import trapezoid
+import matplotlib.pyplot as plt
 
 def Plummer_sigv(M, b, r): #returns sigv for a plummer potential
     return np.sqrt(aconst.G * M.to(u.kg) / 6 * (r.to(u.m)**2+b.to(u.m)**2)**(-1/2)).to(u.km/u.s)
@@ -229,6 +230,40 @@ def icrs_to_phi12(stream_stars, pole1, pole2, velocities = False):
     return stream_phi12 #Phi1, Phi2, dist
 
 
+def save_star_data(star_list, mag_g, mag_r, coord_system, filepath):
+    """Save RA, Dec, Distance, mag_g, mag_r to a CSV file in 'data/' directory."""
+    
+    # Create Astropy table
+    if coord_system == 'radec':
+        table = Table(
+            data=[
+                star_list.ra.deg,         # RA in degrees
+                star_list.dec.deg,        # Dec in degrees
+                star_list.distance.kpc,   # Distance in kpc
+                mag_g,                    # g-band magnitude
+                mag_r                     # r-band magnitude
+            ],
+            names=["ra", "dec", "dist", "mag_g", "mag_r"]
+        )
+    elif coord_system == 'phi12':
+        table = Table(
+            data=[
+                star_list.Phi1.deg,       # Phi1 in degrees
+                star_list.Phi2.deg,       # Phi2 in degrees
+                star_list.distance.kpc,   # Distance in kpc
+                mag_g,                    # g-band magnitude
+                mag_r                     # r-band magnitude
+            ],
+            names=["phi1", "phi2", "dist", "mag_g", "mag_r"]
+        )
+    else:
+        raise NotImplementedError('use phi12 or radec')
+
+    # Save to CSV
+    table.write(filepath, format="csv", overwrite=True)
+    print(f"Saved: {filepath}")
+
+
 
 class IsochroneModel:
     """ Isochrone model for assigning magnitudes to stars. """
@@ -278,3 +313,155 @@ class IsochroneModel:
             mag_g, mag_r = [mag + distance_modulus for mag in (mag_g, mag_r)]
 
         return mag_g, mag_r
+
+
+
+class StreamInterpolateTrackDensity:
+    def __init__(self, stars: acoord.SkyCoord):
+        """
+        Initialize the stream density analyzer.
+        Parameters
+        ----------
+        stars : SkyCoord
+            Coordinate object containing .phi1 and .phi2 (in a stream-aligned frame).
+        """
+        self.stars = stars
+        self.phi1 = self.stars.phi1.wrap_at(180 * u.deg).deg
+        self.phi2 = self.stars.phi2.deg
+        self.density_table = None
+
+    @staticmethod
+    def _gaussian(x, A, mu, sigma):
+        """Standard Gaussian function."""
+        return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
+    
+    def compute_density(self, delta_phi1=0.02, phi1_width=0.02, max_fev=1000):
+        """
+        Compute the stream density track as a function of phi1.
+
+        This function slides along phi1, bins stars in phi2, and fits a Gaussian
+        to the phi2 distribution at each phi1 slice.
+
+        Parameters
+        ----------
+        delta_phi1 : float
+            Step size in phi1 for scanning the stream.
+        phi1_width : float
+            Half-width around each phi1 value to select stars.
+        max_fev : int
+            Maximum number of function evaluations in the optimizer.
+
+        Returns
+        -------
+        density_table : astropy.table.Table
+            Table containing phi1 positions, fitted phi2 center, amplitude, and width.
+        """
+        phi1_min = np.min(self.phi1) + delta_phi1
+        phi1_max = np.max(self.phi1) - delta_phi1
+        phi2_min = np.min(self.phi2)
+        phi2_max = np.max(self.phi2)
+
+        phi1_vals, phi2_vals, nstars_vals, width_vals = [], [], [], []
+
+        for phi1_t in np.arange(phi1_min, phi1_max, delta_phi1):
+            # Select stars within a small window around current phi1 value
+            mask = np.abs(self.phi1 - phi1_t) < phi1_width
+            phi2_sel = self.phi2[mask]
+
+            if len(phi2_sel) > 10:
+                # Build histogram of phi2 values
+                hist, bin_edges = np.histogram(phi2_sel, bins=1000, range=(phi2_min, phi2_max))
+                bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+                # Initial guess for the fit
+                A0 = np.max(hist)
+                mu0 = bin_centers[np.argmax(hist)]
+                sigma0 = 1.0
+                p0 = [A0, mu0, sigma0]
+
+                try:
+                    popt, pcov = curve_fit(
+                        self._gaussian,
+                        bin_centers,
+                        hist,
+                        p0=p0,
+                        maxfev=max_fev
+                    )
+                    A, mu, sigma = popt
+
+                    if A < 1000:  # Simple threshold to reject junk fits
+                        phi1_vals.append(phi1_t)
+                        phi2_vals.append(mu)
+                        nstars_vals.append(A)
+                        width_vals.append(sigma)
+                except RuntimeError:
+                    # Fit did not converge
+                    continue
+
+        self.density_table = Table(
+            [phi1_vals, phi2_vals, nstars_vals, width_vals],
+            names=("phi1", "phi2", "nstars", "width")
+        )
+        return self.density_table
+    
+    def plot_phi2_slice(self, phi1_target, phi1_window=0.02, bins=30, normalized=True):
+        """
+        Plot the histogram of phi2 in a phi1 slice and the corresponding fitted Gaussian.
+        Parameters
+        ----------
+        phi1_target : float
+            Central phi1 value of the slice (in degrees).
+        phi1_window : float
+            Half-width of the slice in phi1 (default: 0.2 deg).
+        bins : int
+            Number of bins in the histogram.
+        normalized : bool
+            Whether to normalize the histogram and the Gaussian.
+        """
+        if self.density_table is None:
+            raise RuntimeError("You need to run compute_density() before plotting.")
+
+        # Find the closest fitted phi1
+        idx = np.argmin(np.abs(self.density_table["phi1"] - phi1_target))
+        phi1_fit = self.density_table["phi1"][idx]
+        mu_fit = self.density_table["phi2"][idx]
+        A_fit = self.density_table["nstars"][idx]
+        sigma_fit = self.density_table["width"][idx]
+
+        # Select stars in the phi1 window
+        mask = np.abs(self.phi1 - phi1_fit) < phi1_window
+        phi2_sel = self.phi2[mask]
+
+        if len(phi2_sel) < 5:
+            print("Not enough stars in selected slice.")
+            return
+
+        # Histogram
+        phi2_min, phi2_max = np.min(phi2_sel), np.max(phi2_sel)
+        hist, edges = np.histogram(phi2_sel, bins=bins, range=(phi2_min, phi2_max))
+        bin_centers = 0.5 * (edges[1:] + edges[:-1])
+
+        # Gaussian model
+        phi2_fine = np.linspace(phi2_min, phi2_max, 500)
+        gauss = self._gaussian(phi2_fine, A_fit, mu_fit, sigma_fit)
+
+        if normalized:
+            # Normalize both to unit area
+            hist_norm = hist / trapezoid(hist, bin_centers)
+            gauss_norm = gauss / trapezoid(gauss, phi2_fine)
+        else:
+            hist_norm = hist
+            gauss_norm = gauss
+
+        # Plot
+        plt.figure(figsize=(8, 5))
+        plt.bar(bin_centers, hist_norm, width=(edges[1] - edges[0]), alpha=0.5, label="Histogram")
+        plt.plot(phi2_fine, gauss_norm, 'r-', linewidth=2, label="Fitted Gaussian")
+        plt.axvline(mu_fit, color='k', linestyle='--', label="Gaussian Mean")
+        plt.title(f"Phi1 ≈ {phi1_fit:.2f} deg")
+        plt.xlabel("Phi2 [deg]")
+        plt.ylabel("Normalized Star Count" if normalized else "Star Count")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
