@@ -10,6 +10,7 @@ Set of simulation tools to ease stellar stream generation. Include:
 import astropy.units as u
 import astropy.constants as aconst
 import astropy.coordinates as acoord
+from astropy.table import Table
 import numpy as np
 import galpy.df as gd
 import gala.coordinates as gcoord # only for great circle rotation
@@ -335,7 +336,7 @@ class StreamInterpolateTrackDensity:
         """Standard Gaussian function."""
         return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
     
-    def compute_density(self, delta_phi1=0.02, phi1_width=0.02, max_fev=1000):
+    def compute_density(self, delta_phi1=0.02, phi1_width=0.02, max_fev=10000):
         """
         Compute the stream density track as a function of phi1.
 
@@ -385,6 +386,7 @@ class StreamInterpolateTrackDensity:
                         bin_centers,
                         hist,
                         p0=p0,
+                        bounds=([0, -np.inf, 1e-4], [1*A0, np.inf, np.inf]),
                         maxfev=max_fev
                     )
                     A, mu, sigma = popt

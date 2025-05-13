@@ -1,7 +1,7 @@
 # Example configuration file for Pal 5 interpolation
 # from Erkal et al. 2016 []
 stream:
-  filename : &filename ./data/erkal_2016_pal_5_input.csv
+  filename : &filename ./data/hall_2024_Pal5_input.csv
   nstars: 1.15e+5
    
   density:
