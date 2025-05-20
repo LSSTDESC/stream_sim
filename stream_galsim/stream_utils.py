@@ -336,7 +336,7 @@ class StreamInterpolateTrackDensity:
         """Standard Gaussian function."""
         return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
     
-    def compute_density(self, delta_phi1=0.02, phi1_width=0.02, max_fev=10000):
+    def compute_density(self, delta_phi1=0.02, phi2_bins=50, max_fev=10000):
         """
         Compute the stream density track as a function of phi1.
 
@@ -359,24 +359,25 @@ class StreamInterpolateTrackDensity:
         """
         phi1_min = np.min(self.phi1) + delta_phi1
         phi1_max = np.max(self.phi1) - delta_phi1
-        phi2_min = np.min(self.phi2)
-        phi2_max = np.max(self.phi2)
-
         phi1_vals, phi2_vals, nstars_vals, width_vals = [], [], [], []
 
         for phi1_t in np.arange(phi1_min, phi1_max, delta_phi1):
             # Select stars within a small window around current phi1 value
-            mask = np.abs(self.phi1 - phi1_t) < phi1_width
+            mask = np.abs(self.phi1 - phi1_t) < delta_phi1
             phi2_sel = self.phi2[mask]
-
+            try:
+                phi2_min = np.min(phi2_sel)
+                phi2_max = np.max(phi2_sel)
+            except ValueError:
+                continue
             if len(phi2_sel) > 10:
                 # Build histogram of phi2 values
-                hist, bin_edges = np.histogram(phi2_sel, bins=1000, range=(phi2_min, phi2_max))
+                hist, bin_edges = np.histogram(phi2_sel, bins=phi2_bins)
                 bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
 
                 # Initial guess for the fit
                 A0 = np.max(hist)
-                mu0 = bin_centers[np.argmax(hist)]
+                mu0 = bin_centers[int(len(bin_centers)/2)]
                 sigma0 = 1.0
                 p0 = [A0, mu0, sigma0]
 
@@ -386,7 +387,7 @@ class StreamInterpolateTrackDensity:
                         bin_centers,
                         hist,
                         p0=p0,
-                        bounds=([0, -np.inf, 1e-4], [1*A0, np.inf, np.inf]),
+                        bounds=([0, phi2_min, 1e-4], [1*A0, phi2_max, np.inf]),
                         maxfev=max_fev
                     )
                     A, mu, sigma = popt

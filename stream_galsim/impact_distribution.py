@@ -334,6 +334,6 @@ class ImpactSampler:
         m = self.subhalo_masses()
         b = self.impact_parameter(m)
         w = self.flyby_velocity()
-
+        print('t,theta,m,b, w[0], w[1], w[2]]')
         return np.array([t,theta,m,b, w[0], w[1], w[2]]).T
 
