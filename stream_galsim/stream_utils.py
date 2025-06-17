@@ -12,6 +12,7 @@ import astropy.constants as aconst
 import astropy.coordinates as acoord
 from astropy.table import Table
 import numpy as np
+import pandas as pd
 import galpy.df as gd
 import gala.coordinates as gcoord # only for great circle rotation
 with acoord.galactocentric_frame_defaults.set("v4.0"):
@@ -146,8 +147,7 @@ def full_galpy_sampling(n_stars, s_lead, s_trail, s_perturbed, ro=8.122, vo=245.
     s_lead_stars[:3] *= ro
     s_lead_stars[3:] *= vo
     s_trail_stars[:3] *= ro
-    s_lead_stars[3:] *= vo
-
+    s_trail_stars[3:] *= vo
 
     s_full_stars = np.concatenate((np.array(s_lead_stars).T, np.array(s_trail_stars).T)).T #full unperturbed stream
 
@@ -205,64 +205,147 @@ def xyz_to_icrs(stream_stars, velocities = False):
 
 
 
-def icrs_to_phi12(stream_stars, pole1, pole2, velocities = False):
-    '''
-    convert star position and velocities from icrs to proper stream frame
+def icrs_to_phi12(stream_stars, pole1, pole2, velocities=False, panda=False):
+    """
+    Converts ICRS coordinates to the phi1/phi2 reference frame of a stellar stream.
+    Can return a SkyCoord or enrich a DataFrame with Phi1, Phi2, etc. columns.
 
-    params:
-    stream_stars: star phase-position in (ra, dec, d_mod, pm_ra, pm_dec, pm_r)
-    frame: to convert stars phase-space position in (phi1, phi2, d_mod, pm_phi1, pm_phi2, pm_r)
-    velocities: convert velocities into wanted coordinate frame as well
-    '''
+    Params:
+    - stream_stars: SkyCoord or pandas.DataFrame with RA/DEC/etc. columns.
+    - pole1, pole2: SkyCoord defining the stream plane.
+    - velocities: If True, include proper velocities.
+    - panda: If True, return an enriched DataFrame.
+    """
+
+    ra_s   = safe_getattr(stream_stars, 'ra', u.deg)
+    dec_s  = safe_getattr(stream_stars, 'dec', u.deg)
+    dist_s = safe_getattr(stream_stars, 'distance', u.kpc)
+
+    if velocities:
+        pm_ra_s = safe_getattr(stream_stars, 'pm_ra_cosdec', u.mas/u.yr)
+        pm_dec_s = safe_getattr(stream_stars, 'pm_dec', u.mas/u.yr)
+        pm_r = safe_getattr(stream_stars, 'radial_velocity', u.km/u.s)
+
+        stream_icrs = acoord.SkyCoord(
+            ra=ra_s, dec=dec_s, distance=dist_s,
+            pm_ra_cosdec=pm_ra_s, pm_dec=pm_dec_s,
+            radial_velocity=pm_r
+        )
+    else:
+        stream_icrs = acoord.SkyCoord(ra=ra_s, dec=dec_s, distance=dist_s)
 
     stream_frame = gcoord.GreatCircleICRSFrame.from_endpoints(pole1, pole2, origin=pole1)
-    ra_s, dec_s, dist_s = stream_stars.ra, stream_stars.dec, stream_stars.distance
+    stream_phi12 = stream_icrs.transform_to(stream_frame)
 
-    if velocities == True:
-        pm_ra_s, pm_dec_s, pm_r = stream_stars.pm_ra_cosdec, stream_stars.pm_dec, stream_stars.radial_velocity
-        stream_icrs = acoord.SkyCoord(ra=ra_s, dec=dec_s, distance=dist_s, pm_ra_cosdec=pm_ra_s, pm_dec=pm_dec_s, radial_velocity=pm_r)
-        stream_phi12 = stream_icrs.transform_to(stream_frame)
-        # stream_phi12 = stream_phi12.phi1, stream_phi12.phi2, stream_phi12.distance, stream_phi12.pm_phi1_cosphi2, stream_phi12.pm_phi2, stream_phi12.radial_velocity
-        
-    elif velocities == False:
-        stream_icrs = acoord.SkyCoord(ra=ra_s, dec=dec_s, distance=dist_s)
-        stream_phi12 = stream_icrs.transform_to(stream_frame)
-        # stream_phi12 = stream_phi12.phi1, stream_phi12.phi2, stream_phi12.distance
-    return stream_phi12 #Phi1, Phi2, dist
+    if panda:
+        try:
+            df = pd.DataFrame(stream_stars) if not isinstance(stream_stars, pd.DataFrame) else stream_stars.copy()
+        except Exception:
+            raise ValueError("Impossible de convertir stream_stars en DataFrame.")
+
+        df["phi1"] = stream_phi12.phi1.to(u.deg).value
+        df["phi2"] = stream_phi12.phi2.to(u.deg).value
+        df["distance"] = stream_phi12.distance.to(u.kpc).value
+
+        if velocities:
+            df["pm_phi1"] = stream_phi12.pm_phi1_cosphi2.to(u.mas/u.yr).value
+            df["pm_phi2"] = stream_phi12.pm_phi2.to(u.mas/u.yr).value
+            df["radial_velocity"] = stream_phi12.radial_velocity.to(u.km/u.s).value
+
+        return df
+
+    return stream_phi12
 
 
-def save_star_data(star_list, mag_g, mag_r, coord_system, filepath):
-    """Save RA, Dec, Distance, mag_g, mag_r to a CSV file in 'data/' directory."""
-    
-    # Create Astropy table
+
+
+def safe_getattr(obj, attr, default_unit):
+    """
+    Essaie d'accéder à obj.attr. Si échoue ou sans unité, renvoie NaN * unité.
+    Gère aussi les pandas Series en Quantity compatibles avec astropy.
+    """
+    try:
+        value = getattr(obj, attr)
+    except AttributeError:
+        return 999 * default_unit
+
+    # Si déjà une Quantity avec bonne unité
+    if isinstance(value, u.Quantity):
+        return value
+
+    # Si c’est une pandas Series ou un numpy array
+    if isinstance(value, (pd.Series, np.ndarray, list)):
+        return u.Quantity(value, default_unit)
+
+    # Sinon, on assume scalaire : float, etc.
+    try:
+        return value * default_unit
+    except Exception:
+        return 999 * default_unit
+
+
+
+def safe_get_array(obj, attr_chain, length):
+    """Safely get nested attribute (e.g., 'pm_phi1_cosphi2.value') or return NaNs."""
+    try:
+        value = obj
+        for attr in attr_chain.split('.'):
+            value = getattr(value, attr)
+        return value
+    except (AttributeError, TypeError, ValueError):
+        return np.full(length, np.nan)
+
+
+def save_star_data(star_list, mag_g, mag_r, coord_system, filepath=None, panda=True):
+    """Save or return star data as Astropy Table or pandas DataFrame."""
+
+    n_stars = len(star_list)
+
     if coord_system == 'radec':
-        table = Table(
-            data=[
-                star_list.ra.deg,         # RA in degrees
-                star_list.dec.deg,        # Dec in degrees
-                star_list.distance.kpc,   # Distance in kpc
-                mag_g,                    # g-band magnitude
-                mag_r                     # r-band magnitude
-            ],
-            names=["ra", "dec", "dist", "mag_g", "mag_r"]
-        )
+        data = {
+            "ra": star_list.ra.deg,
+            "dec": star_list.dec.deg,
+            "dist": star_list.distance.kpc,
+            "muRA": safe_get_array(star_list, 'pm_ra_cosdec.value', n_stars),
+            "muDec": safe_get_array(star_list, 'pm_dec.value', n_stars),
+            "rv": safe_get_array(star_list, 'radial_velocity.value', n_stars),
+            "mag_g": mag_g,
+            "mag_r": mag_r
+        }
+
     elif coord_system == 'phi12':
-        table = Table(
-            data=[
-                star_list.Phi1.deg,       # Phi1 in degrees
-                star_list.Phi2.deg,       # Phi2 in degrees
-                star_list.distance.kpc,   # Distance in kpc
-                mag_g,                    # g-band magnitude
-                mag_r                     # r-band magnitude
-            ],
-            names=["phi1", "phi2", "dist", "mag_g", "mag_r"]
-        )
+        data = {
+            "phi1": star_list.phi1.deg,
+            "phi2": star_list.phi2.deg,
+            "dist": star_list.distance.kpc,
+            "mu1": safe_get_array(star_list, 'pm_phi1_cosphi2.value', n_stars),
+            "mu2": safe_get_array(star_list, 'pm_phi2.value', n_stars),
+            "rv": safe_get_array(star_list, 'radial_velocity.value', n_stars),
+            "mag_g": mag_g,
+            "mag_r": mag_r
+        }
+
     else:
         raise NotImplementedError('use phi12 or radec')
 
-    # Save to CSV
-    table.write(filepath, format="csv", overwrite=True)
-    print(f"Saved: {filepath}")
+    if panda:
+        df = pd.DataFrame(data)
+
+        if filepath is None:
+            os.makedirs("data", exist_ok=True)
+            filepath = os.path.join("data", "star_data.csv")
+
+        df.to_csv(filepath, index=False)
+        print(f"Pandas DataFrame saved to: {filepath}")
+        return df
+    else:
+        table = Table(data)
+
+        if filepath is None:
+            raise ValueError("filepath must be specified when panda=False.")
+
+        table.write(filepath, format="csv", overwrite=True)
+        print(f"Astropy Table saved to: {filepath}")
 
 
 
@@ -292,26 +375,32 @@ class IsochroneModel:
         else:
             return 5 * np.log10(distance * 1000) - 5  # Convert kpc to pc
 
-    def sample_magnitudes(self, icrs_list):
+    def sample_magnitudes(self, icrs_list, sigma_mag=0, addnoise=False):
         """Assign magnitudes (g, r) to stars based on their distance."""
         distances = icrs_list.distance.to(u.kpc).value  # Extract distances in kpc
         distance_moduli = self._dist_to_modulus(distances)  # Compute distance modulus
 
         # Sample magnitudes for each star
-        mag_g, mag_r = self.sample(len(distances), distance_moduli)
+        mag_g, mag_r = self.sample(len(distances), distance_moduli, sigma_mag, addnoise)
 
         return mag_g, mag_r
 
-    def sample(self, nstars, distance_modulus):
+    def sample(self, nstars, distance_modulus, sigma_mag, addnoise):
         """Sample magnitudes using the isochrone."""
         stellar_mass = nstars * self.iso.stellar_mass()
 
         if np.isscalar(distance_modulus):
             mag_g, mag_r = self.iso.simulate(stellar_mass, distance_modulus=self.iso.distance_modulus)
             mag_g, mag_r = [mag + distance_modulus for mag in (mag_g, mag_r)]
+            if addnoise:
+                mag_g = mag_g+np.random.normal(loc=0, scale=sigma_mag, size=len(mag_g)), 
+                mag_r = mag_r+np.random.normal(loc=0, scale=sigma_mag, size=len(mag_r))
         else:
             mag_g, mag_r = self.iso.simulate(stellar_mass, distance_modulus=self.iso.distance_modulus)
             mag_g, mag_r = [mag + distance_modulus for mag in (mag_g, mag_r)]
+            if addnoise:
+                mag_g = mag_g+np.random.normal(loc=0, scale=sigma_mag, size=len(mag_g))
+                mag_r = mag_r+np.random.normal(loc=0, scale=sigma_mag, size=len(mag_r))
 
         return mag_g, mag_r
 
@@ -336,7 +425,7 @@ class StreamInterpolateTrackDensity:
         """Standard Gaussian function."""
         return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
     
-    def compute_density(self, delta_phi1=0.02, phi2_bins=50, max_fev=10000):
+    def compute_density(self, delta_phi1=0.02, phi2_bins=50, max_fev=10000, plot=False):
         """
         Compute the stream density track as a function of phi1.
 
@@ -405,6 +494,17 @@ class StreamInterpolateTrackDensity:
             [phi1_vals, phi2_vals, nstars_vals, width_vals],
             names=("phi1", "phi2", "nstars", "width")
         )
+
+        if plot:
+            plt.figure(figsize=(5, 5))
+            plt.scatter(phi1_vals, phi2_vals)
+
+            # plt.title(f"Phi1 ≈ {phi1_fit:.2f} deg")
+            plt.xlabel("Phi1 [deg]")
+            plt.ylabel("Phi2 [deg]")
+            plt.tight_layout()
+            plt.show()
+
         return self.density_table
     
     def plot_phi2_slice(self, phi1_target, phi1_window=0.02, bins=30, normalized=True):
@@ -468,3 +568,211 @@ class StreamInterpolateTrackDensity:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
+
+from numpy.polynomial.polynomial import Polynomial
+
+class StreamDensityAnalyzer:
+    def __init__(self, data, bin_width=0.1):
+        """
+        Initialize the analyzer with star data.
+
+        Parameters:
+        - data: SkyCoord, DataFrame, Table, or ndarray
+        - bin_width: Bin width (deg) for density histogram
+        """
+        self.data = data
+        self.bin_width = bin_width
+        self.phi1 = self._extract_phi1(data)
+        self.bin_centers = None
+        self.densities = None
+
+    def _extract_phi1(self, data):
+        """Extract phi1 from supported data formats."""
+        if isinstance(data, acoord.SkyCoord):
+            try:
+                return data.phi1.deg
+            except AttributeError:
+                raise ValueError("SkyCoord object must have .phi1 attribute.")
+        elif isinstance(data, pd.DataFrame):
+            if 'phi1' in data.columns:
+                return data['phi1'].values
+            elif 'Phi1' in data.columns:
+                return data['Phi1'].values
+        elif isinstance(data, Table):
+            if 'phi1' in data.colnames:
+                return np.array(data['phi1'])
+            elif 'Phi1' in data.colnames:
+                return np.array(data['Phi1'])
+        elif isinstance(data, np.ndarray):
+            if data.shape[1] >= 1:
+                return data[:, 0]
+        raise TypeError("Unsupported data format or missing 'phi1' column.")
+
+    def compute_density(self, plot=False, normalize=True):
+        """
+        Compute the density histogram along phi1.
+
+        Parameters:
+        - plot: Whether to plot the density
+        - normalize: Normalize density by its mean
+
+        Returns:
+        - bin_centers, densities (normalized if requested)
+        """
+        phi1_min, phi1_max = np.min(self.phi1), np.max(self.phi1)
+        bins = np.arange(phi1_min, phi1_max + self.bin_width, self.bin_width)
+        counts, edges = np.histogram(self.phi1, bins=bins)
+        bin_centers = 0.5 * (edges[1:] + edges[:-1])
+        densities = counts / self.bin_width
+
+        if normalize:
+            densities /= np.mean(densities)
+
+        self.bin_centers = bin_centers
+        self.densities = densities
+
+        if plot:
+            plt.figure(figsize=(8, 4))
+            plt.plot(bin_centers, densities, drawstyle='steps-mid')
+            # plt.xlabel("Phi1 (deg)")
+            plt.ylabel("Normalized density (stars / deg)" if normalize else "Density (stars / deg)")
+            # plt.title("Stellar stream density profile")
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
+        return bin_centers, densities
+
+    def fit_polynomial(self, degree=3, plot=False, fontsize=12):
+        """
+        Fit a polynomial to the density profile.
+
+        Parameters:
+        - degree: Degree of the polynomial
+        - plot: Whether to plot the fit result
+
+        Returns:
+        - coeffs: Polynomial coefficients
+        - poly_func: Polynomial function
+        """
+        if self.bin_centers is None or self.densities is None:
+            raise RuntimeError("Density must be computed before fitting.")
+
+        coeffs = Polynomial.fit(self.bin_centers, self.densities, degree).convert().coef
+        poly_func = Polynomial(coeffs)
+
+        if plot:
+            plt.figure(figsize=(8, 4))
+            plt.plot(self.bin_centers, self.densities, label="Density", drawstyle='steps-mid')
+            plt.plot(self.bin_centers, poly_func(self.bin_centers),
+                     label=f"Polynomial degree {degree}", color='red')
+            # plt.xlabel(r'$\phi_1$ (°)', fontsize=fontsize)
+            plt.ylabel(r"$\rho/<\rho> (\phi_1$)", fontsize=fontsize)
+            # plt.title("Polynomial fit of stellar density")
+            plt.grid(True)
+            # plt.legend()
+            plt.tight_layout()
+            plt.show()
+
+        return coeffs, poly_func
+
+
+from scipy.ndimage import binary_dilation
+
+class StreamDensityFiltering:
+    def __init__(self, data, bins=(200, 200), threshold=1.5, buffer=1, upperthreshold=200):
+        """
+        Initialize the density selection.
+
+        Parameters:
+        ----------
+        data: pandas.DataFrame
+        Table with columns 'ra', 'dec'.
+        bins: tuple
+        Number of bins in (ra, dec).
+        threshold: float
+        Density threshold = threshold * average density.
+        buffer: int
+        Number of neighboring bins to include around dense areas.
+        """
+        self.data = data
+        self.bins = bins
+        self.threshold = threshold
+        self.buffer = buffer
+
+        # 2D histogrm
+        self.H, self.ra_edges, self.dec_edges = np.histogram2d(data['ra'], data['dec'], bins=bins)
+        # Threshold and mask
+        self.background = np.mean(self.H)
+        self.mask = (self.H > (threshold * self.background)) 
+        self.mask_dilated = binary_dilation(self.mask, iterations=buffer) & (self.H < upperthreshold)
+
+        # Identify selected stars
+        self._compute_selection()
+    
+    def _compute_selection(self):
+        """Select stars belonging to dense regions (and neighbor ones)"""
+        ra_idx = np.digitize(self.data['ra'], self.ra_edges) - 1
+        dec_idx = np.digitize(self.data['dec'], self.dec_edges) - 1
+
+        valid = (
+            (ra_idx >= 0) & (ra_idx < self.bins[0]) &
+            (dec_idx >= 0) & (dec_idx < self.bins[1])
+        )
+
+        selected_mask = np.zeros(len(self.data), dtype=bool)
+        selected_mask[valid] = self.mask_dilated[ra_idx[valid], dec_idx[valid]]
+        self.selected_mask = selected_mask
+        self.filtered_data = self.data[selected_mask].copy()
+
+        # Filtered Histogram
+        self.H_filtered = np.zeros_like(self.H)
+        self.H_filtered[self.mask_dilated] = self.H[self.mask_dilated]
+    
+    def plot(self, filtered=True, cmap='viridis'):
+        """Plot the filtered histogram"""
+        H_to_plot = self.H_filtered if filtered else self.H
+        extent = [
+            self.ra_edges[0], self.ra_edges[-1],
+            self.dec_edges[0], self.dec_edges[-1]
+        ]
+        plt.figure(figsize=(6, 6))
+        plt.imshow(
+            H_to_plot.T,
+            origin='lower',
+            extent=extent,
+            aspect='auto',
+            cmap=cmap
+        )
+        plt.xlabel("ra (°)", fontsize=14)
+        plt.ylabel("dec (°)", fontsize=14)
+        # plt.title("Surfacic density" + (" (filtered)" if filtered else ""))
+        # plt.colorbar(label="Stars per bins")
+        plt.tight_layout()
+        plt.show()
+
+    def values(self, return_hist=False):
+        """Returns the computed filtered table"""
+        if return_hist:
+            return self.filtered_data, self.H_filtered
+        return self.filtered_data
+
+
+
+###old
+
+
+    # stream_frame = gcoord.GreatCircleICRSFrame.from_endpoints(pole1, pole2, origin=pole1)
+    # ra_s, dec_s, dist_s = stream_stars.ra, stream_stars.dec, stream_stars.distance
+
+    # if velocities == True:
+    #     pm_ra_s, pm_dec_s, pm_r = stream_stars.pm_ra_cosdec, stream_stars.pm_dec, stream_stars.radial_velocity
+    #     stream_icrs = acoord.SkyCoord(ra=ra_s, dec=dec_s, distance=dist_s, pm_ra_cosdec=pm_ra_s, pm_dec=pm_dec_s, radial_velocity=pm_r)
+    #     stream_phi12 = stream_icrs.transform_to(stream_frame)
+    #     # stream_phi12 = stream_phi12.phi1, stream_phi12.phi2, stream_phi12.distance, stream_phi12.pm_phi1_cosphi2, stream_phi12.pm_phi2, stream_phi12.radial_velocity
+        
+    # elif velocities == False:
+    #     stream_icrs = acoord.SkyCoord(ra=ra_s, dec=dec_s, distance=dist_s)
+    #     stream_phi12 = stream_icrs.transform_to(stream_frame)
+    #     # stream_phi12 = stream_phi12.phi1, stream_phi12.phi2, stream_phi12.distance
+    # return stream_phi12 #Phi1, Phi2, dist

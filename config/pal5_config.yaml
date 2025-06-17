@@ -22,7 +22,7 @@ stream:
   
   isochrone:
     name: Bressan2012
-    survey: lsst
+    survey: des
     age: 12.0
     z: 0.0006
     band_1 : g
