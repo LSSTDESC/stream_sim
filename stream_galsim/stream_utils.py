@@ -34,7 +34,7 @@ def normalize(lst):
     return [i/sum(lst) for i in lst]
 
 def full_galpy_df(sigv, progenitor, pot, aA, ro, vo, vsun, tdisrupt, 
-            timpact, impactb, subhalovel, subhalopot, impact_angle=1, perturbed = False, 
+            timpact=None, impactb=None, subhalovel=None, subhalopot=None, impact_angle=None, perturbed = False, 
             nTrackIterations=1, deltaAngleTrack=None, nTrackChunks=26, higherorderTrack = False):
     '''
     Using galpy, generate the complete stream df (leading, trailing parts and perturbed part if specified)
@@ -95,8 +95,10 @@ def full_galpy_df(sigv, progenitor, pot, aA, ro, vo, vsun, tdisrupt,
     if perturbed:
         if impact_angle <0:
             leading = False
+            print("Perturbing trailing arm")
         elif impact_angle >= 0:
             leading = True
+            print("Perturbing leading arm")
 
         s_perturbed = gd.streamgapdf(sigv=sigv,
                                 progenitor=progenitor,
@@ -425,7 +427,7 @@ class StreamInterpolateTrackDensity:
         """Standard Gaussian function."""
         return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
     
-    def compute_density(self, delta_phi1=0.02, phi2_bins=50, max_fev=10000, plot=False):
+    def compute_density(self, delta_phi1=0.02, phi2_bins=50, max_fev=100000, plot=False):
         """
         Compute the stream density track as a function of phi1.
 
@@ -465,7 +467,7 @@ class StreamInterpolateTrackDensity:
                 bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
 
                 # Initial guess for the fit
-                A0 = np.max(hist)
+                A0 = np.sum(hist)
                 mu0 = bin_centers[int(len(bin_centers)/2)]
                 sigma0 = 1.0
                 p0 = [A0, mu0, sigma0]
@@ -489,6 +491,11 @@ class StreamInterpolateTrackDensity:
                 except RuntimeError:
                     # Fit did not converge
                     continue
+        
+        ###fit track
+        lead_fit = np.polyfit(phi1_vals[phi1_vals>0], phi1_vals[phi2_vals>0], deg=3)
+        trail_fit = np.polyfit(phi1_vals[phi1_vals<0], phi1_vals[phi2_vals<0], deg=3)
+        
 
         self.density_table = Table(
             [phi1_vals, phi2_vals, nstars_vals, width_vals],
