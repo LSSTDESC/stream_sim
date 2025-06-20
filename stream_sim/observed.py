@@ -308,7 +308,7 @@ class StreamObserved:
         Returns:
             extinction_g, extinction_r: magnitudes extinctions for the given pixels
         """
-        ebv = self.ebv_map[pix].byteswap().newbyteorder()
+        ebv = self.ebv_map[pix].byteswap().view(self.ebv_map.dtype.newbyteorder())
         extinction_g = self.coeff_extinc[0] * ebv
         extinction_r = self.coeff_extinc[1] * ebv
         return extinction_g,extinction_r
@@ -416,7 +416,7 @@ class StreamObserved:
 
     @staticmethod
     def getCompleteness(filename):
-        d = np.recfromcsv(filename)
+        d = np.genfromtxt(filename, delimiter=',', names=True,)
         x = d['mag_r']
 
         selection = 'both'
@@ -457,7 +457,7 @@ class StreamObserved:
         -------
         interp : interpolation function (mag_err as a function of delta_mag)
         """
-        d = np.recfromcsv(filename)
+        d = np.genfromtxt(filename, delimiter=',', names=True,)
 
         x = d['delta_mag']
         y = d['log_mag_err']
