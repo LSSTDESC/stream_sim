@@ -261,7 +261,7 @@ class StreamObserved:
         else:
             raise ValueError(f"Unsupported file format")
 
-    def phi_to_radec(self,phi1,phi2,endpoints = None):
+    def phi_to_radec(self,phi1,phi2,endpoints = None,seed=None):
         """
         Transform coordinates (phi1,phi2) to (ra,dec)
 
@@ -279,7 +279,7 @@ class StreamObserved:
         if endpoints is None:
             # Find two random points in DC2 as endpoints
             print("Generating random endpoints...")
-            np.random.seed(12345)
+            np.random.seed(seed)
             pixels = np.random.choice(pix[hpxmap>0], size=2)
             ra,dec = hp.pix2ang(nside,pixels,lonlat=True)
             self.endpoints = coord.SkyCoord(ra*u.deg, dec*u.deg)
