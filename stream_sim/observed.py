@@ -77,9 +77,6 @@ class StreamObserved:
 
         self._config = copy.deepcopy(config_data)
 
-
-
-        
     def load_survey(self):   
 
         """
@@ -187,7 +184,7 @@ class StreamObserved:
             flag_detection : 1 for detected stars, 0 for others
         """
         data = self._load_data(data)
-            
+        
         # Select only stars from the stream
         flag = kwargs.pop('flag', [1])
         if 'flag' in data.columns:
@@ -196,9 +193,13 @@ class StreamObserved:
         else:
             print("'flag' column not found, skipping filtering.")
 
+        # set the seed for reproducibility
+        seed = kwargs.pop('seed', None)
+        rng = np.random.default_rng(seed)
+
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
         endpoints = kwargs.pop('endpoints',None)
-        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints)
+        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints,seed=seed,rng=rng)
         pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
 
         # Estimate the extinction, errors
@@ -207,7 +208,7 @@ class StreamObserved:
         magerr_g,magerr_r = self._get_errors(pix,mag_r=data['mag_r']+extinction_r,mag_g=data['mag_g']+extinction_g)
         
         # Sample observed magnitude for every stars
-        mag_g_meas,mag_r_meas = self.sample(mag_g=data['mag_g']+extinction_g,mag_r=data['mag_r']+extinction_r,magerr_g=magerr_g,magerr_r=magerr_r)
+        mag_g_meas,mag_r_meas = self.sample(mag_g=data['mag_g']+extinction_g,mag_r=data['mag_r']+extinction_r,magerr_g=magerr_g,magerr_r=magerr_r,rng=rng,seed=seed)
 
         new_columns = pd.DataFrame({
         'mag_g_meas': mag_g_meas,
@@ -225,8 +226,8 @@ class StreamObserved:
         data = pd.concat([data, new_columns], axis=1)
 
         # Apply detection threshold
-        data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],**kwargs)
-        data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],**kwargs)
+        data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
+        data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
         data['flag_detection'] = (data['flag_detection_r']==1)&(data['flag_detection_g']==1)
 
         if kwargs.get('save'):
@@ -261,13 +262,16 @@ class StreamObserved:
         else:
             raise ValueError(f"Unsupported file format")
 
-    def phi_to_radec(self,phi1,phi2,endpoints = None,seed=None):
+    def phi_to_radec(self,phi1,phi2,endpoints = None,seed=None,rng=None):
         """
         Transform coordinates (phi1,phi2) to (ra,dec)
 
         Args:
             phi1, phi2 : coordinates
+        kwargs:
             endpoints (astropy.coordinates or None, optional): To set the endpoints at specified locations, or, if not provided (None), randomly within the footprint.
+            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
+            seed (int, optional): Seed for the random number generator. Used only if rng is None.
         Returns:
             Astropy coord.SkyCoord object: encodes coordinates in (phi1,phi2) and (ra,dec)
         """
@@ -279,8 +283,9 @@ class StreamObserved:
         if endpoints is None:
             # Find two random points in DC2 as endpoints
             print("Generating random endpoints...")
-            np.random.seed(seed)
-            pixels = np.random.choice(pix[hpxmap>0], size=2)
+            if rng is None: # use the seed if provided
+                rng = np.random.default_rng(seed)
+            pixels = rng.choice(pix[hpxmap>0], size=2, replace=False)
             ra,dec = hp.pix2ang(nside,pixels,lonlat=True)
             self.endpoints = coord.SkyCoord(ra*u.deg, dec*u.deg)
         else:
@@ -336,6 +341,13 @@ class StreamObserved:
     def sample(self,**kwargs):
         """
         Sample observed magnitudes from estimated ones and thier errors.
+        kwargs:
+            mag_g (numpy array): g band magnitudes
+            mag_r (numpy array): r band magnitudes
+            magerr_g (numpy array): g band magnitudes errors
+            magerr_r (numpy array): r band magnitudes errors
+            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
+            seed (int, optional): Seed for the random number generator. Used only if rng is None.
         Returns:
             mag_g_meas,mag_r_meas : sampled observed magnitudes
         """
@@ -343,13 +355,19 @@ class StreamObserved:
         mag_r = kwargs.pop('mag_r')
         magerr_g = kwargs.pop('magerr_g')
         magerr_r = kwargs.pop('magerr_r')
+
+        rng = kwargs.pop('rng', None)
+        if rng is None:
+            seed = kwargs.pop('seed', None)
+            rng = np.random.default_rng(seed)
         
-        # Convert to a flux uncertainty and then transform back to a magnitude
-        flux_g_meas = StreamObserved.magToFlux(mag_g) + np.random.normal(scale=self.getFluxError(mag_g, magerr_g))
+        # Sample the fluxes their errors
+        flux_g_meas = StreamObserved.magToFlux(mag_g) + rng.normal(scale=self.getFluxError(mag_g, magerr_g))
+        flux_r_meas = StreamObserved.magToFlux(mag_r) + rng.normal(scale=self.getFluxError(mag_r, magerr_r))
+        # If the flux is negative, set the magnitude to 99 (not detected). Otherwise, convert the flux back to magnitude
         mag_g_meas = np.where(flux_g_meas > 0., StreamObserved.fluxToMag(flux_g_meas), 99.)
-        flux_r_meas = StreamObserved.magToFlux(mag_r) + np.random.normal(scale=self.getFluxError(mag_r, magerr_r))
-        mag_r_meas = np.where(flux_r_meas > 0., StreamObserved.fluxToMag(flux_r_meas), 99.)
-        
+        mag_r_meas = np.where(flux_r_meas > 0., StreamObserved.fluxToMag(flux_r_meas), 99.) 
+
         return mag_g_meas,mag_r_meas
 
 
@@ -360,6 +378,13 @@ class StreamObserved:
             pix (Healpy pixels)
             mag_r (numpy array, optional): magnitude in r band. Defaults to None.
             mag_g (numpy array, optional): magnitude in g band. Defaults to None.
+        kwargs:
+            maglim0 (float, optional): magnitude limit in the initial completeness. Defaults to 25.0.
+            saturation0 (float, optional): saturation limit in the initial completeness. Defaults to 16.4.
+            saturation (float, optional): saturation limit of the current completeness. Defaults to 16.0.
+            clipping_bounds (tuple, optional): bounds to current magnitude limit. Defaults to (20.0, 30.0).
+            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
+            seed (int, optional): Seed for the random number generator. Used only if rng is None.
         Raises:
             ValueError: Must provide either mag_g or mag_r values.
         Returns:
@@ -370,6 +395,10 @@ class StreamObserved:
         saturation0 = kwargs.pop('saturation0', 16.4) # saturation limit in the initial completeness
         saturation = kwargs.pop('saturation', 16.0) # saturation limit of the current completeness
         clipping_bounds = kwargs.pop('clipping_bounds', (20.0, 30.0)) # bounds to current magnitude limit
+        rng = kwargs.pop('rng', None)
+        if rng is None:
+            seed = kwargs.pop('seed', None)
+            rng = np.random.default_rng(seed)
 
         if mag_r is None and mag_g is None:
             raise ValueError("Must provide either mag_g or mag_r values.")
@@ -384,7 +413,7 @@ class StreamObserved:
 
         # Set the threshold using completeness 1-padded at the bright ends
         r = mag + (maglim0 -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]))
-        threshold = ( np.random.uniform(size=len(mag)) <= np.where((r < saturation0) & (mag > saturation), 1, self.completeness(r)))
+        threshold = (rng.uniform(size=len(mag)) <= np.where((r < saturation0) & (mag > saturation), 1, self.completeness(r)))
         threshold &= (mag>=saturation) # objects with brighter than saturation are not observed.
         threshold &= (maglim_map >= saturation) # select only objects in the covered area
         return threshold
