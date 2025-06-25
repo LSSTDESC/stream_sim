@@ -205,6 +205,10 @@ class StreamObserved:
         # Estimate the extinction, errors
         extinction_g,extinction_r = self.extinction(pix)
 
+        nside_maglim = hp.get_nside(self.maglim_map_r)
+        if nside_maglim != 4096: # adjust the nside to the one of magnitude limit maps
+            pix = hp.ang2pix(nside_maglim, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True)
+
         magerr_g,magerr_r = self._get_errors(pix,mag_r=data['mag_r']+extinction_r,mag_g=data['mag_g']+extinction_g)
         
         # Sample observed magnitude for every stars
@@ -228,7 +232,7 @@ class StreamObserved:
         # Apply detection threshold
         data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
         data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
-        data['flag_detection'] = (data['flag_detection_r']==1)&(data['flag_detection_g']==1)
+        data['flag_detection'] = (data['flag_detection_r']==1)|(data['flag_detection_g']==1)
 
         if kwargs.get('save'):
             self._save_injected_data(data, kwargs.get('folder', None))
