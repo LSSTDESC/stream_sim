@@ -230,8 +230,11 @@ class StreamObserved:
         data = pd.concat([data, new_columns], axis=1)
 
         # Apply detection threshold
-        data['flag_detection_r']=self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
-        data['flag_detection_g']=self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
+        flag_r = mag_r_meas != 'BAD_MAG' # Negative fluxes are set to 'BAD_MAG', so counted as undetected
+        data['flag_detection_r']=flag_r & self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
+        flag_g = mag_g_meas != 'BAD_MAG'
+        data['flag_detection_g']=flag_g & self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
+        
         data['flag_detection'] = (data['flag_detection_r']==1)|(data['flag_detection_g']==1)
 
         if kwargs.get('save'):
@@ -369,8 +372,8 @@ class StreamObserved:
         flux_g_meas = StreamObserved.magToFlux(mag_g) + rng.normal(scale=self.getFluxError(mag_g, magerr_g))
         flux_r_meas = StreamObserved.magToFlux(mag_r) + rng.normal(scale=self.getFluxError(mag_r, magerr_r))
         # If the flux is negative, set the magnitude to 99 (not detected). Otherwise, convert the flux back to magnitude
-        mag_g_meas = np.where(flux_g_meas > 0., StreamObserved.fluxToMag(flux_g_meas), 99.)
-        mag_r_meas = np.where(flux_r_meas > 0., StreamObserved.fluxToMag(flux_r_meas), 99.) 
+        mag_g_meas = np.where(flux_g_meas > 0., StreamObserved.fluxToMag(flux_g_meas), 'BAD_MAG')
+        mag_r_meas = np.where(flux_r_meas > 0., StreamObserved.fluxToMag(flux_r_meas), 'BAD_MAG') 
 
         return mag_g_meas,mag_r_meas
 
@@ -566,8 +569,9 @@ class StreamObserved:
         ax[1].legend()
 
         ax[2].set_title("HR diagram using sampled observed magnitudes")
-        ax[2].scatter(data['mag_g_meas'] - data['mag_r_meas'], data['mag_g_meas'], s=2, alpha=0.5, color='gray',label = 'Unobserved')
-        ax[2].scatter((data['mag_g_meas'] - data['mag_r_meas'])[sel], data['mag_g_meas'][sel], s=4, alpha=1.0, color='black',label = 'Observed')
+        mask =( data['mag_g_meas'] != 'BAD_MAG' ) & (data['mag_r_meas'] != 'BAD_MAG') 
+        ax[2].scatter(data['mag_g_meas'][mask] - data['mag_r_meas'][mask], data['mag_g_meas'][mask], s=2, alpha=0.5, color='gray',label = 'Unobserved')
+        ax[2].scatter((data['mag_g_meas'] - data['mag_r_meas'])[sel&mask], data['mag_g_meas'][sel&mask], s=4, alpha=1.0, color='black',label = 'Observed')
         ax[2].set_xlim(-0.5,1.5)
         ax[2].set_ylim(30,16)
         ax[2].set_xlabel('(g-r)'); ax[2].set_ylabel('g')
