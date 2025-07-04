@@ -199,7 +199,12 @@ class StreamObserved:
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
         endpoints = kwargs.pop('endpoints',None)
-        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints,seed=seed,rng=rng)
+        phi_check_percentiles = kwargs.pop('phi_check_percentiles', [0, 100, 50])
+        if phi_check_percentiles is not None:
+            phi1_check = np.percentile(data['phi1'], phi_check_percentiles)
+        else:
+            phi1_check = None
+        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints,seed=seed,rng=rng,phi1_check=phi1_check)
         pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
 
         # Estimate the extinction, errors
@@ -234,7 +239,7 @@ class StreamObserved:
         data['flag_detection_r']=flag_r & self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
         flag_g = mag_g_meas != 'BAD_MAG'
         data['flag_detection_g']=flag_g & self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
-        
+
         data['flag_detection'] = (data['flag_detection_r']==1)|(data['flag_detection_g']==1)
 
         if kwargs.get('save'):
@@ -268,49 +273,87 @@ class StreamObserved:
                 raise ValueError(f"Unsupported file format: {extension}")
         else:
             raise ValueError(f"Unsupported file format")
-
-    def phi_to_radec(self,phi1,phi2,endpoints = None,seed=None,rng=None):
+    
+    def phi_to_radec(self, phi1, phi2, endpoints=None, seed=None, rng=None, hpxmap=None,hpxmap2=None, phi1_check=None, max_trials=10):
         """
-        Transform coordinates (phi1,phi2) to (ra,dec)
+        Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
 
-        Args:
-            phi1, phi2 : coordinates
-        kwargs:
-            endpoints (astropy.coordinates or None, optional): To set the endpoints at specified locations, or, if not provided (None), randomly within the footprint.
-            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
-            seed (int, optional): Seed for the random number generator. Used only if rng is None.
-        Returns:
-            Astropy coord.SkyCoord object: encodes coordinates in (phi1,phi2) and (ra,dec)
+        Parameters
+        ----------
+        phi1, phi2 : array-like
+            Stream coordinates.
+        endpoints : SkyCoord[2], optional
+            Endpoints for the great circle. If None, will be randomly chosen.
+        hpxmap : np.ndarray, optional
+            HEALPix map to check for valid pixels (should be same nside as used for output).
+        hpxmap2 : np.ndarray, optional
+            Second HEALPix map to check for valid pixels.
+        phi1_check : list or array, optional
+            List of phi1 values (e.g., [min, max, median]) to check for valid pixels (hpxmap&hpxmap2 > 0).
+        max_trials : int
+            Maximum number of random endpoint trials.
+        Returns
+        -------
+        stream : SkyCoord
+            Transformed coordinates.
         """
-        # Load the DC2 survey map
-        hpxmap = self.maglim_map_r
-        pix = np.arange(len(hpxmap))
-        nside = hp.get_nside(hpxmap)
 
         if endpoints is None:
-            # Find two random points in DC2 as endpoints
-            print("Generating random endpoints...")
+            hpxmap = hpxmap if hpxmap is not None else self.maglim_map_r
+            hpxmap2 = hpxmap2 if hpxmap2 is not None else self.maglim_map_g
+
+            nside = hp.get_nside(hpxmap)
+            nside2 = hp.get_nside(hpxmap2)
+            if nside != nside2:
+                # Convert hpxmap and hpxmap2 to the same nside (the smallest)
+                min_nside = min(nside, nside2)
+                if nside != min_nside:
+                    hpxmap = hp.ud_grade(hpxmap, min_nside)
+                    print(f"Upgrading hpxmap from nside {nside} to {min_nside}.")
+                if nside2 != min_nside:
+                    hpxmap2 = hp.ud_grade(hpxmap2, min_nside)
+                    print(f"Upgrading hpxmap2 from nside {nside2} to {min_nside}.")
+                nside = min_nside
+
             if rng is None: # use the seed if provided
                 rng = np.random.default_rng(seed)
-            pixels = rng.choice(pix[hpxmap>0], size=2, replace=False)
-            ra,dec = hp.pix2ang(nside,pixels,lonlat=True)
-            self.endpoints = coord.SkyCoord(ra*u.deg, dec*u.deg)
+            
+            pix = np.arange(len(hpxmap))
+            for _ in range(max_trials):
+                # Randomly select endpoints inside the footprint of the HEALPix maps
+                pixels = rng.choice(pix[(hpxmap > 0)&(hpxmap2>0)], size=2, replace=False)
+                ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
+                endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
+                frame = gc.GreatCircleICRSFrame.from_endpoints(endpoints_trial[0], endpoints_trial[1])
+                
+                if phi1_check is not None: # Verify that phi1_check values map to valid pixels
+                    phi2_zeros = np.zeros_like(phi1_check) * u.deg
+                    phi1_check_u = np.array(phi1_check) * u.deg
+                    coords = coord.SkyCoord(phi1=phi1_check_u, phi2=phi2_zeros, frame=frame)
+                    ra_check = coords.icrs.ra.deg
+                    dec_check = coords.icrs.dec.deg
+                    pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
+                    if np.all((hpxmap[pix_check] > 0)&(hpxmap2[pix_check] > 0)):
+                        self.endpoints = endpoints_trial
+                        print(f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}")
+                        break
+                    else:
+                        print(f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check.")
+                else:
+                    self.endpoints = endpoints_trial
+                    break
+            else:
+                raise RuntimeError("Could not find suitable endpoints after max_trials.")
         else:
-            # Define from predefined endpoints in DC2
-            print("Using predefined endpoints...")
             self.endpoints = endpoints
-        # Use Gala to create the stream coordinate frame
-        print("Creating stream frame...")
-        frame = gc.GreatCircleICRSFrame.from_endpoints(self.endpoints[0], self.endpoints[1])
 
-        stream_endpoints = self.endpoints.transform_to(frame)
+        frame = gc.GreatCircleICRSFrame.from_endpoints(self.endpoints[0], self.endpoints[1])
         phi1 = np.array(phi1) * u.deg
         phi2 = np.array(phi2) * u.deg
-        stream = coord.SkyCoord(phi1=phi1,phi2=phi2,frame=frame)
-        
+        stream = coord.SkyCoord(phi1=phi1, phi2=phi2, frame=frame)
         return stream
-    
-    
+
+
     def extinction(self,pix):
         """
         Estimate the exctinction value for given pixels of the sky.
