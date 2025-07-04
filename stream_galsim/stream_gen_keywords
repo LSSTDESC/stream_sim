@@ -1,0 +1,48 @@
+##### Keywords to run stream_generator.py ######
+
+#####Initialize stream#####
+
+init_method = galstream #custom
+column_name = 'TrackName' #Name
+name_o = 'Pal5-I21'
+
+ra_o = 229 #deg
+dec_o = -0.124 #deg
+distance_o = 22.9 #kpc
+pm_ra_cosdec_o = -2.296 #mas/yr
+pm_dec_o = -2.257 #mas/yr
+vrad_o = -58.7 #km/s
+frame = 'icrs' 
+
+prog_mass = 2*10.**4.*u.Msun
+prog_a = 23.*u.pc #scale radius of the plummer sphere
+rc = 23*u.pc #progenitor radius
+prog_sigv = 0.365*u.km/u.s #velocity dispersion in original cluster
+
+t_disrupt = 4*u.Gyr
+n_stars = 10000
+
+#####Initialize accreting host#####
+V0, R0= 245.6, 8.122 #scale parameters
+vsun=[-12.9,245.6,7.78] #vxyz
+mw_pot = gp.MWPotential2014
+b_mw = 1.5
+
+
+#####Initialize impact##### if specified
+b_impact = 0 * u.kpc
+t_impact = 2* u.Gyr
+angle_impact= 0.12 #rad
+
+
+
+####Generating df
+#add pickle instance saving
+
+####Sampling stars
+#choose ouput type (stars or density map)
+#ps_coord
+#mag choice
+
+
+

@@ -28,9 +28,12 @@ import gala.coordinates as gc #for great circle rotation
 with ac.galactocentric_frame_defaults.set("v4.0"):
     galcen_frame = ac.Galactocentric()
 
+#Define user path
+sys.path.append(os.path.abspath('../'))
+
 #Custom scripts
-from create_config_file import generate
-import stream_utils as sutils
+from stream_galsim.create_config_file import generate
+import stream_galsim.stream_utils as sutils
 
 
 ##### Read keywords #####
@@ -254,21 +257,20 @@ elif perturbed == 'not':
 else:
     raise NotImplementedError("Unrecognized argument. Choose between 'lead', 'trail' or 'not'.")
 
+
 #ToDo: add pickle instance saving
 
 ##### Sampling stars #####
-rdseed = rdseed
+rdseed = 56
 n_stars = 10000
 print("Sampling stars along the df...")
 s_lead_stars, s_trail_stars, s_full_stars, ps_stars, ps_full_stars = sutils.full_galpy_sampling(n_stars=n_stars, 
                                                                 s_lead=s_lead, s_trail=s_trail, s_perturbed=s_perturbed,
                                                                 ro=acc_host.at[0, 'R0'], vo=acc_host.at[0, 'V0'], 
                                                                 perturbed = perturbed, rdseed = rdseed)
-
 ##### Conversion #####
-print("Convert to wanted coordinate frame...")
-
 coord = 'phi12'
+print(f"Convert to {coord} frame...")
 
 if perturbed == 'not':
     stream_stars = s_full_stars
@@ -306,10 +308,10 @@ if output_method == 'stars':
     print("Generating magnitudes...")
     isochrone_model = sutils.IsochroneModel(config)
 
-    mag_g_s, mag_r_s = isochrone_model.sample_magnitudes(s_stars_phi12)
+    mag_g_s, mag_r_s = isochrone_model.sample_magnitudes(stream_stars)
 
     # Save stars table with sampled magnitudes
-    sutils.save_star_data(s_stars_phi12, mag_g_s, mag_r_s, 'phi12', filepath=f"{base_dir}/data/{cluster}_stars.csv")
+    sutils.save_star_data(stream_stars, mag_g_s, mag_r_s, 'phi12', filepath=f"{base_dir}/data/{name_o}_stars.csv")
 
 elif output_method == 'density':
     print("Generating density map parameters...")

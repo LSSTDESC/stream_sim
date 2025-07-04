@@ -68,6 +68,12 @@ def full_galpy_df(sigv, progenitor, pot, aA, ro, vo, vsun, tdisrupt,
      - s_perturbed: perturbed stream df perturbed part (galpy.streamdf instance)
 
     '''
+
+    #convert qunatities to correct astropy unit if needed.
+    sigv=to_quantity(sigv, u.km/u.s)
+    ro = to_quantity(ro, u.kpc).value
+    vo = to_quantity(vo, u.km/u.s).value
+    tdisrupt = to_quantity(tdisrupt, u.Gyr)
     #galpy generate stream lead and trail independently
     s_lead = gd.streamdf(sigv=sigv,
                 progenitor=progenitor,
@@ -99,6 +105,10 @@ def full_galpy_df(sigv, progenitor, pot, aA, ro, vo, vsun, tdisrupt,
         elif impact_angle >= 0:
             leading = True
             print("Perturbing leading arm")
+
+        impactb =  to_quantity(impactb, u.kpc)
+        timpact =  to_quantity(timpact, u.Gyr)
+        impact_angle =  to_quantity(impact_angle, u.rad).value
 
         s_perturbed = gd.streamgapdf(sigv=sigv,
                                 progenitor=progenitor,
@@ -259,6 +269,15 @@ def icrs_to_phi12(stream_stars, pole1, pole2, velocities=False, panda=False):
     return stream_phi12
 
 
+def to_quantity(val, unit):
+    """
+    Convert float or int to Quantity with assumed unit,
+    or return the Quantity with correct unit.
+    """
+    if isinstance(val, u.Quantity):
+        return val.to(unit)
+    else:
+        return val * unit
 
 
 def safe_getattr(obj, attr, default_unit):
