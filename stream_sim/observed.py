@@ -227,10 +227,6 @@ class StreamObserved:
 
         # Estimate the extinction, errors
         extinction_g, extinction_r = self.extinction(pix)
-
-        magerr_g, magerr_r = self._get_errors(
-            pix, mag_r=data["mag_r"] + extinction_r, mag_g=data["mag_g"] + extinction_g
-        )
         
         nside_maglim = hp.get_nside(self.maglim_map_r)
         if nside_maglim != 4096: # adjust the nside to the one of magnitude limit maps
