@@ -1,0 +1,41 @@
+##### Keywords to run stream_generator.py ######
+
+##### Initialize stream #####
+
+init_method = custom         # or 'custom'
+column_name = TrackName        # column name in galstreams CSV
+name_o = Pal5-I21              # stream name if using galstreams
+prog_config_path = None
+
+ra_o = 229                     # deg
+dec_o = -0.124                 # deg
+distance_o = 22.9              # kpc
+pm_ra_cosdec_o = -2.296        # mas/yr
+pm_dec_o = -2.257              # mas/yr
+vrad_o = -58.7                 # km/s
+frame = icrs
+
+prog_mass = 2e4 #* u.Msun
+prog_sigv = 0.365 #* u.km / u.s # velocity dispersion
+
+t_disrupt = 4.0 #* u.Gyr
+n_stars = 10000
+
+##### Initialize accreting host #####
+
+V0 = 245.6                     # km/s
+R0 = 8.122                     # kpc
+vsun = [-12.9, 245.6, 7.78]    # km/s
+mw_pot = gp.MWPotential2014
+b_mw = 1.5
+
+##### Initialize impact (optional if perturbed stream) #####
+
+b_impact = 0.0 #* u.kpc
+t_impact = 2.0 #* u.Gyr
+angle_impact = 0.12            # radians
+
+##### Output options #####
+output_method = stars          # or density
+output_coord = phi12                  # icrs, xyz, phi12, etc.
+

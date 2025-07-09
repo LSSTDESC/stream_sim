@@ -7,21 +7,30 @@ Set of simulation tools to ease stellar stream generation. Include:
  - other
 '''
 
+#astropy
 import astropy.units as u
 import astropy.constants as aconst
 import astropy.coordinates as acoord
 from astropy.table import Table
+#general
 import numpy as np
 import pandas as pd
-import galpy.df as gd
-import gala.coordinates as gcoord # only for great circle rotation
-with acoord.galactocentric_frame_defaults.set("v4.0"):
-    galcen_frame = acoord.Galactocentric()
-import warnings
+import matplotlib.pyplot as plt
 from ugali.isochrone import factory
 from scipy.optimize import least_squares, curve_fit
 from scipy.integrate import trapezoid
-import matplotlib.pyplot as plt
+#galpy
+import galpy.df as gd
+import galpy.potential as gp
+import gala.coordinates as gcoord # only for great circle rotation
+import galpy.actionAngle as ga
+from galpy.orbit import Orbit
+
+with acoord.galactocentric_frame_defaults.set("v4.0"):
+    galcen_frame = acoord.Galactocentric()
+import warnings
+
+
 
 def Plummer_sigv(M, b, r): #returns sigv for a plummer potential
     return np.sqrt(aconst.G * M.to(u.kg) / 6 * (r.to(u.m)**2+b.to(u.m)**2)**(-1/2)).to(u.km/u.s)
@@ -783,6 +792,159 @@ class StreamDensityFiltering:
             return self.filtered_data, self.H_filtered
         return self.filtered_data
 
+
+##### Only works with stream_generator.py #####
+class StreamArgumentParser:
+    @staticmethod
+    def load_config_file(path):
+        config = {}
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                line = line.split('#', 1)[0].strip()  # Remove inline comments
+                if '=' in line:
+                    key, val = line.split('=', 1)
+                    key = key.strip()
+                    val = val.strip()
+                    try:
+                        config[key] = eval(val)
+                    except Exception:
+                        config[key] = val
+        return config
+
+    @staticmethod
+    def build_parser():
+        import argparse
+        from stream_galsim.generator_keywords import PARAMETERS
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--config', type=str, default='config.txt', help='Path to config file')
+
+        for key, meta in PARAMETERS.items():
+            parser.add_argument(f'--{key}', type=meta['type'], default=None)
+
+        return parser
+
+    @staticmethod
+    def merge_configs(file_config, cli_args):
+        from stream_galsim.generator_keywords import PARAMETERS
+
+        merged = {}
+        for key, meta in PARAMETERS.items():
+            cli_val = getattr(cli_args, key)
+            if cli_val is not None:
+                merged[key] = cli_val
+            elif key in file_config:
+                merged[key] = file_config[key]
+            else:
+                print(f"{key} not specified - using default: {meta['default']}")
+                merged[key] = meta['default']
+
+        for key in file_config:
+            if key not in PARAMETERS:
+                raise ValueError(f"Unknown keyword in config file: {key}")
+        
+        return merged
+
+class GeneratorInit:
+    def progenitor(config):
+        import os
+        import yaml
+        import pandas as pd
+
+        print("Initializing progenitor...")
+
+        column_name = config['column_name']
+        name_o = config['name_o']
+        prog_config_path = config.get('prog_config_path')
+
+        data = {
+            'column_name': column_name,
+            'name_o': name_o,
+            'prog_config_path': prog_config_path,
+        }
+
+        if config.get('init_method') == 'galstream':
+            if prog_config_path is None:
+                base_dir = os.path.abspath(os.getcwd())
+                config_file = f'galstreams_{name_o}_config.yaml'
+                prog_config_path = os.path.join(base_dir, 'config', config_file)
+
+            if not os.path.exists(prog_config_path):
+                print(f"No config file found at {prog_config_path}. Generating {name_o} config file from galstream")
+                from stream_galsim.create_config_file import generate
+                generate(name_o, column_name)
+                base_dir = os.path.abspath(os.getcwd())
+                config_file = f'galstreams_{name_o}_config.yaml'
+                prog_config_path = os.path.join(base_dir, 'config', config_file)
+
+            with open(prog_config_path, 'r') as file:
+                print(f"Loading config file from {prog_config_path}")
+                galstream_data = yaml.safe_load(file)
+
+            galstream_df = pd.DataFrame(galstream_data)
+            if galstream_df.shape[0] > 1:
+                raise ValueError("Multiple entries in galstream config.")
+
+            data.update(galstream_df.iloc[0].to_dict())
+
+        for key in ['ra_o', 'dec_o', 'distance_o', 'pm_ra_cosdec_o', 'pm_dec_o', 'vrad_o', 'frame', 'prog_mass', 'prog_sigv']:
+            data[key] = config[key]
+
+        return pd.DataFrame([data])
+
+    def acc_host(config):
+        import pandas as pd
+        import numpy as np
+        import galpy.potential as gp
+        import galpy.actionAngle as ga
+
+        print("Initializing accreting host...")
+
+        V0 = config['V0']
+        R0 = config['R0']
+        vsun = config['vsun']
+        pot = eval(config['mw_pot']) if isinstance(config['mw_pot'], str) else config['mw_pot'] or gp.MWPotential2014
+        b_scale = config['b_mw']
+
+        aaisochrone = ga.actionAngleIsochroneApprox(pot=pot, b=b_scale)
+
+        acc_host = pd.DataFrame([{
+            'V0': V0, 'V0_unit': 'km/s',
+            'R0': R0, 'R0_unit': 'kpc',
+            'vsun': vsun, 'vsun_unit': 'km/s',
+        }])
+
+        return acc_host, pot, aaisochrone
+
+    def halo_impact(config):
+        import pandas as pd
+        import numpy as np
+        import galpy.potential as gp
+
+        print("Initializing halo and impact properties...")
+
+        halo_mass = config['halo_mass']
+        halo_a = config['halo_a']
+        v_halo = config['v_halo']
+        impact_b = config['b_impact']
+        t_impact = config['t_impact']
+        angle_impact = config['angle_impact']
+
+        halo_pot = gp.NFWPotential(amp=halo_mass, a=halo_a)
+
+        halo_df = pd.DataFrame([{
+            'halo_mass': halo_mass,
+            'halo_a': halo_a,
+            'v_halo': np.array(v_halo).tolist(),
+            'impact_b': impact_b,
+            't_impact': t_impact,
+            'angle_impact': angle_impact,
+        }])
+
+        return halo_df, halo_pot
 
 
 ###old
