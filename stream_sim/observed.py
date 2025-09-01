@@ -360,8 +360,8 @@ class StreamObserved:
                 else:
                     self.endpoints = endpoints_trial
                     break
-            else:
-                raise RuntimeError("Could not find suitable endpoints after max_trials.")
+            if self.endpoints is None:
+                raise RuntimeError(f"Could not find suitable endpoints after {max_trials}.")
         else:
             self.endpoints = endpoints
         # Use Gala to create the stream coordinate frame
