@@ -350,8 +350,6 @@ class StreamObserved:
                     ra_check = coords.icrs.ra.deg
                     dec_check = coords.icrs.dec.deg
                     pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
-                    print(f"hpxmap[pix_check]: {hpxmap[pix_check]}")
-                    print(f"hpxmap2[pix_check]: {hpxmap2[pix_check]}")
                     if np.all((hpxmap[pix_check] > 0)&(hpxmap2[pix_check] > 0)):
                         self.endpoints = endpoints_trial
                         print(f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}")
