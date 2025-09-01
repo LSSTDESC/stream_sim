@@ -18,8 +18,9 @@ class ConfigurableModel(object):
 
     def __init__(self, config, **kwargs):
         self._config = copy.deepcopy(config)
-        self._config.update(**kwargs)
-        self._create_model()
+        if self._config is not None:
+            self._config.update(**kwargs)
+            self._create_model()
 
     def _create_model(self):
         pass
