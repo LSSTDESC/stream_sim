@@ -315,8 +315,8 @@ class StreamObserved:
         stream : SkyCoord
             Transformed coordinates.
         """
-
-        if endpoints is None:
+        self.endpoints = endpoints
+        if self.endpoints is None:
             hpxmap = hpxmap if hpxmap is not None else self.maglim_map_r
             hpxmap2 = hpxmap2 if hpxmap2 is not None else self.maglim_map_g
 
@@ -343,7 +343,6 @@ class StreamObserved:
                 ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
                 endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
                 frame = gc.GreatCircleICRSFrame.from_endpoints(endpoints_trial[0], endpoints_trial[1])
-                
                 if phi1_check is not None: # Verify that phi1_check values map to valid pixels
                     phi2_zeros = np.zeros_like(phi1_check) * u.deg
                     phi1_check_u = np.array(phi1_check) * u.deg
@@ -360,10 +359,8 @@ class StreamObserved:
                 else:
                     self.endpoints = endpoints_trial
                     break
-            else:
-                raise RuntimeError("Could not find suitable endpoints after max_trials.")
-        else:
-            self.endpoints = endpoints
+            if self.endpoints is None:
+                raise RuntimeError(f"Could not find suitable endpoints after {max_trials}.")
         # Use Gala to create the stream coordinate frame
         frame = gc.GreatCircleICRSFrame.from_endpoints(self.endpoints[0], self.endpoints[1])
         phi1 = np.array(phi1) * u.deg
@@ -652,6 +649,9 @@ class StreamObserved:
         ax[1].legend()
 
         ax[2].set_title("HR diagram using sampled observed magnitudes")
+        # Convert mag_r_meas and mag_g_meas to numeric, coercing errors to NaN
+        data['mag_r_meas'] = pd.to_numeric(data['mag_r_meas'], errors='coerce')
+        data['mag_g_meas'] = pd.to_numeric(data['mag_g_meas'], errors='coerce')
         mask =( data['mag_g_meas'] != 'BAD_MAG' ) & (data['mag_r_meas'] != 'BAD_MAG') 
         ax[2].scatter(data['mag_g_meas'][mask] - data['mag_r_meas'][mask], data['mag_g_meas'][mask], s=2, alpha=0.5, color='gray',label = 'Unobserved')
         ax[2].scatter((data['mag_g_meas'] - data['mag_r_meas'])[sel&mask], data['mag_g_meas'][sel&mask], s=4, alpha=1.0, color='black',label = 'Observed')
