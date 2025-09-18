@@ -258,7 +258,7 @@ class StreamObserved:
         flag_g = mag_g_meas != 'BAD_MAG'
         data['flag_detection_g']=flag_g & self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
 
-        data['flag_detection'] = (data['flag_detection_r']==1)|(data['flag_detection_g']==1)
+        data['flag_detection'] = (data['flag_detection_r']==1)&(data['flag_detection_g']==1)
 
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
