@@ -243,6 +243,7 @@ class StreamObserved:
                 self.stream.icrs.dec.deg,
                 lonlat=True,
             )
+
         extinction_g, extinction_r = self.extinction(pix)
 
         nside_maglim = hp.get_nside(self.maglim_map_r)
@@ -290,11 +291,11 @@ class StreamObserved:
             mag_r_meas != "BAD_MAG"
         )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
         data["flag_detection_r"] = flag_r & self.detect_flag(
-            pix, mag_r=data["mag_r"], rng=rng, seed=seed, **kwargs
+            pix, mag_r=data["mag_r"] + extinction_r, rng=rng, seed=seed, **kwargs
         )
         flag_g = mag_g_meas != "BAD_MAG"
         data["flag_detection_g"] = flag_g & self.detect_flag(
-            pix, mag_g=data["mag_g"], rng=rng, seed=seed, **kwargs
+            pix, mag_g=data["mag_g"] + extinction_g, rng=rng, seed=seed, **kwargs
         )
 
         data["flag_detection"] = (data["flag_detection_r"] == 1) & (
