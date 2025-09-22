@@ -475,6 +475,7 @@ class StreamObserved:
         def effective_error(mag,maglim):
             """ Take the saturation into account by using the error value in the bright end """
             magerr =self.sys_error + 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
+            magerr =  np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
             return magerr
 
         # Magnitude errors
@@ -572,7 +573,7 @@ class StreamObserved:
             # Apply saturation condition: 1 padding for objects brighter than saturation but equivalent mag fainter than saturation0
             compl = np.where((mag > self.saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
             compl = np.where(mag < self.saturation, 0.0, compl) # saturation at the bright end
-            compl = np.where(maglim_map < self.saturation, 0.0, compl) # not observed if the area is not covered
+            compl = np.where((maglim_map < self.saturation)|np.isnan(maglim_map), 0.0, compl) # not observed if the area is not covered
             return compl
 
         # Set the threshold using completeness 1-padded at the bright ends
