@@ -235,6 +235,14 @@ class StreamObserved:
         )
 
         # Estimate the extinction, errors
+        nside_ebv = hp.get_nside(self.ebv_map)
+        if nside_ebv != 4096:  # adjust the nside to the one of extinction map
+            pix = hp.ang2pix(
+                nside_ebv,
+                self.stream.icrs.ra.deg,
+                self.stream.icrs.dec.deg,
+                lonlat=True,
+            )
         extinction_g, extinction_r = self.extinction(pix)
 
         nside_maglim = hp.get_nside(self.maglim_map_r)
