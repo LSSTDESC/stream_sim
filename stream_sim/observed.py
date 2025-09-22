@@ -564,17 +564,18 @@ class StreamObserved:
             mag = mag_g
             maglim_map = self.maglim_map_g[pix]
 
+        def effective_completeness(mag):
+            delta_mag = mag -  np.clip(maglim_map, 20, 30) # difference between the mag and the maglim at the position of the object
+            eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
+            # Apply saturation condition: 1 padding for objects brighter than saturation but equivalent mag fainter than saturation0
+            compl = np.where((mag > saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
+            compl = np.where(mag < saturation, 0.0, compl) # saturation at the bright end
+            compl = np.where(maglim_map < saturation, 0.0, compl) # not observed if the area is not covered
+            return compl
+
         # Set the threshold using completeness 1-padded at the bright ends
-        r = mag + (
-            maglim0 - np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1])
-        )
-        threshold = rng.uniform(size=len(mag)) <= np.where(
-            (r < saturation0) & (mag > saturation), 1, self.completeness(r)
-        )
-        threshold &= (
-            mag >= saturation
-        )  # objects with brighter than saturation are not observed.
-        threshold &= maglim_map >= saturation  # select only objects in the covered area
+        threshold = rng.uniform(size=len(mag)) <= effective_completeness(mag)
+        
         return threshold
 
     def _save_injected_data(self, data, folder):
