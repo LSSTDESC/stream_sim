@@ -537,7 +537,7 @@ class StreamObserved:
         """
         # Default parameters
         maglim0 = kwargs.pop(
-            "maglim0", 25.0
+            "maglim0", 26.8
         )  # magnitude limit in the initial completeness
         saturation0 = kwargs.pop(
             "saturation0", 16.4
@@ -565,7 +565,7 @@ class StreamObserved:
             maglim_map = self.maglim_map_g[pix]
 
         def effective_completeness(mag):
-            delta_mag = mag -  np.clip(maglim_map, 20, 30) # difference between the mag and the maglim at the position of the object
+            delta_mag = mag -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]) # difference between the mag and the maglim at the position of the object
             eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
             # Apply saturation condition: 1 padding for objects brighter than saturation but equivalent mag fainter than saturation0
             compl = np.where((mag > saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
@@ -575,7 +575,7 @@ class StreamObserved:
 
         # Set the threshold using completeness 1-padded at the bright ends
         threshold = rng.uniform(size=len(mag)) <= effective_completeness(mag)
-        
+
         return threshold
 
     def _save_injected_data(self, data, folder):
