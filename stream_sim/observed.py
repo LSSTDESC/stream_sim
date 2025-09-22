@@ -89,7 +89,7 @@ class StreamObserved:
 
         self._config = copy.deepcopy(config_data)
 
-    def load_survey(self):   
+    def load_survey(self):
         """
         Load survey information such as magnitude limits, extinction maps, completeness, etc.
 
@@ -202,7 +202,7 @@ class StreamObserved:
             flag_detection : 1 for detected stars, 0 for others
         """
         data = self._load_data(data)
-        
+
         # Select only stars from the stream
         flag = kwargs.pop("flag", [1])
         if "flag" in data.columns:
@@ -212,39 +212,64 @@ class StreamObserved:
             print("'flag' column not found, skipping filtering.")
 
         # set the seed for reproducibility
-        seed = kwargs.pop('seed', None)
+        seed = kwargs.pop("seed", None)
         rng = np.random.default_rng(seed)
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
-        endpoints = kwargs.pop('endpoints',None)
-        phi_check_percentiles = kwargs.pop('phi_check_percentiles', [0, 100, 50])
+        endpoints = kwargs.pop("endpoints", None)
+        phi_check_percentiles = kwargs.pop("phi_check_percentiles", [0, 100, 50])
         if phi_check_percentiles is not None:
-            phi1_check = np.percentile(data['phi1'], phi_check_percentiles)
+            phi1_check = np.percentile(data["phi1"], phi_check_percentiles)
         else:
             phi1_check = None
-        self.stream = self.phi_to_radec(data['phi1'],data['phi2'],endpoints=endpoints,seed=seed,rng=rng,phi1_check=phi1_check)
-        pix = hp.ang2pix(4096, self.stream.icrs.ra.deg,  self.stream.icrs.dec.deg, lonlat=True)
+        self.stream = self.phi_to_radec(
+            data["phi1"],
+            data["phi2"],
+            endpoints=endpoints,
+            seed=seed,
+            rng=rng,
+            phi1_check=phi1_check,
+        )
+        pix = hp.ang2pix(
+            4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
+        )
 
         # Estimate the extinction, errors
         extinction_g, extinction_r = self.extinction(pix)
-        
+
         nside_maglim = hp.get_nside(self.maglim_map_r)
-        if nside_maglim != 4096: # adjust the nside to the one of magnitude limit maps
-            pix = hp.ang2pix(nside_maglim, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True)
+        if nside_maglim != 4096:  # adjust the nside to the one of magnitude limit maps
+            pix = hp.ang2pix(
+                nside_maglim,
+                self.stream.icrs.ra.deg,
+                self.stream.icrs.dec.deg,
+                lonlat=True,
+            )
 
-        magerr_g,magerr_r = self._get_errors(pix,mag_r=data['mag_r']+extinction_r,mag_g=data['mag_g']+extinction_g)
-        
+        magerr_g, magerr_r = self._get_errors(
+            pix, mag_r=data["mag_r"] + extinction_r, mag_g=data["mag_g"] + extinction_g
+        )
+
         # Sample observed magnitude for every stars
-        mag_g_meas,mag_r_meas = self.sample(mag_g=data['mag_g']+extinction_g,mag_r=data['mag_r']+extinction_r,magerr_g=magerr_g,magerr_r=magerr_r,rng=rng,seed=seed)
+        mag_g_meas, mag_r_meas = self.sample(
+            mag_g=data["mag_g"] + extinction_g,
+            mag_r=data["mag_r"] + extinction_r,
+            magerr_g=magerr_g,
+            magerr_r=magerr_r,
+            rng=rng,
+            seed=seed,
+        )
 
-        new_columns = pd.DataFrame({
-        'mag_g_meas': mag_g_meas,
-        'magerr_g': magerr_g,
-        'mag_r_meas': mag_r_meas,
-        'magerr_r': magerr_r,
-        'ra' :self.stream.icrs.ra.deg,
-        'dec':self.stream.icrs.dec.deg
-        })
+        new_columns = pd.DataFrame(
+            {
+                "mag_g_meas": mag_g_meas,
+                "magerr_g": magerr_g,
+                "mag_r_meas": mag_r_meas,
+                "magerr_r": magerr_r,
+                "ra": self.stream.icrs.ra.deg,
+                "dec": self.stream.icrs.dec.deg,
+            }
+        )
 
         # Reset the index to force alignment by row position
         data = data.reset_index(drop=True)
@@ -253,12 +278,20 @@ class StreamObserved:
         data = pd.concat([data, new_columns], axis=1)
 
         # Apply detection threshold
-        flag_r = mag_r_meas != 'BAD_MAG' # Negative fluxes are set to 'BAD_MAG', so counted as undetected
-        data['flag_detection_r']=flag_r & self.detect_flag(pix,mag_r = data['mag_r'],rng=rng,seed=seed,**kwargs)
-        flag_g = mag_g_meas != 'BAD_MAG'
-        data['flag_detection_g']=flag_g & self.detect_flag(pix,mag_g = data['mag_g'],rng=rng,seed=seed,**kwargs)
+        flag_r = (
+            mag_r_meas != "BAD_MAG"
+        )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
+        data["flag_detection_r"] = flag_r & self.detect_flag(
+            pix, mag_r=data["mag_r"], rng=rng, seed=seed, **kwargs
+        )
+        flag_g = mag_g_meas != "BAD_MAG"
+        data["flag_detection_g"] = flag_g & self.detect_flag(
+            pix, mag_g=data["mag_g"], rng=rng, seed=seed, **kwargs
+        )
 
-        data['flag_detection'] = (data['flag_detection_r']==1)|(data['flag_detection_g']==1)
+        data["flag_detection"] = (data["flag_detection_r"] == 1) & (
+            data["flag_detection_g"] == 1
+        )
 
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
@@ -291,8 +324,19 @@ class StreamObserved:
                 raise ValueError(f"Unsupported file format: {extension}")
         else:
             raise ValueError(f"Unsupported file format")
-    
-    def phi_to_radec(self, phi1, phi2, endpoints=None, seed=None, rng=None, hpxmap=None,hpxmap2=None, phi1_check=None, max_trials=10):
+
+    def phi_to_radec(
+        self,
+        phi1,
+        phi2,
+        endpoints=None,
+        seed=None,
+        rng=None,
+        hpxmap=None,
+        hpxmap2=None,
+        phi1_check=None,
+        max_trials=10,
+    ):
         """
         Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
 
@@ -333,43 +377,59 @@ class StreamObserved:
                     print(f"Upgrading hpxmap2 from nside {nside2} to {min_nside}.")
                 nside = min_nside
 
-            if rng is None: # use the seed if provided
+            if rng is None:  # use the seed if provided
                 rng = np.random.default_rng(seed)
-            
+
             pix = np.arange(len(hpxmap))
             for _ in range(max_trials):
                 # Randomly select endpoints inside the footprint of the HEALPix maps
-                pixels = rng.choice(pix[(hpxmap > 0)&(hpxmap2>0)], size=2, replace=False)
+                pixels = rng.choice(
+                    pix[(hpxmap > 0) & (hpxmap2 > 0)], size=2, replace=False
+                )
                 ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
                 endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
-                frame = gc.GreatCircleICRSFrame.from_endpoints(endpoints_trial[0], endpoints_trial[1])
-                if phi1_check is not None: # Verify that phi1_check values map to valid pixels
+                frame = gc.GreatCircleICRSFrame.from_endpoints(
+                    endpoints_trial[0], endpoints_trial[1]
+                )
+                if (
+                    phi1_check is not None
+                ):  # Verify that phi1_check values map to valid pixels
                     phi2_zeros = np.zeros_like(phi1_check) * u.deg
                     phi1_check_u = np.array(phi1_check) * u.deg
-                    coords = coord.SkyCoord(phi1=phi1_check_u, phi2=phi2_zeros, frame=frame)
+                    coords = coord.SkyCoord(
+                        phi1=phi1_check_u, phi2=phi2_zeros, frame=frame
+                    )
                     ra_check = coords.icrs.ra.deg
                     dec_check = coords.icrs.dec.deg
                     pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
-                    if np.all((hpxmap[pix_check] > 0)&(hpxmap2[pix_check] > 0)):
+                    if np.all((hpxmap[pix_check] > 0) & (hpxmap2[pix_check] > 0)):
                         self.endpoints = endpoints_trial
-                        print(f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}")
+                        print(
+                            f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}"
+                        )
                         break
                     else:
-                        print(f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check.")
+                        print(
+                            f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check."
+                        )
                 else:
                     self.endpoints = endpoints_trial
                     break
             if self.endpoints is None:
-                raise RuntimeError(f"Could not find suitable endpoints after {max_trials}.")
+                raise RuntimeError(
+                    f"Could not find suitable endpoints after {max_trials}."
+                )
         # Use Gala to create the stream coordinate frame
-        frame = gc.GreatCircleICRSFrame.from_endpoints(self.endpoints[0], self.endpoints[1])
+        frame = gc.GreatCircleICRSFrame.from_endpoints(
+            self.endpoints[0], self.endpoints[1]
+        )
         phi1 = np.array(phi1) * u.deg
         phi2 = np.array(phi2) * u.deg
         stream = coord.SkyCoord(phi1=phi1, phi2=phi2, frame=frame)
 
         return stream
 
-    def extinction(self,pix):
+    def extinction(self, pix):
         """
         Estimate the exctinction value for given pixels of the sky.
         Args:
@@ -415,25 +475,32 @@ class StreamObserved:
         Returns:
             mag_g_meas,mag_r_meas : sampled observed magnitudes
         """
-        mag_g = kwargs.pop('mag_g')
-        mag_r = kwargs.pop('mag_r')
-        magerr_g = kwargs.pop('magerr_g')
-        magerr_r = kwargs.pop('magerr_r')
+        mag_g = kwargs.pop("mag_g")
+        mag_r = kwargs.pop("mag_r")
+        magerr_g = kwargs.pop("magerr_g")
+        magerr_r = kwargs.pop("magerr_r")
 
-        rng = kwargs.pop('rng', None)
+        rng = kwargs.pop("rng", None)
         if rng is None:
-            seed = kwargs.pop('seed', None)
+            seed = kwargs.pop("seed", None)
             rng = np.random.default_rng(seed)
-        
+
         # Sample the fluxes their errors
-        flux_g_meas = StreamObserved.magToFlux(mag_g) + rng.normal(scale=self.getFluxError(mag_g, magerr_g))
-        flux_r_meas = StreamObserved.magToFlux(mag_r) + rng.normal(scale=self.getFluxError(mag_r, magerr_r))
+        flux_g_meas = StreamObserved.magToFlux(mag_g) + rng.normal(
+            scale=self.getFluxError(mag_g, magerr_g)
+        )
+        flux_r_meas = StreamObserved.magToFlux(mag_r) + rng.normal(
+            scale=self.getFluxError(mag_r, magerr_r)
+        )
         # If the flux is negative, set the magnitude to 99 (not detected). Otherwise, convert the flux back to magnitude
-        mag_g_meas = np.where(flux_g_meas > 0., StreamObserved.fluxToMag(flux_g_meas), 'BAD_MAG')
-        mag_r_meas = np.where(flux_r_meas > 0., StreamObserved.fluxToMag(flux_r_meas), 'BAD_MAG') 
+        mag_g_meas = np.where(
+            flux_g_meas > 0.0, StreamObserved.fluxToMag(flux_g_meas), "BAD_MAG"
+        )
+        mag_r_meas = np.where(
+            flux_r_meas > 0.0, StreamObserved.fluxToMag(flux_r_meas), "BAD_MAG"
+        )
 
-        return mag_g_meas,mag_r_meas
-
+        return mag_g_meas, mag_r_meas
 
     def detect_flag(self, pix, mag_r=None, mag_g=None, **kwargs):
         """
@@ -455,18 +522,26 @@ class StreamObserved:
             boolean list: 1 for detected stars, 0 for the others
         """
         # Default parameters
-        maglim0 = kwargs.pop('maglim0', 25.0) # magnitude limit in the initial completeness
-        saturation0 = kwargs.pop('saturation0', 16.4) # saturation limit in the initial completeness
-        saturation = kwargs.pop('saturation', 16.0) # saturation limit of the current completeness
-        clipping_bounds = kwargs.pop('clipping_bounds', (20.0, 30.0)) # bounds to current magnitude limit
-        rng = kwargs.pop('rng', None)
+        maglim0 = kwargs.pop(
+            "maglim0", 25.0
+        )  # magnitude limit in the initial completeness
+        saturation0 = kwargs.pop(
+            "saturation0", 16.4
+        )  # saturation limit in the initial completeness
+        saturation = kwargs.pop(
+            "saturation", 16.0
+        )  # saturation limit of the current completeness
+        clipping_bounds = kwargs.pop(
+            "clipping_bounds", (20.0, 30.0)
+        )  # bounds to current magnitude limit
+        rng = kwargs.pop("rng", None)
         if rng is None:
-            seed = kwargs.pop('seed', None)
+            seed = kwargs.pop("seed", None)
             rng = np.random.default_rng(seed)
 
         if mag_r is None and mag_g is None:
             raise ValueError("Must provide either mag_g or mag_r values.")
-        
+
         # Select the appropriate magnitude and map depending on the band
         if mag_r is not None:
             mag = mag_r
@@ -476,12 +551,17 @@ class StreamObserved:
             maglim_map = self.maglim_map_g[pix]
 
         # Set the threshold using completeness 1-padded at the bright ends
-        r = mag + (maglim0 -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]))
-        threshold = (rng.uniform(size=len(mag)) <= np.where((r < saturation0) & (mag > saturation), 1, self.completeness(r)))
-        threshold &= (mag>=saturation) # objects with brighter than saturation are not observed.
-        threshold &= (maglim_map >= saturation) # select only objects in the covered area
+        r = mag + (
+            maglim0 - np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1])
+        )
+        threshold = rng.uniform(size=len(mag)) <= np.where(
+            (r < saturation0) & (mag > saturation), 1, self.completeness(r)
+        )
+        threshold &= (
+            mag >= saturation
+        )  # objects with brighter than saturation are not observed.
+        threshold &= maglim_map >= saturation  # select only objects in the covered area
         return threshold
-
 
     def _save_injected_data(self, data, folder):
         """
@@ -508,8 +588,12 @@ class StreamObserved:
 
     @staticmethod
     def getCompleteness(filename):
-        d = np.genfromtxt(filename, delimiter=',', names=True,)
-        x = d['mag_r']
+        d = np.genfromtxt(
+            filename,
+            delimiter=",",
+            names=True,
+        )
+        x = d["mag_r"]
 
         selection = "both"
         if selection == "detected":
@@ -549,7 +633,11 @@ class StreamObserved:
         -------
         interp : interpolation function (mag_err as a function of delta_mag)
         """
-        d = np.genfromtxt(filename, delimiter=',', names=True,)
+        d = np.genfromtxt(
+            filename,
+            delimiter=",",
+            names=True,
+        )
 
         x = d["delta_mag"]
         y = d["log_mag_err"]
@@ -650,14 +738,29 @@ class StreamObserved:
 
         ax[2].set_title("HR diagram using sampled observed magnitudes")
         # Convert mag_r_meas and mag_g_meas to numeric, coercing errors to NaN
-        data['mag_r_meas'] = pd.to_numeric(data['mag_r_meas'], errors='coerce')
-        data['mag_g_meas'] = pd.to_numeric(data['mag_g_meas'], errors='coerce')
-        mask =( data['mag_g_meas'] != 'BAD_MAG' ) & (data['mag_r_meas'] != 'BAD_MAG') 
-        ax[2].scatter(data['mag_g_meas'][mask] - data['mag_r_meas'][mask], data['mag_g_meas'][mask], s=2, alpha=0.5, color='gray',label = 'Unobserved')
-        ax[2].scatter((data['mag_g_meas'] - data['mag_r_meas'])[sel&mask], data['mag_g_meas'][sel&mask], s=4, alpha=1.0, color='black',label = 'Observed')
-        ax[2].set_xlim(-0.5,1.5)
-        ax[2].set_ylim(30,16)
-        ax[2].set_xlabel('(g-r)'); ax[2].set_ylabel('g')
+        data["mag_r_meas"] = pd.to_numeric(data["mag_r_meas"], errors="coerce")
+        data["mag_g_meas"] = pd.to_numeric(data["mag_g_meas"], errors="coerce")
+        mask = (data["mag_g_meas"] != "BAD_MAG") & (data["mag_r_meas"] != "BAD_MAG")
+        ax[2].scatter(
+            data["mag_g_meas"][mask] - data["mag_r_meas"][mask],
+            data["mag_g_meas"][mask],
+            s=2,
+            alpha=0.5,
+            color="gray",
+            label="Unobserved",
+        )
+        ax[2].scatter(
+            (data["mag_g_meas"] - data["mag_r_meas"])[sel & mask],
+            data["mag_g_meas"][sel & mask],
+            s=4,
+            alpha=1.0,
+            color="black",
+            label="Observed",
+        )
+        ax[2].set_xlim(-0.5, 1.5)
+        ax[2].set_ylim(30, 16)
+        ax[2].set_xlabel("(g-r)")
+        ax[2].set_ylabel("g")
 
         ax[2].legend()
 
