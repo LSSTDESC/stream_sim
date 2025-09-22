@@ -184,6 +184,12 @@ class StreamObserved:
         except KeyError as e:
             print(f"Missing key {e} in the survey_properties config.")
 
+        try:
+            self.saturation = self._config["survey_properties"]["saturation"]
+        except KeyError as e:
+            self.saturation = 16.0
+            print(f"Missing key {e} in the survey_properties config. Using default saturation={self.saturation}.")
+
     def inject(self, data, **kwargs):
         """
         Add observed quantities by the survey to the given data.
@@ -466,9 +472,9 @@ class StreamObserved:
         maglim_g = self.maglim_map_g[pix]
         maglim_r = self.maglim_map_r[pix]
 
-        def effective_error(mag,maglim,saturation=16):
+        def effective_error(mag,maglim):
             """ Take the saturation into account by using the error value in the bright end """
-            magerr =self.sys_error + 10 ** (np.where(((mag - maglim)<=-10)&(mag>=saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
+            magerr =self.sys_error + 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
             return magerr
 
         # Magnitude errors
@@ -526,7 +532,6 @@ class StreamObserved:
         kwargs:
             maglim0 (float, optional): magnitude limit in the initial completeness. Defaults to 25.0.
             saturation0 (float, optional): saturation limit in the initial completeness. Defaults to 16.4.
-            saturation (float, optional): saturation limit of the current completeness. Defaults to 16.0.
             clipping_bounds (tuple, optional): bounds to current magnitude limit. Defaults to (20.0, 30.0).
             rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
             seed (int, optional): Seed for the random number generator. Used only if rng is None.
@@ -542,9 +547,6 @@ class StreamObserved:
         saturation0 = kwargs.pop(
             "saturation0", 16.4
         )  # saturation limit in the initial completeness
-        saturation = kwargs.pop(
-            "saturation", 16.0
-        )  # saturation limit of the current completeness
         clipping_bounds = kwargs.pop(
             "clipping_bounds", (20.0, 30.0)
         )  # bounds to current magnitude limit
@@ -568,9 +570,9 @@ class StreamObserved:
             delta_mag = mag -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]) # difference between the mag and the maglim at the position of the object
             eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
             # Apply saturation condition: 1 padding for objects brighter than saturation but equivalent mag fainter than saturation0
-            compl = np.where((mag > saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
-            compl = np.where(mag < saturation, 0.0, compl) # saturation at the bright end
-            compl = np.where(maglim_map < saturation, 0.0, compl) # not observed if the area is not covered
+            compl = np.where((mag > self.saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
+            compl = np.where(mag < self.saturation, 0.0, compl) # saturation at the bright end
+            compl = np.where(maglim_map < self.saturation, 0.0, compl) # not observed if the area is not covered
             return compl
 
         # Set the threshold using completeness 1-padded at the bright ends
