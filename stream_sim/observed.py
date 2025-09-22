@@ -297,7 +297,6 @@ class StreamObserved:
         data["flag_detection_g"] = flag_g & self.detect_flag(
             pix, mag_g=data["mag_g"] + extinction_g, rng=rng, seed=seed, **kwargs
         )
-
         data["flag_detection"] = (data["flag_detection_r"] == 1) & (
             data["flag_detection_g"] == 1
         )
@@ -466,9 +465,15 @@ class StreamObserved:
         # Look up the magnitude limit at the position of each star
         maglim_g = self.maglim_map_g[pix]
         maglim_r = self.maglim_map_r[pix]
+
+        def effective_error(mag,maglim,saturation=16):
+            """ Take the saturation into account by using the error value in the bright end """
+            magerr =self.sys_error + 10 ** (np.where(((mag - maglim)<=-10)&(mag>=saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
+            return magerr
+
         # Magnitude errors
-        magerr_g = self.sys_error + 10 ** (self.log_photo_error(mag_g - maglim_g))
-        magerr_r = self.sys_error + 10 ** (self.log_photo_error(mag_r - maglim_r))
+        magerr_g = effective_error(mag_g, maglim_g)
+        magerr_r = effective_error(mag_r, maglim_r)
         return magerr_g, magerr_r
 
     def sample(self, **kwargs):
