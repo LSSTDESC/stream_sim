@@ -474,8 +474,9 @@ class StreamObserved:
 
         def effective_error(mag,maglim):
             """ Take the saturation into account by using the error value in the bright end """
-            magerr =self.sys_error + 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
-            magerr =  np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
+            magerr = 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
+            magerr = np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
+            mag_err += self.sys_error # add systematic error
             return magerr
 
         # Magnitude errors
