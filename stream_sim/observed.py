@@ -568,19 +568,23 @@ class StreamObserved:
             mag = mag_g
             maglim_map = self.maglim_map_g[pix]
 
-        def effective_completeness(mag):
-            delta_mag = mag -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]) # difference between the mag and the maglim at the position of the object
-            eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
-            # Apply saturation condition: 1 padding for objects brighter than saturation but equivalent mag fainter than saturation0
-            compl = np.where((mag > self.saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
-            compl = np.where(mag < self.saturation, 0.0, compl) # saturation at the bright end
-            compl = np.where((maglim_map < self.saturation)|np.isnan(maglim_map), 0.0, compl) # not observed if the area is not covered
-            return compl
+        compl = self._effective_completeness(
+            mag, maglim_map, maglim0, self.saturation, saturation0, clipping_bounds
+        )
 
         # Set the threshold using completeness 1-padded at the bright ends
-        threshold = rng.uniform(size=len(mag)) <= effective_completeness(mag)
+        threshold = rng.uniform(size=len(mag)) <= compl
 
         return threshold
+
+    def _effective_completeness(self, mag, maglim_map, maglim0, saturation0, clipping_bounds):
+        delta_mag = mag -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]) # difference between the mag and the maglim at the position of the object
+        eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
+        # Apply saturation condition: 1 padding for objects fainter than saturation but equivalent mag brighter than saturation0
+        compl = np.where((mag > self.saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
+        compl = np.where(mag < self.saturation, 0.0, compl) # saturation at the bright end
+        compl = np.where((maglim_map < self.saturation)|np.isnan(maglim_map), 0.0, compl) # not observed if the area is not covered
+        return compl
 
     def _save_injected_data(self, data, folder):
         """
