@@ -188,7 +188,9 @@ class StreamObserved:
             self.saturation = self._config["survey_properties"]["saturation"]
         except KeyError as e:
             self.saturation = 16.0
-            print(f"Missing key {e} in the survey_properties config. Using default saturation={self.saturation}.")
+            print(
+                f"Missing key {e} in the survey_properties config. Using default saturation={self.saturation}."
+            )
 
     def inject(self, data, **kwargs):
         """
@@ -478,10 +480,18 @@ class StreamObserved:
         return magerr_g, magerr_r
 
     def _effective_errors(self, mag, maglim):
-        """ Take the saturation into account by using the error value in the bright end """
-        magerr = 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
-        magerr = np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
-        magerr += self.sys_error # add systematic error
+        """Take the saturation into account by using the error value in the bright end"""
+        magerr = 10 ** (
+            np.where(
+                ((mag - maglim) <= -10) & (mag >= self.saturation),
+                self.log_photo_error(-10),
+                self.log_photo_error(mag - maglim),
+            )
+        )
+        magerr = np.where(
+            mag < self.saturation, 10 ** self.log_photo_error(-11), magerr
+        )  # saturation at the bright end
+        magerr += self.sys_error  # add systematic error
         return magerr
 
     def sample(self, **kwargs):
@@ -577,13 +587,27 @@ class StreamObserved:
 
         return threshold
 
-    def _effective_completeness(self, mag, maglim_map, maglim0, saturation0, clipping_bounds):
-        delta_mag = mag -  np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1]) # difference between the mag and the maglim at the position of the object
-        eq_mag = delta_mag + maglim0 # convert the delta mag to the equivalent mag at maglim0
+    def _effective_completeness(
+        self, mag, maglim_map, maglim0, saturation0, clipping_bounds
+    ):
+        delta_mag = mag - np.clip(
+            maglim_map, clipping_bounds[0], clipping_bounds[1]
+        )  # difference between the mag and the maglim at the position of the object
+        eq_mag = (
+            delta_mag + maglim0
+        )  # convert the delta mag to the equivalent mag at maglim0
         # Apply saturation condition: 1 padding for objects fainter than saturation but equivalent mag brighter than saturation0
-        compl = np.where((mag > self.saturation)&(eq_mag < saturation0), 1.0, self.completeness(eq_mag)) # 1 padded
-        compl = np.where(mag < self.saturation, 0.0, compl) # saturation at the bright end
-        compl = np.where((maglim_map < self.saturation)|np.isnan(maglim_map), 0.0, compl) # not observed if the area is not covered
+        compl = np.where(
+            (mag > self.saturation) & (eq_mag < saturation0),
+            1.0,
+            self.completeness(eq_mag),
+        )  # 1 padded
+        compl = np.where(
+            mag < self.saturation, 0.0, compl
+        )  # saturation at the bright end
+        compl = np.where(
+            (maglim_map < self.saturation) | np.isnan(maglim_map), 0.0, compl
+        )  # not observed if the area is not covered
         return compl
 
     def _save_injected_data(self, data, folder):
