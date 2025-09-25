@@ -472,17 +472,17 @@ class StreamObserved:
         maglim_g = self.maglim_map_g[pix]
         maglim_r = self.maglim_map_r[pix]
 
-        def effective_error(mag,maglim):
-            """ Take the saturation into account by using the error value in the bright end """
-            magerr = 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
-            magerr = np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
-            magerr += self.sys_error # add systematic error
-            return magerr
-
         # Magnitude errors
-        magerr_g = effective_error(mag_g, maglim_g)
-        magerr_r = effective_error(mag_r, maglim_r)
+        magerr_g = self._effective_errors(mag_g, maglim_g)
+        magerr_r = self._effective_errors(mag_r, maglim_r)
         return magerr_g, magerr_r
+
+    def _effective_errors(self, mag, maglim):
+        """ Take the saturation into account by using the error value in the bright end """
+        magerr = 10 ** (np.where(((mag - maglim)<=-10)&(mag>=self.saturation), self.log_photo_error(-10), self.log_photo_error(mag - maglim)))
+        magerr = np.where(mag<self.saturation, 10 ** self.log_photo_error(-11), magerr) # saturation at the bright end
+        magerr += self.sys_error # add systematic error
+        return magerr
 
     def sample(self, **kwargs):
         """
