@@ -579,7 +579,7 @@ class StreamObserved:
             maglim_map = self.maglim_map_g[pix]
 
         compl = self._effective_completeness(
-            mag, maglim_map, maglim0, self.saturation, saturation0, clipping_bounds
+            mag, maglim_map, maglim0, saturation0, clipping_bounds
         )
 
         # Set the threshold using completeness 1-padded at the bright ends
