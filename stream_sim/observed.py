@@ -184,6 +184,14 @@ class StreamObserved:
         except KeyError as e:
             print(f"Missing key {e} in the survey_properties config.")
 
+        try:
+            self.saturation = self._config["survey_properties"]["saturation"]
+        except KeyError as e:
+            self.saturation = 16.0
+            print(
+                f"Missing key {e} in the survey_properties config. Using default saturation={self.saturation}."
+            )
+
     def inject(self, data, **kwargs):
         """
         Add observed quantities by the survey to the given data.
@@ -235,6 +243,15 @@ class StreamObserved:
         )
 
         # Estimate the extinction, errors
+        nside_ebv = hp.get_nside(self.ebv_map)
+        if nside_ebv != 4096:  # adjust the nside to the one of extinction map
+            pix = hp.ang2pix(
+                nside_ebv,
+                self.stream.icrs.ra.deg,
+                self.stream.icrs.dec.deg,
+                lonlat=True,
+            )
+
         extinction_g, extinction_r = self.extinction(pix)
 
         nside_maglim = hp.get_nside(self.maglim_map_r)
@@ -282,13 +299,12 @@ class StreamObserved:
             mag_r_meas != "BAD_MAG"
         )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
         data["flag_detection_r"] = flag_r & self.detect_flag(
-            pix, mag_r=data["mag_r"], rng=rng, seed=seed, **kwargs
+            pix, mag_r=data["mag_r"] + extinction_r, rng=rng, seed=seed, **kwargs
         )
         flag_g = mag_g_meas != "BAD_MAG"
         data["flag_detection_g"] = flag_g & self.detect_flag(
-            pix, mag_g=data["mag_g"], rng=rng, seed=seed, **kwargs
+            pix, mag_g=data["mag_g"] + extinction_g, rng=rng, seed=seed, **kwargs
         )
-
         data["flag_detection"] = (data["flag_detection_r"] == 1) & (
             data["flag_detection_g"] == 1
         )
@@ -457,10 +473,26 @@ class StreamObserved:
         # Look up the magnitude limit at the position of each star
         maglim_g = self.maglim_map_g[pix]
         maglim_r = self.maglim_map_r[pix]
+
         # Magnitude errors
-        magerr_g = self.sys_error + 10 ** (self.log_photo_error(mag_g - maglim_g))
-        magerr_r = self.sys_error + 10 ** (self.log_photo_error(mag_r - maglim_r))
+        magerr_g = self._effective_errors(mag_g, maglim_g)
+        magerr_r = self._effective_errors(mag_r, maglim_r)
         return magerr_g, magerr_r
+
+    def _effective_errors(self, mag, maglim):
+        """Take the saturation into account by using the error value in the bright end"""
+        magerr = 10 ** (
+            np.where(
+                ((mag - maglim) <= -10) & (mag >= self.saturation),
+                self.log_photo_error(-10),
+                self.log_photo_error(mag - maglim),
+            )
+        )
+        magerr = np.where(
+            mag < self.saturation, 10 ** self.log_photo_error(-11), magerr
+        )  # saturation at the bright end
+        magerr += self.sys_error  # add systematic error
+        return magerr
 
     def sample(self, **kwargs):
         """
@@ -512,7 +544,6 @@ class StreamObserved:
         kwargs:
             maglim0 (float, optional): magnitude limit in the initial completeness. Defaults to 25.0.
             saturation0 (float, optional): saturation limit in the initial completeness. Defaults to 16.4.
-            saturation (float, optional): saturation limit of the current completeness. Defaults to 16.0.
             clipping_bounds (tuple, optional): bounds to current magnitude limit. Defaults to (20.0, 30.0).
             rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
             seed (int, optional): Seed for the random number generator. Used only if rng is None.
@@ -523,14 +554,11 @@ class StreamObserved:
         """
         # Default parameters
         maglim0 = kwargs.pop(
-            "maglim0", 25.0
+            "maglim0", 26.8
         )  # magnitude limit in the initial completeness
         saturation0 = kwargs.pop(
             "saturation0", 16.4
         )  # saturation limit in the initial completeness
-        saturation = kwargs.pop(
-            "saturation", 16.0
-        )  # saturation limit of the current completeness
         clipping_bounds = kwargs.pop(
             "clipping_bounds", (20.0, 30.0)
         )  # bounds to current magnitude limit
@@ -550,18 +578,37 @@ class StreamObserved:
             mag = mag_g
             maglim_map = self.maglim_map_g[pix]
 
+        compl = self._effective_completeness(
+            mag, maglim_map, maglim0, saturation0, clipping_bounds
+        )
+
         # Set the threshold using completeness 1-padded at the bright ends
-        r = mag + (
-            maglim0 - np.clip(maglim_map, clipping_bounds[0], clipping_bounds[1])
-        )
-        threshold = rng.uniform(size=len(mag)) <= np.where(
-            (r < saturation0) & (mag > saturation), 1, self.completeness(r)
-        )
-        threshold &= (
-            mag >= saturation
-        )  # objects with brighter than saturation are not observed.
-        threshold &= maglim_map >= saturation  # select only objects in the covered area
+        threshold = rng.uniform(size=len(mag)) <= compl
+
         return threshold
+
+    def _effective_completeness(
+        self, mag, maglim_map, maglim0, saturation0, clipping_bounds
+    ):
+        delta_mag = mag - np.clip(
+            maglim_map, clipping_bounds[0], clipping_bounds[1]
+        )  # difference between the mag and the maglim at the position of the object
+        eq_mag = (
+            delta_mag + maglim0
+        )  # convert the delta mag to the equivalent mag at maglim0
+        # Apply saturation condition: 1 padding for objects fainter than saturation but equivalent mag brighter than saturation0
+        compl = np.where(
+            (mag > self.saturation) & (eq_mag < saturation0),
+            1.0,
+            self.completeness(eq_mag),
+        )  # 1 padded
+        compl = np.where(
+            mag < self.saturation, 0.0, compl
+        )  # saturation at the bright end
+        compl = np.where(
+            (maglim_map < self.saturation) | np.isnan(maglim_map), 0.0, compl
+        )  # not observed if the area is not covered
+        return compl
 
     def _save_injected_data(self, data, folder):
         """
