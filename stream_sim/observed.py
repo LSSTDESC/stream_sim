@@ -226,18 +226,15 @@ class StreamObserved:
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
         endpoints = kwargs.pop("endpoints", None)
-        phi_check_percentiles = kwargs.pop("phi_check_percentiles", [0, 100, 50])
-        if phi_check_percentiles is not None:
-            phi1_check = np.percentile(data["phi1"], phi_check_percentiles)
-        else:
-            phi1_check = None
+        mask_config = kwargs.pop("mask_config", None)
+
         self.stream = self.phi_to_radec(
             data["phi1"],
             data["phi2"],
             endpoints=endpoints,
             seed=seed,
             rng=rng,
-            phi1_check=phi1_check,
+            mask_config=mask_config,
         )
         pix = hp.ang2pix(
             4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
@@ -349,7 +346,7 @@ class StreamObserved:
         endpoints=None,
         seed=None,
         rng=None,
-        mask_config={"phi1_check": None, "mask_type": ["footprint"], "max_trials": 10},
+        mask_config={},
     ):
         """
         Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
@@ -375,6 +372,12 @@ class StreamObserved:
         """
         self.endpoints = endpoints
         if self.endpoints is None:
+            mask_config_default = {"phi1_check": "all", "mask_type": ["footprint"], "max_trials": 10}
+            if mask_config is not None:
+                for key in mask_config_default:
+                    if key not in mask_config:
+                        mask_config[key] = mask_config_default[key]
+
             self.endpoints = self._choose_endpoints(
                 rng=rng, seed=seed, mask_config=mask_config, phi1=phi1, phi2=phi2
             )
