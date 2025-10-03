@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
-import os
 import copy
-import healpy as hp
+import os
+
 import astropy.coordinates as coord
 import astropy.units as u
 import gala.coordinates as gc
+import healpy as hp
 import numpy as np
-import scipy
-import pylab as plt
 import pandas as pd
+import pylab as plt
+import scipy
 
 
 class StreamObserved:
@@ -348,10 +349,7 @@ class StreamObserved:
         endpoints=None,
         seed=None,
         rng=None,
-        hpxmap=None,
-        hpxmap2=None,
-        phi1_check=None,
-        max_trials=10,
+        mask_config={"phi1_check": None, "mask_type": ["footprint"], "max_trials": 10},
     ):
         """
         Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
@@ -377,64 +375,10 @@ class StreamObserved:
         """
         self.endpoints = endpoints
         if self.endpoints is None:
-            hpxmap = hpxmap if hpxmap is not None else self.maglim_map_r
-            hpxmap2 = hpxmap2 if hpxmap2 is not None else self.maglim_map_g
+            self.endpoints = self._choose_endpoints(
+                rng=rng, seed=seed, mask_config=mask_config, phi1=phi1, phi2=phi2
+            )
 
-            nside = hp.get_nside(hpxmap)
-            nside2 = hp.get_nside(hpxmap2)
-            if nside != nside2:
-                # Convert hpxmap and hpxmap2 to the same nside (the smallest)
-                min_nside = min(nside, nside2)
-                if nside != min_nside:
-                    hpxmap = hp.ud_grade(hpxmap, min_nside)
-                    print(f"Upgrading hpxmap from nside {nside} to {min_nside}.")
-                if nside2 != min_nside:
-                    hpxmap2 = hp.ud_grade(hpxmap2, min_nside)
-                    print(f"Upgrading hpxmap2 from nside {nside2} to {min_nside}.")
-                nside = min_nside
-
-            if rng is None:  # use the seed if provided
-                rng = np.random.default_rng(seed)
-
-            pix = np.arange(len(hpxmap))
-            for _ in range(max_trials):
-                # Randomly select endpoints inside the footprint of the HEALPix maps
-                pixels = rng.choice(
-                    pix[(hpxmap > 0) & (hpxmap2 > 0)], size=2, replace=False
-                )
-                ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
-                endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
-                frame = gc.GreatCircleICRSFrame.from_endpoints(
-                    endpoints_trial[0], endpoints_trial[1]
-                )
-                if (
-                    phi1_check is not None
-                ):  # Verify that phi1_check values map to valid pixels
-                    phi2_zeros = np.zeros_like(phi1_check) * u.deg
-                    phi1_check_u = np.array(phi1_check) * u.deg
-                    coords = coord.SkyCoord(
-                        phi1=phi1_check_u, phi2=phi2_zeros, frame=frame
-                    )
-                    ra_check = coords.icrs.ra.deg
-                    dec_check = coords.icrs.dec.deg
-                    pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
-                    if np.all((hpxmap[pix_check] > 0) & (hpxmap2[pix_check] > 0)):
-                        self.endpoints = endpoints_trial
-                        print(
-                            f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}"
-                        )
-                        break
-                    else:
-                        print(
-                            f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check."
-                        )
-                else:
-                    self.endpoints = endpoints_trial
-                    break
-            if self.endpoints is None:
-                raise RuntimeError(
-                    f"Could not find suitable endpoints after {max_trials}."
-                )
         # Use Gala to create the stream coordinate frame
         frame = gc.GreatCircleICRSFrame.from_endpoints(
             self.endpoints[0], self.endpoints[1]
@@ -444,6 +388,144 @@ class StreamObserved:
         stream = coord.SkyCoord(phi1=phi1, phi2=phi2, frame=frame)
 
         return stream
+
+    def _choose_endpoints(
+        self, rng=None, seed=None, mask_config=None, phi1=None, phi2=None
+    ):
+        """
+        Randomly choose endpoints for the great circle within the survey footprint.
+
+        Parameters
+        ----------
+        rng : np.random.Generator, optional
+            Random number generator. If None, uses the default random generator with a seed.
+        seed : int, optional
+            Seed for the random number generator. Used only if rng is None.
+
+        Returns
+        -------
+        endpoints : SkyCoord[2]
+            Randomly chosen endpoints.
+        """
+
+        if rng is None:  # use the seed if provided
+            rng = np.random.default_rng(seed)
+
+        if (
+            mask_config is None
+        ):  # if no mask, choose random endpoints anywhere on the sky
+            ra, dec = rng.uniform(0, 360, size=2), rng.uniform(-90, 90, size=2)
+            endpoints = coord.SkyCoord(ra * u.deg, dec * u.deg)
+            return endpoints
+
+        mask = self._create_mask(mask_config.get("mask_type", ["footprint"]))
+        pix = np.arange(len(mask))
+        nside = hp.get_nside(mask)
+
+        for _ in range(mask_config.get("max_trials", 10)):
+            # Randomly select endpoints inside the footprint of the HEALPix maps
+            pixels = rng.choice(pix[mask > 0], size=2, replace=False)
+            ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
+            endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
+            frame = gc.GreatCircleICRSFrame.from_endpoints(
+                endpoints_trial[0], endpoints_trial[1]
+            )
+
+            phi1_check = mask_config.get("phi1_check", None)
+            if (
+                phi1_check is not None
+            ):  # Verify that phi1_check values map to valid pixels
+                if isinstance(phi1_check, (list, np.ndarray)):
+                    print("Checking provided phi1 values for valid pixels.")
+                    phi1_check = np.array(phi1_check) * u.deg
+                    phi2_check = np.zeros_like(phi1_check) * u.deg
+                elif phi1_check == "all":
+                    print("Checking all provided phi1 values for valid pixels.")
+                    if phi1 is None or phi2 is None:
+                        raise ValueError(
+                            "phi1 and phi2 must be provided if phi1_check is 'all'."
+                        )
+                    phi1_check = np.array(phi1) * u.deg
+                    phi2_check = np.zeros_like(phi2) * u.deg
+                else:
+                    raise ValueError("phi1_check must be a list, array, or 'all'.")
+
+                coords = coord.SkyCoord(phi1=phi1_check, phi2=phi2_check, frame=frame)
+                ra_check = coords.icrs.ra.deg
+                dec_check = coords.icrs.dec.deg
+                pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
+
+                if (
+                    np.sum(mask[pix_check] > 0) / len(pix_check) > 0.99
+                ):  # at least 99% of the points should be valid
+                    endpoints = endpoints_trial
+                    print(
+                        f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}"
+                    )
+                    break
+                else:
+                    print(
+                        f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check."
+                    )
+            else:
+                endpoints = endpoints_trial
+                break
+        if endpoints is None:
+            raise RuntimeError(
+                f"Could not find suitable endpoints after {mask_config.get('max_trials', 10)}."
+            )
+        return endpoints
+
+    def _create_mask(self, mask_type):
+        if isinstance(mask_type, str):
+            mask_type = [mask_type]
+        elif isinstance(mask_type, list):
+            pass
+        else:
+            raise ValueError("mask_type must be a string or a list of strings.")
+
+        # Find the minimum nside among the needed maps
+        nside_min = None
+        maps = {}
+
+        if "footprint" in mask_type:
+            mask_type.remove("footprint")
+            mask_type.append("maglim_r")
+            mask_type.append("maglim_g")
+
+        for m in mask_type:
+            if m == "maglim_g":
+                nside = hp.get_nside(self.maglim_map_g)
+                maps[m] = self.maglim_map_g
+                if nside_min is None or nside < nside_min:
+                    nside_min = nside
+            elif m == "maglim_r":
+                nside = hp.get_nside(self.maglim_map_r)
+                maps[m] = self.maglim_map_r
+                if nside_min is None or nside < nside_min:
+                    nside_min = nside
+            elif m == "ebv":
+                nside = hp.get_nside(self.ebv_map)
+                maps[m] = self.ebv_map
+                if nside_min is None or nside < nside_min:
+                    nside_min = nside
+            else:
+                raise ValueError(f"Unknown mask type: {m}")
+
+        for m in maps:
+            nside = hp.get_nside(maps[m])
+            if nside != nside_min:
+                maps[m] = hp.ud_grade(maps[m], nside_min)
+                print(f"Upgrading {m} from nside {nside} to {nside_min}.")
+
+        mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
+        for m in mask_type:
+            if m in ["maglim_g", "maglim_r"]:
+                mask_map &= maps[m] > 0
+            elif m == "ebv":
+                mask_map &= maps[m] < 0.2  # arbitrary high value to exclude bad data
+
+        return mask_map
 
     def extinction(self, pix):
         """
