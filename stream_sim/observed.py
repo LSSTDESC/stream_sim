@@ -230,6 +230,7 @@ class StreamObserved:
             data["phi2"],
             seed=seed,
             rng=rng,
+            **kwargs,
         )
         pix = hp.ang2pix(
             4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
@@ -480,18 +481,55 @@ class StreamObserved:
 
 
     def _random_uniform_skycoord(self,rng):
+        """Generate a random point uniformly distributed on the sky."""
         z = rng.uniform(-1.0, 1.0)
         dec = np.degrees(np.arcsin(z))
         ra = rng.uniform(0.0, 360.0) 
         return coord.SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
 
     def _fraction_inside_mask(self,ra_deg, dec_deg, healpix_mask):
+        """
+        Calculate the fraction of points that fall within valid mask regions.
+        
+        Parameters
+        ----------
+        ra_deg, dec_deg : array-like
+            Coordinates in degrees.
+        healpix_mask : array-like
+            Boolean HEALPix mask array.
+            
+        Returns
+        -------
+        float
+            Fraction of points inside mask (0.0 to 1.0).
+        """
         nside = hp.get_nside(healpix_mask)
-        pix_check = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
-        return np.count_nonzero(healpix_mask[pix_check]) / len(pix_check)
+        pix_indices = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
+        return np.count_nonzero(healpix_mask[pix_indices]) / len(pix_indices)
 
 
-    def _create_mask(self, mask_type, verbose=True):
+    def _create_mask(self, mask_type, verbose=True, ebv_threshold=0.2):
+        """
+        Create a combined boolean mask from specified mask types.
+        
+        Parameters
+        ----------
+        mask_type : str or list of str
+            Type(s) of masks to combine. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+        ebv_threshold : float, default 0.2
+            E(B-V) threshold for extinction mask.
+            
+        Returns
+        -------
+        numpy.ndarray
+            Combined boolean mask array.
+            
+        Raises
+        ------
+        ValueError
+            If mask_type is invalid or required maps are missing.
+        """
+            
         if isinstance(mask_type, str):
             mask_type = [mask_type]
         elif isinstance(mask_type, list):
@@ -503,46 +541,47 @@ class StreamObserved:
         else:
             raise ValueError("mask_type must be a string or a list of strings.")
 
-        # Find the minimum nside among the needed maps
-        nside_min = None
-        maps = {}
-
+        # "footprint" mask as a combination of maglim maps in any bands
         if "footprint" in mask_type:
             mask_type.remove("footprint")
             mask_type.append("maglim_r")
             mask_type.append("maglim_g")
 
+
+        # Find the minimum nside among the needed maps
+        nside_target = []
+        maps = {}
         for m in mask_type:
             if m == "maglim_g":
                 nside = hp.get_nside(self.maglim_map_g)
                 maps[m] = self.maglim_map_g
-                if nside_min is None or nside < nside_min:
-                    nside_min = nside
+                nside_target.append(nside)
             elif m == "maglim_r":
                 nside = hp.get_nside(self.maglim_map_r)
                 maps[m] = self.maglim_map_r
-                if nside_min is None or nside < nside_min:
-                    nside_min = nside
+                nside_target.append(nside)
             elif m == "ebv":
                 nside = hp.get_nside(self.ebv_map)
                 maps[m] = self.ebv_map
-                if nside_min is None or nside < nside_min:
-                    nside_min = nside
+                nside_target.append(nside)
             else:
                 raise ValueError(f"Unknown mask type: {m}")
+        nside_min = min(nside_target)
 
+        # Upgrade all maps to the minimum nside
         for m in maps:
             nside = hp.get_nside(maps[m])
             if nside != nside_min:
                 maps[m] = hp.ud_grade(maps[m], nside_min)
                 print(f"Upgrading {m} from nside {nside} to {nside_min}.")
 
+        # Combine the masks
         mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
         for m in mask_type:
-            if m in ["maglim_g", "maglim_r"]:
+            if m in ["maglim_g", "maglim_r"]: # valid if maglim > 0
                 mask_map &= maps[m] > 0
-            elif m == "ebv":
-                mask_map &= maps[m] < 0.2  # arbitrary high value to exclude bad data
+            elif m == "ebv": # select low extinction regions
+                mask_map &= maps[m] < ebv_threshold  
 
         return mask_map
 
