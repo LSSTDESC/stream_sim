@@ -405,7 +405,7 @@ class StreamObserved:
 
 
     def _find_gc_frame(self, phi1 = None, phi2 = None, mask = None, mask_type = ["footprint"],
-        percentile_threshold=0.99, max_iter=100,rng=None,seed=None,verbose=True, **kwargs,
+        percentile_threshold=0.99, max_iter=1000,rng=None,seed=None,verbose=True, **kwargs,
     ):
         """
         Find a great circle frame such that a high fraction of points lie within the chosen mask.
