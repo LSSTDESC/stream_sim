@@ -897,7 +897,6 @@ class StreamObserved:
         )
         ax[0].set_xlabel("RA (deg)")
         ax[0].set_ylabel("Dec (deg)")
-        ax[0].scatter(self.endpoints.ra.deg, self.endpoints.dec.deg, s=25, c="r")
         ax[0].legend()
 
         ax[1].set_title("HR diagram using True magnitudes")
