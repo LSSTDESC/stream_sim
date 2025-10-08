@@ -476,10 +476,12 @@ class StreamObserved:
         while trials < max_iter:
             trials += 1
 
+            # Generate random endpoints for the great circle
             end1 = self._random_uniform_skycoord(rng)
             end2 = self._random_uniform_skycoord(rng)
             gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
 
+            # Transform stream points to ICRS and check mask coverage
             pts_gc = coord.SkyCoord(
                 phi1=phi1 * u.deg, phi2=phi2 * u.deg, frame=gc_frame
             )
