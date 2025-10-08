@@ -342,12 +342,12 @@ class StreamObserved:
         gc_frame=None,
         seed=None,
         rng=None,
-        mask_type= ["footprint"],
+        mask_type=["footprint"],
         **kwargs,
     ):
         """
         Transform stream coordinates (phi1, phi2) to sky coordinates (RA, Dec).
-        
+
         This method converts stream coordinates to celestial coordinates using a great circle
         frame. If no frame is provided, it automatically finds one randomly chosen such that a given percentile
         of the points lie within the mask defined with mask_type.
@@ -365,19 +365,19 @@ class StreamObserved:
         mask_type : list of str, default ["footprint"]
             Types of masks to use for footprint validation.
             Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
-            
+
         Returns
         -------
         stream : astropy.coordinates.SkyCoord
             Sky coordinates in ICRS frame.
-            
+
         Raises
         ------
         ValueError
             If phi1 and phi2 have different lengths or contain invalid values.
         RuntimeError
             If no suitable great circle frame could be found.
-            
+
         Examples
         --------
         >>> phi1 = np.linspace(-10, 10, 1000)
@@ -387,29 +387,43 @@ class StreamObserved:
         # Input validation
         phi1_arr = np.asarray(phi1, dtype=float)
         phi2_arr = np.asarray(phi2, dtype=float)
-        
+
         if phi1_arr.size == 0 or phi2_arr.size == 0:
             raise ValueError("phi1 and phi2 cannot be empty arrays")
-            
+
         self.gc_frame = gc_frame
         if self.gc_frame is None:
             self.gc_frame = self._find_gc_frame(
-                rng=rng, seed=seed, mask_type=mask_type, phi1=phi1_arr, phi2=phi2_arr, **kwargs,
+                rng=rng,
+                seed=seed,
+                mask_type=mask_type,
+                phi1=phi1_arr,
+                phi2=phi2_arr,
+                **kwargs,
             )
-        
+
         phi1_deg = phi1_arr * u.deg
         phi2_deg = phi2_arr * u.deg
         stream = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
 
         return stream
 
-
-    def _find_gc_frame(self, phi1 = None, phi2 = None, mask = None, mask_type = ["footprint"],
-        percentile_threshold=0.99, max_iter=1000,rng=None,seed=None,verbose=True, **kwargs,
+    def _find_gc_frame(
+        self,
+        phi1=None,
+        phi2=None,
+        mask=None,
+        mask_type=["footprint"],
+        percentile_threshold=0.99,
+        max_iter=1000,
+        rng=None,
+        seed=None,
+        verbose=True,
+        **kwargs,
     ):
         """
         Find a great circle frame such that a high fraction of points lie within the chosen mask.
-        
+
         This method iteratively tries random great circle orientations until it finds
         one where at least `percentile_threshold` of the stream points fall within
         the survey mask.
@@ -428,7 +442,7 @@ class StreamObserved:
             Maximum number of random trials.
         verbose : bool, default True
             Whether to print progress information.
-            
+
         Returns
         -------
         gc_frame : gala.coordinates.GreatCircleICRSFrame or None
@@ -465,39 +479,44 @@ class StreamObserved:
             end1 = self._random_uniform_skycoord(rng)
             end2 = self._random_uniform_skycoord(rng)
             gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
-            
-            pts_gc = coord.SkyCoord(phi1=phi1*u.deg, phi2=phi2*u.deg, frame=gc_frame)
-            pts_icrs = pts_gc.transform_to('icrs')
+
+            pts_gc = coord.SkyCoord(
+                phi1=phi1 * u.deg, phi2=phi2 * u.deg, frame=gc_frame
+            )
+            pts_icrs = pts_gc.transform_to("icrs")
             ra_all = pts_icrs.ra.deg
             dec_all = pts_icrs.dec.deg
             frac = self._fraction_inside_mask(ra_all, dec_all, healpix_mask)
             if frac >= percentile_threshold:
                 if verbose:
-                    print(f"Found suitable great circle frame after {trials} trials with {frac*100:.2f}% points inside the mask.")
+                    print(
+                        f"Found suitable great circle frame after {trials} trials with {frac*100:.2f}% points inside the mask."
+                    )
                 return gc_frame
         if verbose:
-            print(f"Could not find a suitable great circle frame after {max_iter} trials.")
+            print(
+                f"Could not find a suitable great circle frame after {max_iter} trials."
+            )
         return None
 
-
-    def _random_uniform_skycoord(self,rng):
+    def _random_uniform_skycoord(self, rng):
         """Generate a random point uniformly distributed on the sky."""
         z = rng.uniform(-1.0, 1.0)
         dec = np.degrees(np.arcsin(z))
-        ra = rng.uniform(0.0, 360.0) 
-        return coord.SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+        ra = rng.uniform(0.0, 360.0)
+        return coord.SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")
 
-    def _fraction_inside_mask(self,ra_deg, dec_deg, healpix_mask):
+    def _fraction_inside_mask(self, ra_deg, dec_deg, healpix_mask):
         """
         Calculate the fraction of points that fall within valid mask regions.
-        
+
         Parameters
         ----------
         ra_deg, dec_deg : array-like
             Coordinates in degrees.
         healpix_mask : array-like
             Boolean HEALPix mask array.
-            
+
         Returns
         -------
         float
@@ -507,29 +526,28 @@ class StreamObserved:
         pix_indices = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
         return np.count_nonzero(healpix_mask[pix_indices]) / len(pix_indices)
 
-
     def _create_mask(self, mask_type, verbose=True, ebv_threshold=0.2):
         """
         Create a combined boolean mask from specified mask types.
-        
+
         Parameters
         ----------
         mask_type : str or list of str
             Type(s) of masks to combine. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
         ebv_threshold : float, default 0.2
             E(B-V) threshold for extinction mask.
-            
+
         Returns
         -------
         numpy.ndarray
             Combined boolean mask array.
-            
+
         Raises
         ------
         ValueError
             If mask_type is invalid or required maps are missing.
         """
-            
+
         if isinstance(mask_type, str):
             mask_type = [mask_type]
         elif isinstance(mask_type, list):
@@ -546,7 +564,6 @@ class StreamObserved:
             mask_type.remove("footprint")
             mask_type.append("maglim_r")
             mask_type.append("maglim_g")
-
 
         # Find the minimum nside among the needed maps
         nside_target = []
@@ -578,10 +595,10 @@ class StreamObserved:
         # Combine the masks
         mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
         for m in mask_type:
-            if m in ["maglim_g", "maglim_r"]: # valid if maglim > 0
+            if m in ["maglim_g", "maglim_r"]:  # valid if maglim > 0
                 mask_map &= maps[m] > 0
-            elif m == "ebv": # select low extinction regions
-                mask_map &= maps[m] < ebv_threshold  
+            elif m == "ebv":  # select low extinction regions
+                mask_map &= maps[m] < ebv_threshold
 
         return mask_map
 
