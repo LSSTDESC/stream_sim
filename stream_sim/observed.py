@@ -225,16 +225,11 @@ class StreamObserved:
         rng = np.random.default_rng(seed)
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
-        endpoints = kwargs.pop("endpoints", None)
-        mask_config = kwargs.pop("mask_config", None)
-
         self.stream = self.phi_to_radec(
             data["phi1"],
             data["phi2"],
-            endpoints=endpoints,
             seed=seed,
             rng=rng,
-            mask_config=mask_config,
         )
         pix = hp.ang2pix(
             4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
@@ -343,147 +338,168 @@ class StreamObserved:
         self,
         phi1,
         phi2,
-        endpoints=None,
+        gc_frame=None,
         seed=None,
         rng=None,
-        mask_config={},
+        mask_type= ["footprint"],
+        **kwargs,
     ):
         """
-        Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
+        Transform stream coordinates (phi1, phi2) to sky coordinates (RA, Dec).
+        
+        This method converts stream coordinates to celestial coordinates using a great circle
+        frame. If no frame is provided, it automatically finds one randomly chosen such that a given percentile
+        of the points lie within the mask defined with mask_type.
 
         Parameters
         ----------
         phi1, phi2 : array-like
-            Stream coordinates.
-        endpoints : SkyCoord[2], optional
-            Endpoints for the great circle. If None, will be randomly chosen.
-        hpxmap : np.ndarray, optional
-            HEALPix map to check for valid pixels (should be same nside as used for output).
-        hpxmap2 : np.ndarray, optional
-            Second HEALPix map to check for valid pixels.
-        phi1_check : list or array, optional
-            List of phi1 values (e.g., [min, max, median]) to check for valid pixels (hpxmap&hpxmap2 > 0).
-        max_trials : int
-            Maximum number of random endpoint trials.
+            Stream coordinates in degrees.
+        gc_frame : gala.coordinates.GreatCircleICRSFrame, optional
+            Great circle coordinate frame. If None, will be automatically determined.
+        seed : int, optional
+            Random seed for reproducible frame selection.
+        rng : numpy.random.Generator, optional
+            Random number generator instance.
+        mask_type : list of str, default ["footprint"]
+            Types of masks to use for footprint validation.
+            Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+            
         Returns
         -------
-        stream : SkyCoord
-            Transformed coordinates.
+        stream : astropy.coordinates.SkyCoord
+            Sky coordinates in ICRS frame.
+            
+        Raises
+        ------
+        ValueError
+            If phi1 and phi2 have different lengths or contain invalid values.
+        RuntimeError
+            If no suitable great circle frame could be found.
+            
+        Examples
+        --------
+        >>> phi1 = np.linspace(-10, 10, 1000)
+        >>> phi2 = np.zeros_like(phi1)
+        >>> coords = obj.phi_to_radec(phi1, phi2, seed=42)
         """
-        self.endpoints = endpoints
-        if self.endpoints is None:
-            mask_config_default = {"phi1_check": "all", "mask_type": ["footprint"], "max_trials": 10}
-            if mask_config is not None:
-                for key in mask_config_default:
-                    if key not in mask_config:
-                        mask_config[key] = mask_config_default[key]
-
-            self.endpoints = self._choose_endpoints(
-                rng=rng, seed=seed, mask_config=mask_config, phi1=phi1, phi2=phi2
+        # Input validation
+        phi1_arr = np.asarray(phi1, dtype=float)
+        phi2_arr = np.asarray(phi2, dtype=float)
+        
+        if phi1_arr.size == 0 or phi2_arr.size == 0:
+            raise ValueError("phi1 and phi2 cannot be empty arrays")
+            
+        self.gc_frame = gc_frame
+        if self.gc_frame is None:
+            self.gc_frame = self._find_gc_frame(
+                rng=rng, seed=seed, mask_type=mask_type, phi1=phi1_arr, phi2=phi2_arr, **kwargs,
             )
-
-        # Use Gala to create the stream coordinate frame
-        frame = gc.GreatCircleICRSFrame.from_endpoints(
-            self.endpoints[0], self.endpoints[1]
-        )
-        phi1 = np.array(phi1) * u.deg
-        phi2 = np.array(phi2) * u.deg
-        stream = coord.SkyCoord(phi1=phi1, phi2=phi2, frame=frame)
+        
+        phi1_deg = phi1_arr * u.deg
+        phi2_deg = phi2_arr * u.deg
+        stream = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
 
         return stream
 
-    def _choose_endpoints(
-        self, rng=None, seed=None, mask_config=None, phi1=None, phi2=None
+
+    def _find_gc_frame(self, phi1 = None, phi2 = None, mask = None, mask_type = ["footprint"],
+        percentile_threshold=0.99, max_iter=100,rng=None,seed=None,verbose=True, **kwargs,
     ):
         """
-        Randomly choose endpoints for the great circle within the survey footprint.
+        Find a great circle frame such that a high fraction of points lie within the chosen mask.
+        
+        This method iteratively tries random great circle orientations until it finds
+        one where at least `percentile_threshold` of the stream points fall within
+        the survey mask.
 
         Parameters
         ----------
-        rng : np.random.Generator, optional
-            Random number generator. If None, uses the default random generator with a seed.
-        seed : int, optional
-            Seed for the random number generator. Used only if rng is None.
-
+        phi1, phi2 : array-like
+            Stream coordinates to validate against the mask.
+        rng : numpy.random.Generator
+            Random number generator instance.
+        mask_type : list of str, default ["footprint"]
+            Types of masks to combine for footprint validation.
+        percentile_threshold : float, default 0.99
+            Minimum fraction of points that must be within the mask.
+        max_iter : int, default 100
+            Maximum number of random trials.
+        verbose : bool, default True
+            Whether to print progress information.
+            
         Returns
         -------
-        endpoints : SkyCoord[2]
-            Randomly chosen endpoints.
+        gc_frame : gala.coordinates.GreatCircleICRSFrame or None
+            Great circle frame, or None if no suitable frame found.
         """
-
-        if rng is None:  # use the seed if provided
+        if rng is None:
             rng = np.random.default_rng(seed)
 
-        if (
-            mask_config is None
-        ):  # if no mask, choose random endpoints anywhere on the sky
-            ra, dec = rng.uniform(0, 360, size=2), rng.uniform(-90, 90, size=2)
-            endpoints = coord.SkyCoord(ra * u.deg, dec * u.deg)
-            return endpoints
+        # Create the mask if not provided
+        if mask is None:
+            healpix_mask = self._create_mask(mask_type, verbose=verbose)
+        else:
+            healpix_mask = mask
+            if verbose:
+                print("Using provided HEALPix mask for footprint checking.")
 
-        mask = self._create_mask(mask_config.get("mask_type", ["footprint"]))
-        pix = np.arange(len(mask))
-        nside = hp.get_nside(mask)
+        # If no mask is available, return a random great circle frame
+        if healpix_mask is None:
+            if verbose:
+                print("No mask available, returning a random great circle frame.")
+            end1 = self._random_uniform_skycoord(rng)
+            end2 = self._random_uniform_skycoord(rng)
+            gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
+            return gc_frame
 
-        for _ in range(mask_config.get("max_trials", 10)):
-            # Randomly select endpoints inside the footprint of the HEALPix maps
-            pixels = rng.choice(pix[mask > 0], size=2, replace=False)
-            ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
-            endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
-            frame = gc.GreatCircleICRSFrame.from_endpoints(
-                endpoints_trial[0], endpoints_trial[1]
-            )
+        if phi1 is None or phi2 is None:
+            raise ValueError("phi1 and phi2 must be provided if no mask is given.")
 
-            phi1_check = mask_config.get("phi1_check", None)
-            if (
-                phi1_check is not None
-            ):  # Verify that phi1_check values map to valid pixels
-                if isinstance(phi1_check, (list, np.ndarray)):
-                    print("Checking provided phi1 values for valid pixels.")
-                    phi1_check = np.array(phi1_check) * u.deg
-                    phi2_check = np.zeros_like(phi1_check) * u.deg
-                elif phi1_check == "all":
-                    print("Checking all provided phi1 values for valid pixels.")
-                    if phi1 is None or phi2 is None:
-                        raise ValueError(
-                            "phi1 and phi2 must be provided if phi1_check is 'all'."
-                        )
-                    phi1_check = np.array(phi1) * u.deg
-                    phi2_check = np.zeros_like(phi2) * u.deg
-                else:
-                    raise ValueError("phi1_check must be a list, array, or 'all'.")
+        # Iteratively try random great circle frames
+        trials = 0
+        while trials < max_iter:
+            trials += 1
 
-                coords = coord.SkyCoord(phi1=phi1_check, phi2=phi2_check, frame=frame)
-                ra_check = coords.icrs.ra.deg
-                dec_check = coords.icrs.dec.deg
-                pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
+            end1 = self._random_uniform_skycoord(rng)
+            end2 = self._random_uniform_skycoord(rng)
+            gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
+            
+            pts_gc = coord.SkyCoord(phi1=phi1*u.deg, phi2=phi2*u.deg, frame=gc_frame)
+            pts_icrs = pts_gc.transform_to('icrs')
+            ra_all = pts_icrs.ra.deg
+            dec_all = pts_icrs.dec.deg
+            frac = self._fraction_inside_mask(ra_all, dec_all, healpix_mask)
+            if frac >= percentile_threshold:
+                if verbose:
+                    print(f"Found suitable great circle frame after {trials} trials with {frac*100:.2f}% points inside the mask.")
+                return gc_frame
+        if verbose:
+            print(f"Could not find a suitable great circle frame after {max_iter} trials.")
+        return None
 
-                if (
-                    np.sum(mask[pix_check] > 0) / len(pix_check) > 0.99
-                ):  # at least 99% of the points should be valid
-                    endpoints = endpoints_trial
-                    print(
-                        f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}"
-                    )
-                    break
-                else:
-                    print(
-                        f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check."
-                    )
-            else:
-                endpoints = endpoints_trial
-                break
-        if endpoints is None:
-            raise RuntimeError(
-                f"Could not find suitable endpoints after {mask_config.get('max_trials', 10)}."
-            )
-        return endpoints
 
-    def _create_mask(self, mask_type):
+    def _random_uniform_skycoord(self,rng):
+        z = rng.uniform(-1.0, 1.0)
+        dec = np.degrees(np.arcsin(z))
+        ra = rng.uniform(0.0, 360.0) 
+        return coord.SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+
+    def _fraction_inside_mask(self,ra_deg, dec_deg, healpix_mask):
+        nside = hp.get_nside(healpix_mask)
+        pix_check = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
+        return np.count_nonzero(healpix_mask[pix_check]) / len(pix_check)
+
+
+    def _create_mask(self, mask_type, verbose=True):
         if isinstance(mask_type, str):
             mask_type = [mask_type]
         elif isinstance(mask_type, list):
             pass
+        elif mask_type is None:
+            if verbose:
+                print("No mask_type provided to build mask.")
+            return None
         else:
             raise ValueError("mask_type must be a string or a list of strings.")
 
