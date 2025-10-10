@@ -68,44 +68,6 @@ def plot_stream(phi1, phi2):
     return fig, ax
 
 
-def plot_stream_mask(ra, dec, mask):
-    """Plot binned histogram of stream with mask.
-
-    Parameters
-    ----------
-    phi1, phi2 : coordinates of stars (deg)
-    mask : boolean array, True for masked points
-
-    Returns
-    -------
-    fig, ax : the figure and axis
-    """
-    fig = plt.figure(dpi=175, figsize=(10, 2.5))
-    gs = fig.add_gridspec(1, 1, wspace=0, hspace=0)
-    plt.subplots_adjust(bottom=0.2)
-
-    ax = fig.add_subplot(gs[0, 0])
-    hist, xedges, yedges, image = draw_stream(phi1, phi2)
-
-    # Overlay mask
-    phi1_bins = np.linspace(phi1.min(), phi1.max(), 100)
-    phi2_bins = np.linspace(phi2.min(), phi2.max(), 100)
-    hist_mask, _, _ = np.histogram2d(phi1[mask], phi2[mask],
-                                     bins=[phi1_bins, phi2_bins],
-    )
-    ax.imshow(
-        hist_mask.T,
-        extent=[xedges.min(), xedges.max(), yedges.min(), yedges.max()],
-        aspect="auto",
-        vmin=0.5,
-        vmax=0.5,
-        origin="lower",
-        cmap="Reds",
-        alpha=0.5,
-    )
-    return fig, ax
-
-
 def plot_stream_in_mask(ra,dec,mask, nest=False, output_folder = None):
     """Plot stream in mask using healpy and skyproj.
 
@@ -129,7 +91,7 @@ def plot_stream_in_mask(ra,dec,mask, nest=False, output_folder = None):
     sp = skyproj.McBrydeSkyproj(ax=ax)
     sp.draw_hpxmap(mask, nest=nest)
     sp.ax.scatter(ra, dec, color='red', s=10, label='Stream', alpha=0.5)
-    sp.ax.legend()
+    sp.ax.legend(loc='lower left')
     plt.colorbar()
     fig.tight_layout()
 
