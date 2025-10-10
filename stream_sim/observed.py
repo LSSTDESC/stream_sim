@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import pylab as plt
 import scipy
+from .plotting import plot_stream_in_mask  
 
 
 class StreamObserved:
@@ -306,6 +307,8 @@ class StreamObserved:
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
 
+        self.data = data
+
         return data
 
     def _load_data(self, data):
@@ -458,6 +461,8 @@ class StreamObserved:
             healpix_mask = mask
             if verbose:
                 print("Using provided HEALPix mask for footprint checking.")
+
+        self.mask = healpix_mask
 
         # If no mask is available, return a random great circle frame
         if healpix_mask is None:
@@ -983,3 +988,14 @@ class StreamObserved:
             filename = os.path.join(folder, file_name + ".png")
             print(f"Writing data: {filename}...")
             plt.savefig(filename)
+
+
+    def plot_stream_in_mask(self, **kwargs):
+        """
+        Plot the stream over the footprint mask.
+        """
+        if not hasattr(self, "data"):
+            raise ValueError("No data found. Please run the 'inject' method first.")
+
+        fig,ax = plot_stream_in_mask(self.data["ra"], self.data["dec"], self.mask, output_folder=kwargs.get("output_folder"))
+        return fig, ax
