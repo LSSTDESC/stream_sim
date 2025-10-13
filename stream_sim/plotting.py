@@ -91,7 +91,7 @@ def plot_stream_in_mask(ra,dec,mask, nest=False, output_folder = None):
     sp = skyproj.McBrydeSkyproj(ax=ax)
     sp.draw_hpxmap(mask, nest=nest)
     sp.ax.scatter(ra, dec, color='red', s=10, label='Stream', alpha=0.5)
-    sp.ax.legend(loc='lower left')
+    sp.ax.legend(loc='lower right')
     plt.colorbar()
     fig.tight_layout()
 

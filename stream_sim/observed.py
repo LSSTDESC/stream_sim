@@ -603,7 +603,7 @@ class StreamObserved:
         mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
         for m in mask_type:
             if m in ["maglim_g", "maglim_r"]:  # valid if maglim > 0
-                mask_map &= maps[m] > 0
+                mask_map &= maps[m] > self.saturation
             elif m == "ebv":  # select low extinction regions
                 mask_map &= maps[m] < ebv_threshold
 
