@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 
-import os
 import copy
-import healpy as hp
+import os
+
 import astropy.coordinates as coord
 import astropy.units as u
 import gala.coordinates as gc
+import healpy as hp
 import numpy as np
-import scipy
-import pylab as plt
 import pandas as pd
+import pylab as plt
+import scipy
+from .plotting import plot_stream_in_mask  
 
 
 class StreamObserved:
@@ -224,19 +226,12 @@ class StreamObserved:
         rng = np.random.default_rng(seed)
 
         # Convert coordinates (Phi1, Phi2) into (ra,dec)
-        endpoints = kwargs.pop("endpoints", None)
-        phi_check_percentiles = kwargs.pop("phi_check_percentiles", [0, 100, 50])
-        if phi_check_percentiles is not None:
-            phi1_check = np.percentile(data["phi1"], phi_check_percentiles)
-        else:
-            phi1_check = None
         self.stream = self.phi_to_radec(
             data["phi1"],
             data["phi2"],
-            endpoints=endpoints,
             seed=seed,
             rng=rng,
-            phi1_check=phi1_check,
+            **kwargs,
         )
         pix = hp.ang2pix(
             4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
@@ -312,6 +307,8 @@ class StreamObserved:
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
 
+        self.data = data
+
         return data
 
     def _load_data(self, data):
@@ -345,105 +342,272 @@ class StreamObserved:
         self,
         phi1,
         phi2,
-        endpoints=None,
+        gc_frame=None,
         seed=None,
         rng=None,
-        hpxmap=None,
-        hpxmap2=None,
-        phi1_check=None,
-        max_trials=10,
+        mask_type=["footprint"],
+        **kwargs,
     ):
         """
-        Transform coordinates (phi1,phi2) to (ra,dec), ensuring that specified phi1 values map to valid pixels.
+        Transform stream coordinates (phi1, phi2) to sky coordinates (RA, Dec).
+
+        This method converts stream coordinates to celestial coordinates using a great circle
+        frame. If no frame is provided, it automatically finds one randomly chosen such that a given percentile
+        of the points lie within the mask defined with mask_type.
 
         Parameters
         ----------
         phi1, phi2 : array-like
-            Stream coordinates.
-        endpoints : SkyCoord[2], optional
-            Endpoints for the great circle. If None, will be randomly chosen.
-        hpxmap : np.ndarray, optional
-            HEALPix map to check for valid pixels (should be same nside as used for output).
-        hpxmap2 : np.ndarray, optional
-            Second HEALPix map to check for valid pixels.
-        phi1_check : list or array, optional
-            List of phi1 values (e.g., [min, max, median]) to check for valid pixels (hpxmap&hpxmap2 > 0).
-        max_trials : int
-            Maximum number of random endpoint trials.
+            Stream coordinates in degrees.
+        gc_frame : gala.coordinates.GreatCircleICRSFrame, optional
+            Great circle coordinate frame. If None, will be automatically determined.
+        seed : int, optional
+            Random seed for reproducible frame selection.
+        rng : numpy.random.Generator, optional
+            Random number generator instance.
+        mask_type : list of str, default ["footprint"]
+            Types of masks to use for footprint validation.
+            Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+
         Returns
         -------
-        stream : SkyCoord
-            Transformed coordinates.
+        stream : astropy.coordinates.SkyCoord
+            Sky coordinates in ICRS frame.
+
+        Raises
+        ------
+        ValueError
+            If phi1 and phi2 have different lengths or contain invalid values.
+        RuntimeError
+            If no suitable great circle frame could be found.
+
+        Examples
+        --------
+        >>> phi1 = np.linspace(-10, 10, 1000)
+        >>> phi2 = np.zeros_like(phi1)
+        >>> coords = obj.phi_to_radec(phi1, phi2, seed=42)
         """
-        self.endpoints = endpoints
-        if self.endpoints is None:
-            hpxmap = hpxmap if hpxmap is not None else self.maglim_map_r
-            hpxmap2 = hpxmap2 if hpxmap2 is not None else self.maglim_map_g
+        # Input validation
+        phi1_arr = np.asarray(phi1, dtype=float)
+        phi2_arr = np.asarray(phi2, dtype=float)
 
-            nside = hp.get_nside(hpxmap)
-            nside2 = hp.get_nside(hpxmap2)
-            if nside != nside2:
-                # Convert hpxmap and hpxmap2 to the same nside (the smallest)
-                min_nside = min(nside, nside2)
-                if nside != min_nside:
-                    hpxmap = hp.ud_grade(hpxmap, min_nside)
-                    print(f"Upgrading hpxmap from nside {nside} to {min_nside}.")
-                if nside2 != min_nside:
-                    hpxmap2 = hp.ud_grade(hpxmap2, min_nside)
-                    print(f"Upgrading hpxmap2 from nside {nside2} to {min_nside}.")
-                nside = min_nside
+        if phi1_arr.size == 0 or phi2_arr.size == 0:
+            raise ValueError("phi1 and phi2 cannot be empty arrays")
 
-            if rng is None:  # use the seed if provided
-                rng = np.random.default_rng(seed)
+        self.gc_frame = gc_frame
+        if self.gc_frame is None:
+            self.gc_frame = self._find_gc_frame(
+                rng=rng,
+                seed=seed,
+                mask_type=mask_type,
+                phi1=phi1_arr,
+                phi2=phi2_arr,
+                **kwargs,
+            )
 
-            pix = np.arange(len(hpxmap))
-            for _ in range(max_trials):
-                # Randomly select endpoints inside the footprint of the HEALPix maps
-                pixels = rng.choice(
-                    pix[(hpxmap > 0) & (hpxmap2 > 0)], size=2, replace=False
-                )
-                ra, dec = hp.pix2ang(nside, pixels, lonlat=True)
-                endpoints_trial = coord.SkyCoord(ra * u.deg, dec * u.deg)
-                frame = gc.GreatCircleICRSFrame.from_endpoints(
-                    endpoints_trial[0], endpoints_trial[1]
-                )
-                if (
-                    phi1_check is not None
-                ):  # Verify that phi1_check values map to valid pixels
-                    phi2_zeros = np.zeros_like(phi1_check) * u.deg
-                    phi1_check_u = np.array(phi1_check) * u.deg
-                    coords = coord.SkyCoord(
-                        phi1=phi1_check_u, phi2=phi2_zeros, frame=frame
-                    )
-                    ra_check = coords.icrs.ra.deg
-                    dec_check = coords.icrs.dec.deg
-                    pix_check = hp.ang2pix(nside, ra_check, dec_check, lonlat=True)
-                    if np.all((hpxmap[pix_check] > 0) & (hpxmap2[pix_check] > 0)):
-                        self.endpoints = endpoints_trial
-                        print(
-                            f"Found valid endpoints: {endpoints_trial[0]}, {endpoints_trial[1]}"
-                        )
-                        break
-                    else:
-                        print(
-                            f"Endpoints {endpoints_trial[0]}, {endpoints_trial[1]} do not map to valid pixels for phi1_check."
-                        )
-                else:
-                    self.endpoints = endpoints_trial
-                    break
-            if self.endpoints is None:
-                raise RuntimeError(
-                    f"Could not find suitable endpoints after {max_trials}."
-                )
-        # Use Gala to create the stream coordinate frame
-        frame = gc.GreatCircleICRSFrame.from_endpoints(
-            self.endpoints[0], self.endpoints[1]
-        )
-        phi1 = np.array(phi1) * u.deg
-        phi2 = np.array(phi2) * u.deg
-        stream = coord.SkyCoord(phi1=phi1, phi2=phi2, frame=frame)
+        phi1_deg = phi1_arr * u.deg
+        phi2_deg = phi2_arr * u.deg
+        stream = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
 
         return stream
+
+    def _find_gc_frame(
+        self,
+        phi1=None,
+        phi2=None,
+        mask=None,
+        mask_type=["footprint"],
+        percentile_threshold=0.99,
+        max_iter=1000,
+        rng=None,
+        seed=None,
+        verbose=True,
+        **kwargs,
+    ):
+        """
+        Find a great circle frame such that a high fraction of points lie within the chosen mask.
+
+        This method iteratively tries random great circle orientations until it finds
+        one where at least `percentile_threshold` of the stream points fall within
+        the survey mask.
+
+        Parameters
+        ----------
+        phi1, phi2 : array-like
+            Stream coordinates to validate against the mask.
+        rng : numpy.random.Generator
+            Random number generator instance.
+        mask_type : list of str, default ["footprint"]
+            Types of masks to combine for footprint validation.
+        percentile_threshold : float, default 0.99
+            Minimum fraction of points that must be within the mask.
+        max_iter : int, default 100
+            Maximum number of random trials.
+        verbose : bool, default True
+            Whether to print progress information.
+
+        Returns
+        -------
+        gc_frame : gala.coordinates.GreatCircleICRSFrame or None
+            Great circle frame, or None if no suitable frame found.
+        """
+        if rng is None:
+            rng = np.random.default_rng(seed)
+
+        # Create the mask if not provided
+        if mask is None:
+            healpix_mask = self._create_mask(mask_type, verbose=verbose)
+        else:
+            healpix_mask = mask
+            if verbose:
+                print("Using provided HEALPix mask for footprint checking.")
+
+        self.mask = healpix_mask
+
+        # If no mask is available, return a random great circle frame
+        if healpix_mask is None:
+            if verbose:
+                print("No mask available, returning a random great circle frame.")
+            end1 = self._random_uniform_skycoord(rng)
+            end2 = self._random_uniform_skycoord(rng)
+            gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
+            return gc_frame
+
+        if phi1 is None or phi2 is None:
+            raise ValueError("phi1 and phi2 must be provided if no mask is given.")
+
+        # Iteratively try random great circle frames
+        trials = 0
+        while trials < max_iter:
+            trials += 1
+
+            # Generate random endpoints for the great circle
+            end1 = self._random_uniform_skycoord(rng)
+            end2 = self._random_uniform_skycoord(rng)
+            gc_frame = gc.GreatCircleICRSFrame.from_endpoints(end1, end2)
+
+            # Transform stream points to ICRS and check mask coverage
+            pts_gc = coord.SkyCoord(
+                phi1=phi1 * u.deg, phi2=phi2 * u.deg, frame=gc_frame
+            )
+            pts_icrs = pts_gc.transform_to("icrs")
+            ra_all = pts_icrs.ra.deg
+            dec_all = pts_icrs.dec.deg
+            frac = self._fraction_inside_mask(ra_all, dec_all, healpix_mask)
+            if frac >= percentile_threshold:
+                if verbose:
+                    print(
+                        f"Found suitable great circle frame after {trials} trials with {frac*100:.2f}% points inside the mask."
+                    )
+                return gc_frame
+        if verbose:
+            print(
+                f"Could not find a suitable great circle frame after {max_iter} trials."
+            )
+        return None
+
+    def _random_uniform_skycoord(self, rng):
+        """Generate a random point uniformly distributed on the sky."""
+        z = rng.uniform(-1.0, 1.0)
+        dec = np.degrees(np.arcsin(z))
+        ra = rng.uniform(0.0, 360.0)
+        return coord.SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")
+
+    def _fraction_inside_mask(self, ra_deg, dec_deg, healpix_mask):
+        """
+        Calculate the fraction of points that fall within valid mask regions.
+
+        Parameters
+        ----------
+        ra_deg, dec_deg : array-like
+            Coordinates in degrees.
+        healpix_mask : array-like
+            Boolean HEALPix mask array.
+
+        Returns
+        -------
+        float
+            Fraction of points inside mask (0.0 to 1.0).
+        """
+        nside = hp.get_nside(healpix_mask)
+        pix_indices = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
+        return np.count_nonzero(healpix_mask[pix_indices]) / len(pix_indices)
+
+    def _create_mask(self, mask_type, verbose=True, ebv_threshold=0.2):
+        """
+        Create a combined boolean mask from specified mask types.
+
+        Parameters
+        ----------
+        mask_type : str or list of str
+            Type(s) of masks to combine. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+        ebv_threshold : float, default 0.2
+            E(B-V) threshold for extinction mask.
+
+        Returns
+        -------
+        numpy.ndarray
+            Combined boolean mask array.
+
+        Raises
+        ------
+        ValueError
+            If mask_type is invalid or required maps are missing.
+        """
+
+        if isinstance(mask_type, str):
+            mask_type = [mask_type]
+        elif isinstance(mask_type, list):
+            pass
+        elif mask_type is None:
+            if verbose:
+                print("No mask_type provided to build mask.")
+            return None
+        else:
+            raise ValueError("mask_type must be a string or a list of strings.")
+
+        # "footprint" mask as a combination of maglim maps in any bands
+        if "footprint" in mask_type:
+            mask_type.remove("footprint")
+            mask_type.append("maglim_r")
+            mask_type.append("maglim_g")
+
+        # Find the minimum nside among the needed maps
+        nside_target = []
+        maps = {}
+        for m in mask_type:
+            if m == "maglim_g":
+                nside = hp.get_nside(self.maglim_map_g)
+                maps[m] = self.maglim_map_g
+                nside_target.append(nside)
+            elif m == "maglim_r":
+                nside = hp.get_nside(self.maglim_map_r)
+                maps[m] = self.maglim_map_r
+                nside_target.append(nside)
+            elif m == "ebv":
+                nside = hp.get_nside(self.ebv_map)
+                maps[m] = self.ebv_map
+                nside_target.append(nside)
+            else:
+                raise ValueError(f"Unknown mask type: {m}")
+        nside_min = min(nside_target)
+
+        # Upgrade all maps to the minimum nside
+        for m in maps:
+            nside = hp.get_nside(maps[m])
+            if nside != nside_min:
+                maps[m] = hp.ud_grade(maps[m], nside_min)
+                print(f"Upgrading {m} from nside {nside} to {nside_min}.")
+
+        # Combine the masks
+        mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
+        for m in mask_type:
+            if m in ["maglim_g", "maglim_r"]:  # valid if maglim > 0
+                mask_map &= maps[m] > self.saturation
+            elif m == "ebv":  # select low extinction regions
+                mask_map &= maps[m] < ebv_threshold
+
+        return mask_map
 
     def extinction(self, pix):
         """
@@ -757,7 +921,6 @@ class StreamObserved:
         )
         ax[0].set_xlabel("RA (deg)")
         ax[0].set_ylabel("Dec (deg)")
-        ax[0].scatter(self.endpoints.ra.deg, self.endpoints.dec.deg, s=25, c="r")
         ax[0].legend()
 
         ax[1].set_title("HR diagram using True magnitudes")
@@ -825,3 +988,14 @@ class StreamObserved:
             filename = os.path.join(folder, file_name + ".png")
             print(f"Writing data: {filename}...")
             plt.savefig(filename)
+
+
+    def plot_stream_in_mask(self, **kwargs):
+        """
+        Plot the stream over the footprint mask.
+        """
+        if not hasattr(self, "data"):
+            raise ValueError("No data found. Please run the 'inject' method first.")
+
+        fig,ax = plot_stream_in_mask(self.data["ra"], self.data["dec"], self.mask, output_folder=kwargs.get("output_folder"))
+        return fig, ax

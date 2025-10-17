@@ -5,6 +5,13 @@ Plotting functions.
 
 import numpy as np
 import pylab as plt
+import os
+try:
+    import healpy as hp
+    import skyproj
+except ImportError:
+    healpy = None
+    skyproj = None
 
 def draw_stream(phi1, phi2):
     """ Create 2d histogram and draw stellar distribution.
@@ -60,3 +67,39 @@ def plot_stream(phi1, phi2):
     hist, xedges, yedges, image = draw_stream(phi1, phi2)
     return fig, ax
 
+
+def plot_stream_in_mask(ra,dec,mask, nest=False, output_folder = None):
+    """Plot stream in mask using healpy and skyproj.
+
+    Parameters
+    ----------
+    ra, dec : coordinates of stars (deg)
+    mask : boolean array, True for masked points
+
+    Returns
+    -------
+    fig, ax : the figure and axis
+    """
+    if skyproj is None:
+        raise ImportError("healpy or skyproj not installed, cannot plot stream in mask.")
+    
+    if mask is None:
+        mask = np.ones(hp.nside2npix(32), dtype=bool)  # Default mask if none provided
+
+    mask = mask.astype(float)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sp = skyproj.McBrydeSkyproj(ax=ax)
+    sp.draw_hpxmap(mask, nest=nest)
+    sp.ax.scatter(ra, dec, color='red', s=10, label='Stream', alpha=0.5)
+    sp.ax.legend(loc='lower right')
+    plt.colorbar()
+    fig.tight_layout()
+
+    if output_folder is not None:
+        os.makedirs(output_folder, exist_ok=True)
+        filename = os.path.join(output_folder, 'stream_in_mask.png')
+        if filename is not None:
+            print(f"Writing figure: {filename}...")
+            plt.savefig(filename)
+        
+    return fig, ax
