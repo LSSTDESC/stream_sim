@@ -290,19 +290,30 @@ class StreamObserved:
         data = pd.concat([data, new_columns], axis=1)
 
         # Apply detection threshold
+
+        flag_completeness_r = self.detect_flag(
+            pix, mag_r=data["mag_r"] + extinction_r, rng=rng, seed=seed, **kwargs
+        )
+
+    # Negative fluxes are set to 'BAD_MAG', so counted as undetected
         flag_r = (
             mag_r_meas != "BAD_MAG"
         )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
-        data["flag_detection_r"] = flag_r & self.detect_flag(
-            pix, mag_r=data["mag_r"] + extinction_r, rng=rng, seed=seed, **kwargs
-        )
         flag_g = mag_g_meas != "BAD_MAG"
-        data["flag_detection_g"] = flag_g & self.detect_flag(
-            pix, mag_g=data["mag_g"] + extinction_g, rng=rng, seed=seed, **kwargs
-        )
-        data["flag_detection"] = (data["flag_detection_r"] == 1) & (
-            data["flag_detection_g"] == 1
-        )
+        flag_detection = flag_r & flag_g & flag_completeness_r
+
+        detection_mag_cut = kwargs.get("detection_mag_cut", ['g'])
+        SNR_min = 5.0
+        if 'g' in detection_mag_cut:
+            print("Applying detection cut on g band with SNR >=", SNR_min)
+            SNR_g = 1/data["magerr_g"]
+            flag_detection &= SNR_g >= SNR_min
+        if 'r' in detection_mag_cut:
+            print("Applying detection cut on r band with SNR >=", SNR_min)
+            SNR_r = 1/data["magerr_r"]
+            flag_detection &= SNR_r >= SNR_min
+
+        data["flag_detection"] = flag_detection
 
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
