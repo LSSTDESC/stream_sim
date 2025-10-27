@@ -48,38 +48,31 @@ class Survey:
         Efficiency function f(magnitude) -> efficiency [0, 1]
         Same function used for all bands
     log_photo_error : callable, optional
-        Photometric error model f(delta_mag) -> log10(error)
+        Photometric error model f(delta_mag) -> log10(mag_error)
         Same function used for all bands
         
     Examples
     --------
     >>> # Load a survey
-    >>> survey = Survey.load('dc2', release='yr1')
+    >>> survey = Survey.load('lsst', release='dc2')
     >>> print(survey.bands)  # ['g', 'r']
-    >>> 
-    >>> # Access magnitude limit at a sky position
-    >>> import healpy as hp
-    >>> ra, dec = 60.0, -30.0
-    >>> pixel = hp.ang2pix(4096, ra, dec, lonlat=True)
-    >>> maglim_r = survey.maglim_maps['r'][pixel]
-    >>> maglim_g = survey.maglim_maps['g'][pixel]
-    >>> 
-    >>> # Get efficiency at a given magnitude
-    >>> efficiency = survey.completeness(24.5)
-    >>> 
-    >>> # Calculate photometric error for r-band
-    >>> delta_mag = 24.5 - maglim_r  # mag - maglim
-    >>> log_error = survey.log_photo_error(delta_mag)
-    >>> mag_error = 10**log_error
-    >>> 
-    >>> # Add systematic error
-    >>> import numpy as np
-    >>> total_error = np.sqrt(mag_error**2 + survey.sys_error['r']**2)
-    >>> 
-    >>> # Calculate extinction in each band
-    >>> ebv = survey.ebv_map[pixel]
-    >>> extinction_r = survey.coeff_extinc['r'] * ebv
-    >>> extinction_g = survey.coeff_extinc['g'] * ebv
+
+    >>> # Access magnitude limit for g-band at pixel 10000
+    >>> maglim_g = survey.get_maglim('g', pixel=10000)
+    >>> print(maglim_g)
+
+    >>> # Calculate extinction in r-band at pixel 10000
+    >>> extinction_r = survey.get_extinction('r', pixel=10000)
+    >>> print(extinction_r)
+
+    >>> # Get detection efficiency for magnitude 24.0 in g-band
+    >>> efficiency_g = survey.completeness(24.0)
+    >>> print(efficiency_g)
+
+    >>> # Calculate photometric error for magnitude 24.0 in r-band
+    >>> maglim_r = survey.get_maglim('r', pixel=10000)
+    >>> photo_error_r = survey.get_photo_error('r', 24.0, maglim_r)
+    >>> print(photo_error_r)
     """
     
     # Survey identification
@@ -196,7 +189,7 @@ class Survey:
         return extinction[pixel]
     
     
-    def get_photo_error(self, band: str, magnitude: float, maglim: float) -> float:
+    def get_photo_error(self, band: str, magnitude: float, maglim: float, **kwargs) -> float:
         """Get photometric error estimate.
         
         Parameters
@@ -215,19 +208,74 @@ class Survey:
         """
         if self.log_photo_error is None:
             raise ValueError("Photo error model not loaded")
-        
+
+        delta_saturation = kwargs.get("delta_saturation", -10.4)
+
         # Calculate delta_mag
         delta_mag = magnitude - maglim
         
         # Get statistical error (same function for all bands)
-        log_error = self.log_photo_error(delta_mag)
-        stat_error = 10**log_error
-        
+        mag_err_stat = 10 ** (
+            np.where(
+                ((delta_mag) <= delta_saturation) & (magnitude >= self.saturation[band]),
+                self.log_photo_error(delta_saturation),
+                self.log_photo_error(delta_mag),
+            )
+        )
+        mag_err_stat = np.where(
+            magnitude < self.saturation[band], 10 ** self.log_photo_error(delta_saturation-1), mag_err_stat
+        )  # saturation at the bright end
+
+
         # Add band-specific systematic error in quadrature
         sys_err = self.sys_error.get(band, 0.0)
-        total_error = np.sqrt(stat_error**2 + sys_err**2)
-        
+        total_error = np.sqrt(mag_err_stat**2 + sys_err**2)
+
         return total_error
+    
+    def get_completeness(self, band: str, magnitude: float, maglim: float, **kwargs) -> float:
+        """Get detection completeness/efficiency.
+        
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r') - currently unused since same function for all bands
+        magnitude : float or np.ndarray
+            Observed magnitude(s)
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s)
+            
+        Returns
+        -------
+        float or np.ndarray
+            Detection efficiency [0, 1]
+        """
+        if self.completeness is None:
+            raise ValueError("Completeness function not loaded")
+        
+        delta_saturation = kwargs.get("delta_saturation", -10.4)
+        
+        # Calculate delta_mag
+        delta_mag = magnitude - maglim
+        
+        # Apply saturation condition: 1 padding for objects fainter than saturation but equivalent mag brighter than saturation0
+        compl = np.where(
+            (magnitude > self.saturation[band]) & (delta_mag <= delta_saturation),
+            1.0,
+            self.completeness(delta_mag),
+        )  # 1 padded
+
+        compl = np.where(
+            magnitude < self.saturation[band], 0.0, compl
+        )  # saturation at the bright end
+
+        compl = np.where(
+            (maglim < self.saturation) | np.isnan(maglim), 0.0, compl
+        )  # not observed if the area is not covered
+
+        return compl
+
+
 
 class SurveyFactory:
     """Factory for creating and caching Survey instances.
@@ -521,19 +569,20 @@ class SurveyFactory:
         print("\nLoading completeness/efficiency function...")
         if "completeness" in survey_config:
             # Use default saturation if not band-specific
-            default_saturation = props.get("saturation", 16.0)
+            default_delta_saturation = props.get("delta_saturation", -10.4)
             cls._load_file(survey, survey_config, "completeness",
                           "Completeness/efficiency function",
-                          lambda f: cls.set_completeness(f, saturation=default_saturation),
+                          lambda f: cls.set_completeness(f, delta_saturation=default_delta_saturation),
                           data_path)
         
         # Load photometric error model (same for all bands)
         print("\nLoading photometric error model...")
         if "log_photo_error" in survey_config:
             # Use default saturation if not band-specific
+            default_delta_saturation = props.get("delta_saturation", -10.4)
             cls._load_file(survey, survey_config, "log_photo_error",
                           "Photometric error model",
-                          lambda f: cls.set_photo_error(f),
+                          lambda f: cls.set_photo_error(f, delta_saturation=default_delta_saturation),
                           data_path)
         
         # Load survey properties per band
@@ -617,17 +666,14 @@ class SurveyFactory:
             setattr(survey, attr_name, None)
 
     @staticmethod
-    def set_completeness(filename, saturation=16.0, selection="both"):
+    def set_completeness(filename, delta_saturation = -12.0, selection="both"):
         """Load and interpolate completeness/efficiency function from file.
         
         Parameters
         ----------
         filename : str
-            Path to CSV file containing completeness data
-        saturation : float, optional
-            Bright magnitude limit where efficiency is set to maximum
-            This value is typically read from the survey properties
-            Default: 16.0 mag
+            Path to CSV file with columns:
+            - 'delta_mag': Magnitude difference from limit (mag - maglim)
         selection : str, optional
             Which efficiency to use:
             - 'detected': Detection efficiency only (column 'eff_star')
@@ -638,16 +684,17 @@ class SurveyFactory:
         Returns
         -------
         callable
-            Interpolation function f(magnitude) -> efficiency [0, 1]
+            Interpolation function f(delta_mag) -> log10(magnitude_error)
             
         Notes
         -----
-        The saturation parameter is automatically passed from the survey
-        object when loading, ensuring consistency across all data products.
+        - Bright stars (delta_mag << 0): Extended to delta_mag = -10 with constant error
+        - Faint stars (beyond data): Returns log10(error) = 1.0 (error = 10 mag)
+        - The saturation parameter is automatically passed from the survey object
         """
-        # Load data from file
+        # Load photometric error data
         data = np.genfromtxt(filename, delimiter=",", names=True)
-        magnitudes = data["mag_r"]
+        delta_mags = data["delta_mag"]
 
         # Select efficiency column based on user choice
         if selection == "detected":
@@ -661,27 +708,29 @@ class SurveyFactory:
                 f"Invalid selection '{selection}'. Must be 'detected', 'classified', or 'both'"
             )
 
-        # Extend efficiency to bright end (saturation limit)
-        if magnitudes.min() > saturation:
-            magnitudes = np.insert(magnitudes, 0, saturation)
-            efficiencies = np.insert(efficiencies, 0, efficiencies[0])
-
+        # Extend efficiency to bright end (force to zero at saturation)
+        if delta_mags.min() > delta_saturation:
+            delta_mags = np.insert(delta_mags, 0, delta_saturation)
+            efficiencies = np.insert(efficiencies, 0, 0.)
+        else:
+            # Ensure efficiency is zero at saturation
+            efficiencies[delta_mags <= delta_saturation] = 0.0
+        
         # Extend efficiency to faint end (force to zero)
-        if efficiencies[-1] > 0:
-            magnitudes = np.append(magnitudes, magnitudes[-1] + 1)
-            efficiencies = np.append(efficiencies, 0.0)
+        delta_mags = np.append(delta_mags, delta_mags[-1] + 1)
+        efficiencies = np.append(efficiencies, 0.0)
 
         # Create interpolation function
         interpolator = scipy.interpolate.interp1d(
-            magnitudes, efficiencies, 
-            bounds_error=False, 
-            fill_value=0.0  # Return 0 outside the range
+            delta_mags, efficiencies,
+            bounds_error=False,
+            fill_value=0.0  # Return 0 for very faint/bright stars
         )
 
         return interpolator
 
     @staticmethod
-    def set_photo_error(filename):
+    def set_photo_error(filename, delta_saturation = -12.0):
         """Load photometric error model from file.
         
         This creates an interpolation function that estimates photometric uncertainty
@@ -715,10 +764,8 @@ class SurveyFactory:
         log_errors = data["log_mag_err"]
 
         # Extend to bright end (keep constant for very bright stars)
-        # Use -10 mag relative to saturation as a safe bright limit
-        bright_limit = -10.0
-        if delta_mags.min() > bright_limit:
-            delta_mags = np.insert(delta_mags, 0, bright_limit)
+        if delta_mags.min() > delta_saturation:
+            delta_mags = np.insert(delta_mags, 0, delta_saturation)
             log_errors = np.insert(log_errors, 0, log_errors[0])
 
         # Create interpolation function
@@ -731,3 +778,4 @@ class SurveyFactory:
         return interpolator
 
 
+    
