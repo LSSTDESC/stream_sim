@@ -11,190 +11,31 @@ import numpy as np
 import pandas as pd
 import pylab as plt
 import scipy
-from .plotting import plot_stream_in_mask  
+from .plotting import plot_stream_in_mask 
+from .surveys import Survey 
 
-
-class StreamObserved:
+class StreamInjector:
     """
-    Estimate the observed quantities of stars from a stream for a chosen survey.
+    Injects observational effects into stream data for a given survey.
+    
+    This class handles the core injection logic while keeping survey data separate.
+    All survey data is loaded once and cached, making multiple injections efficient.
     """
 
-    def __init__(self, survey=None, release=None, config_file=None, **kwargs):
-        """
-        Inputs:
-        survey : name of the survey. Available: LSST.
-            Type : str
+    def __init__(self, survey, **kwargs):
+        """Initialize with survey configuration."""
 
-        config_file : configuration file containing survey information.
-            Type : dict, pandas df ...
-        """
-        if config_file:
-            self._config = copy.deepcopy(config_file)
-
-        elif survey:
-            self._load_survey_config(
-                survey, release=release
-            )  # Check for the folder of the survey
-        else:
-            raise ValueError("Either 'survey' or 'config_file' must be provided.")
-        self._config.update(**kwargs)
-        self.load_survey()
-
-    def _load_survey_config(self, survey, release=None):
-        """
-        Verify if the survey is available by finding its folder containing the properties.
-
-        Args:
-            survey (str): Name of the survey.
-
-        Raises:
-            FileNotFoundError: If the config file is not found in the expected directory.
-        """
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        folder_config_path = os.path.join(current_dir, "..", "config/surveys/")
-
-        if release is None:
+        if isinstance(survey, str):
+            self.survey = Survey.load(
+                survey=survey,
+                **kwargs
+            )
+        elif isinstance(survey, Survey):
             self.survey = survey
         else:
-            self.survey = survey + "_" + release
+            raise ValueError("survey must be a string or Survey instance.")
 
-        target_file_path = os.path.join(folder_config_path, self.survey + ".yaml")
-        # Allow for flexible file types (YAML, JSON)
-        if not os.path.exists(target_file_path):
-            target_file_path = target_file_path.replace(".yaml", ".json")
-            if not os.path.exists(target_file_path):
-                raise FileNotFoundError(
-                    f"Config file '{self.survey}' does not exist in '{folder_config_path}'."
-                )
-
-        # Load the file based on extension
-        if target_file_path.endswith(".yaml"):
-            import yaml
-
-            with open(target_file_path, "r") as file:
-                config_data = yaml.safe_load(file)
-        elif target_file_path.endswith(".json"):
-            import json
-
-            with open(target_file_path, "r") as file:
-                config_data = json.load(file)
-
-        # Verify that the survey and release corresponds to the one in config file
-        if survey != config_data.get("name"):
-            raise ValueError(
-                f"The survey name '{survey}' does not correspond to the one specified in the config file '{config_data['name']}'."
-            )
-        if release != config_data.get("release", None):
-            raise ValueError(
-                f"The release '{release}' does not correspond to the one specified in the config file '{config_data['release']}'."
-            )
-
-        self._config = copy.deepcopy(config_data)
-
-    def load_survey(self):
-        """
-        Load survey information such as magnitude limits, extinction maps, completeness, etc.
-
-        Attributes created:
-        -------------------
-        maglim_map_g : np.ndarray
-            Magnitude limit map in the g band.
-
-        maglim_map_r : np.ndarray
-            Magnitude limit map in the r band.
-
-        ebv_map : np.ndarray
-            Extinction map.
-
-        completeness : callable
-            Function to compute completeness.
-
-        log_photo_error : callable
-            Function to compute logarithmic photometric error.
-
-        coverage : np.ndarray
-            Coverage map.
-        """
-
-        print(
-            "###################### Reading Survey property files ######################"
-        )
-        config = self._config.get("survey_files", None)
-        if config is None:
-            raise ValueError(
-                "Please specify the files containing informations of the survey."
-            )
-        path = config.get("file_path", "")
-        if path == "":
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(current_dir, "..", "data/surveys/" + self.survey)
-        print("Survey's files are searched at the following path : ", path)
-
-        survey_files = {
-            "maglim_map_g": hp.read_map,
-            "maglim_map_r": hp.read_map,
-            "ebv_map": hp.read_map,
-            "completeness": StreamObserved.getCompleteness,
-            "log_photo_error": StreamObserved.getPhotoError,
-            "coverage": hp.read_map,
-        }
-
-        # Loop through the dictionary and load each file if the attribute doesn't exist
-        for attr, reader in survey_files.items():
-            self.load_map(config, attr, reader, path=path)
-
-        # Load other attributes
-        self._load_survey_properties()
-
-        print(
-            "###################### Reading Survey property files done ######################"
-        )
-
-    def load_map(self, config, attr_name, reader_func, path="."):
-        if not hasattr(self, attr_name):
-            filename = config.get(
-                attr_name, None
-            )  # Get filename from config, or None if missing
-
-            if filename is None:
-                print(f"Warning: Missing '{attr_name}' in the configuration file.")
-                return
-
-            full_path = os.path.join(path, filename)
-
-            if not os.path.exists(full_path):
-                print(f"Error: File '{full_path}' for {attr_name} does not exist.")
-                return
-
-            print(f"Reading {attr_name.replace('_', ' ')}: {full_path}...")
-            setattr(self, attr_name, reader_func(full_path))
-
-    def _load_survey_properties(self):
-        """
-        Load survey properties like extinction coefficients and system error.
-        """
-        try:
-            self.coeff_extinc = (
-                self._config["survey_properties"]["coeff_extinc_g"],
-                self._config["survey_properties"]["coeff_extinc_r"],
-            )
-        except KeyError as e:
-            print(f"Missing key {e} in the survey_properties config.")
-
-        try:
-            self.sys_error = self._config["survey_properties"]["sys_error"]
-        except KeyError as e:
-            print(f"Missing key {e} in the survey_properties config.")
-
-        try:
-            self.saturation = self._config["survey_properties"]["saturation"]
-        except KeyError as e:
-            self.saturation = 16.0
-            print(
-                f"Missing key {e} in the survey_properties config. Using default saturation={self.saturation}."
-            )
-
-    def inject(self, data, **kwargs):
+    def inject(self, data, bands=['r', 'g'], **kwargs):
         """
         Add observed quantities by the survey to the given data.
 
@@ -213,105 +54,92 @@ class StreamObserved:
         """
         data = self._load_data(data)
 
-        # Select only stars from the stream
-        flag = kwargs.pop("flag", [1])
-        if "flag" in data.columns:
-            mask = data["flag"].isin(flag)
-            data = data[mask]
-        else:
-            print("'flag' column not found, skipping filtering.")
-
         # set the seed for reproducibility
         seed = kwargs.pop("seed", None)
         rng = np.random.default_rng(seed)
 
-        # Convert coordinates (Phi1, Phi2) into (ra,dec)
-        self.stream = self.phi_to_radec(
-            data["phi1"],
-            data["phi2"],
-            seed=seed,
-            rng=rng,
-            **kwargs,
-        )
+        data = self.complete_data(data, rng=rng, seed=seed, bands=bands, **kwargs)
+
+
+        nside = kwargs.pop("nside", 4096)
         pix = hp.ang2pix(
-            4096, self.stream.icrs.ra.deg, self.stream.icrs.dec.deg, lonlat=True
+            nside, data["ra"], data["dec"], lonlat=True
         )
 
-        # Estimate the extinction, errors
-        nside_ebv = hp.get_nside(self.ebv_map)
-        if nside_ebv != 4096:  # adjust the nside to the one of extinction map
-            pix = hp.ang2pix(
-                nside_ebv,
-                self.stream.icrs.ra.deg,
-                self.stream.icrs.dec.deg,
-                lonlat=True,
+
+        for band in bands:
+            if band not in ['r', 'g']:
+                raise ValueError("Currently only 'r' and 'g' bands are supported.")
+
+            
+            # Estimate the extinction, errors
+            nside_ebv = hp.get_nside(self.survey.ebv_map)
+            pix_ebv = hp.ang2pix(nside_ebv, data["ra"], data["dec"], lonlat=True)
+
+            if nside_ebv != nside:  # adjust the nside to the one of extinction map
+                pix_ebv = hp.ang2pix(nside_ebv, data["ra"], data["dec"], lonlat=True)
+            else:
+                pix_ebv = pix
+
+            extinction_band = self.survey.get_extinction(band, pixel=pix_ebv)
+
+
+            nside_maglim = hp.get_nside(self.survey.maglim_maps[band])
+            if nside_maglim != nside:  # adjust the nside to the one of magnitude limit maps
+                pix_maglim = hp.ang2pix(
+                    nside_maglim,
+                    data["ra"],
+                    data["dec"],
+                    lonlat=True,)
+            else:
+                pix_maglim = pix
+
+            mag_err = self.survey.get_photo_error(band, data["mag_" + band]+extinction_band, self.survey.get_maglim(band, pixel=pix_maglim))
+
+            mag_meas = self.sample_measured_magnitudes(data["mag_" + band]+extinction_band, mag_err,rng=rng,seed=seed, **kwargs)
+
+            new_columns = pd.DataFrame(
+                {
+                    "mag_" + band + "_meas": mag_meas,
+                    "magerr_" + band: mag_err,
+                }
             )
+            # Reset the index to force alignment by row position
+            data = data.reset_index(drop=True)
+            new_columns = new_columns.reset_index(drop=True)
+            # Concatenate along axis=1 (columns)
+            data = pd.concat([data, new_columns], axis=1)
 
-        extinction_g, extinction_r = self.extinction(pix)
-
-        nside_maglim = hp.get_nside(self.maglim_map_r)
-        if nside_maglim != 4096:  # adjust the nside to the one of magnitude limit maps
-            pix = hp.ang2pix(
-                nside_maglim,
-                self.stream.icrs.ra.deg,
-                self.stream.icrs.dec.deg,
-                lonlat=True,
-            )
-
-        magerr_g, magerr_r = self._get_errors(
-            pix, mag_r=data["mag_r"] + extinction_r, mag_g=data["mag_g"] + extinction_g
-        )
-
-        # Sample observed magnitude for every stars
-        mag_g_meas, mag_r_meas = self.sample(
-            mag_g=data["mag_g"] + extinction_g,
-            mag_r=data["mag_r"] + extinction_r,
-            magerr_g=magerr_g,
-            magerr_r=magerr_r,
-            rng=rng,
-            seed=seed,
-        )
-
-        new_columns = pd.DataFrame(
-            {
-                "mag_g_meas": mag_g_meas,
-                "magerr_g": magerr_g,
-                "mag_r_meas": mag_r_meas,
-                "magerr_r": magerr_r,
-                "ra": self.stream.icrs.ra.deg,
-                "dec": self.stream.icrs.dec.deg,
-            }
-        )
-
-        # Reset the index to force alignment by row position
-        data = data.reset_index(drop=True)
-        new_columns = new_columns.reset_index(drop=True)
-        # Concatenate along axis=1 (columns)
-        data = pd.concat([data, new_columns], axis=1)
-
+            if band == 'r':
+                flag_completeness_r = self.detect_flag(
+                    pix_maglim, mag=data["mag_r"] + extinction_band, band='r', rng=rng, seed=seed, **kwargs
+                )
+                    
         # Apply detection threshold
+        if flag_completeness_r is None:
+            if 'r' in bands:
+                raise ValueError("flag_completeness_r must be computed for detection in r band.")
+            else:
+                raise ValueError("Detection flag requires 'r' band to be in bands.")
 
-        flag_completeness_r = self.detect_flag(
-            pix, mag_r=data["mag_r"] + extinction_r, rng=rng, seed=seed, **kwargs
-        )
-
-    # Negative fluxes are set to 'BAD_MAG', so counted as undetected
+        # Negative fluxes are set to 'BAD_MAG', so counted as undetected
         flag_r = (
-            mag_r_meas != "BAD_MAG"
+            data["mag_r_meas"] != "BAD_MAG"
         )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
-        flag_g = mag_g_meas != "BAD_MAG"
-        flag_detection = flag_r & flag_g & flag_completeness_r
+
+
+        flag_detection = flag_r & flag_completeness_r
+
+        if 'g' in bands:
+            flag_detection &= data["mag_g_meas"] != "BAD_MAG"
+
 
         detection_mag_cut = kwargs.get("detection_mag_cut", ['g'])
         SNR_min = 5.0
-        if 'g' in detection_mag_cut:
-            print("Applying detection cut on g band with SNR >=", SNR_min)
-            SNR_g = 1/data["magerr_g"]
-            flag_detection &= SNR_g >= SNR_min
-        if 'r' in detection_mag_cut:
-            print("Applying detection cut on r band with SNR >=", SNR_min)
-            SNR_r = 1/data["magerr_r"]
-            flag_detection &= SNR_r >= SNR_min
+        for band in detection_mag_cut:
+            print("Applying detection cut on", band, "band with SNR >=", SNR_min)
+            SNR = 1/data["magerr_" + band]
+            flag_detection &= SNR >= SNR_min
 
         data["flag_detection"] = flag_detection
 
@@ -348,6 +176,54 @@ class StreamObserved:
                 raise ValueError(f"Unsupported file format: {extension}")
         else:
             raise ValueError(f"Unsupported file format")
+
+    def complete_data(self, data, bands = ['r', 'g'], **kwargs):
+        """
+        Ensure the input data contains all required columns.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Input DataFrame.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with all required columns.
+        """
+
+        required_columns = ["ra", "dec"] + [f"mag_{band}" for band in bands]
+
+        rng = kwargs.pop("rng", None)
+        seed = kwargs.pop("seed", None)
+
+        if not ('ra' in data.columns and 'dec' in data.columns):
+            if "phi1" not in data.columns or "phi2" not in data.columns:
+                raise ValueError(
+                    "Input data must contain either (ra, dec) or (phi1, phi2) columns."
+                )
+            
+            # Convert coordinates (Phi1, Phi2) into (ra,dec)
+            self.stream_coord = self.phi_to_radec(
+                data["phi1"],
+                data["phi2"],
+                seed=seed,
+                rng=rng,
+                **kwargs,
+            )
+            data["ra"] = self.stream.icrs.ra.deg
+            data["dec"] = self.stream.icrs.dec.deg
+        
+        # Sample missing magnitudes if needed
+        mag_bands_missing = [band for band in bands if f"mag_{band}" not in data.columns]
+        # to be implemented
+
+        for col in required_columns:
+            if col not in data.columns:
+                raise ValueError(f"Input data must contain '{col}' column.")
+
+        return data
+        
 
     def phi_to_radec(
         self,
@@ -418,9 +294,9 @@ class StreamObserved:
 
         phi1_deg = phi1_arr * u.deg
         phi2_deg = phi2_arr * u.deg
-        stream = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
+        stream_coord = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
 
-        return stream
+        return stream_coord
 
     def _find_gc_frame(
         self,
@@ -620,106 +496,32 @@ class StreamObserved:
 
         return mask_map
 
-    def extinction(self, pix):
-        """
-        Estimate the exctinction value for given pixels of the sky.
-        Args:
-            pix (healpy pixels)
-
-        Returns:
-            extinction_g, extinction_r: magnitudes extinctions for the given pixels
-        """
-        ebv = self.ebv_map[pix].byteswap().view(self.ebv_map.dtype.newbyteorder())
-        extinction_g = self.coeff_extinc[0] * ebv
-        extinction_r = self.coeff_extinc[1] * ebv
-        return extinction_g, extinction_r
-
-    def _get_errors(self, pix, mag_g, mag_r):
-        """_summary_
-
-        Args:
-            pix (healpy pixels): _description_
-            mag_g : magnitude in g band
-            mag_r : magnitude in r band
-
-        Returns:
-            magerr_g, magerr_r: magnitudes erros in each bands
-        """
-        # Look up the magnitude limit at the position of each star
-        maglim_g = self.maglim_map_g[pix]
-        maglim_r = self.maglim_map_r[pix]
-
-        # Magnitude errors
-        magerr_g = self._effective_errors(mag_g, maglim_g)
-        magerr_r = self._effective_errors(mag_r, maglim_r)
-        return magerr_g, magerr_r
-
-    def _effective_errors(self, mag, maglim):
-        """Take the saturation into account by using the error value in the bright end"""
-        magerr = 10 ** (
-            np.where(
-                ((mag - maglim) <= -10) & (mag >= self.saturation),
-                self.log_photo_error(-10),
-                self.log_photo_error(mag - maglim),
-            )
-        )
-        magerr = np.where(
-            mag < self.saturation, 10 ** self.log_photo_error(-11), magerr
-        )  # saturation at the bright end
-        magerr += self.sys_error  # add systematic error
-        return magerr
-
-    def sample(self, **kwargs):
-        """
-        Sample observed magnitudes from estimated ones and thier errors.
-        kwargs:
-            mag_g (numpy array): g band magnitudes
-            mag_r (numpy array): r band magnitudes
-            magerr_g (numpy array): g band magnitudes errors
-            magerr_r (numpy array): r band magnitudes errors
-            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
-            seed (int, optional): Seed for the random number generator. Used only if rng is None.
-        Returns:
-            mag_g_meas,mag_r_meas : sampled observed magnitudes
-        """
-        mag_g = kwargs.pop("mag_g")
-        mag_r = kwargs.pop("mag_r")
-        magerr_g = kwargs.pop("magerr_g")
-        magerr_r = kwargs.pop("magerr_r")
-
+    def sample_measured_magnitudes(self, mag_true, mag_err, **kwargs):
         rng = kwargs.pop("rng", None)
         if rng is None:
             seed = kwargs.pop("seed", None)
             rng = np.random.default_rng(seed)
 
         # Sample the fluxes their errors
-        flux_g_meas = StreamObserved.magToFlux(mag_g) + rng.normal(
-            scale=self.getFluxError(mag_g, magerr_g)
+        flux_meas = StreamInjector.magToFlux(mag_true) + rng.normal(
+            scale=self.getFluxError(mag_true, mag_err)
         )
-        flux_r_meas = StreamObserved.magToFlux(mag_r) + rng.normal(
-            scale=self.getFluxError(mag_r, magerr_r)
+        
+        # If the flux is negative, set the magnitude to "BAD_MAG" (not detected). Otherwise, convert the flux back to magnitude
+        mag_meas = np.where(
+            flux_meas > 0.0, StreamInjector.fluxToMag(flux_meas), "BAD_MAG"
         )
-        # If the flux is negative, set the magnitude to 99 (not detected). Otherwise, convert the flux back to magnitude
-        mag_g_meas = np.where(
-            flux_g_meas > 0.0, StreamObserved.fluxToMag(flux_g_meas), "BAD_MAG"
-        )
-        mag_r_meas = np.where(
-            flux_r_meas > 0.0, StreamObserved.fluxToMag(flux_r_meas), "BAD_MAG"
-        )
+   
+        return mag_meas
 
-        return mag_g_meas, mag_r_meas
-
-    def detect_flag(self, pix, mag_r=None, mag_g=None, **kwargs):
+    def detect_flag(self, pix, mag=None, band='r', **kwargs):
         """
         Apply the survey selection over the given stars/pixels.
         Args:
             pix (Healpy pixels)
-            mag_r (numpy array, optional): magnitude in r band. Defaults to None.
-            mag_g (numpy array, optional): magnitude in g band. Defaults to None.
+            mag (numpy array, optional): magnitude in r band. Defaults to None.
+            band (str): band to consider for detection. Defaults to 'r'.
         kwargs:
-            maglim0 (float, optional): magnitude limit in the initial completeness. Defaults to 25.0.
-            saturation0 (float, optional): saturation limit in the initial completeness. Defaults to 16.4.
-            clipping_bounds (tuple, optional): bounds to current magnitude limit. Defaults to (20.0, 30.0).
             rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
             seed (int, optional): Seed for the random number generator. Used only if rng is None.
         Raises:
@@ -727,37 +529,19 @@ class StreamObserved:
         Returns:
             boolean list: 1 for detected stars, 0 for the others
         """
-        # Default parameters
-        maglim0 = kwargs.pop(
-            "maglim0", 26.8
-        )  # magnitude limit in the initial completeness
-        saturation0 = kwargs.pop(
-            "saturation0", 16.4
-        )  # saturation limit in the initial completeness
-        clipping_bounds = kwargs.pop(
-            "clipping_bounds", (20.0, 30.0)
-        )  # bounds to current magnitude limit
+        
         rng = kwargs.pop("rng", None)
         if rng is None:
             seed = kwargs.pop("seed", None)
             rng = np.random.default_rng(seed)
 
-        if mag_r is None and mag_g is None:
-            raise ValueError("Must provide either mag_g or mag_r values.")
-
+  
         # Select the appropriate magnitude and map depending on the band
-        if mag_r is not None:
-            mag = mag_r
-            maglim_map = self.maglim_map_r[pix]
-        else:
-            mag = mag_g
-            maglim_map = self.maglim_map_g[pix]
+        maglim = self.survey.get_maglim(band, pixel=pix)
 
-        compl = self._effective_completeness(
-            mag, maglim_map, maglim0, saturation0, clipping_bounds
-        )
+        compl = self.survey.get_completeness(band, mag, maglim)
 
-        # Set the threshold using completeness 1-padded at the bright ends
+        # Set the threshold using completeness
         threshold = rng.uniform(size=len(mag)) <= compl
 
         return threshold
@@ -775,7 +559,7 @@ class StreamObserved:
         compl = np.where(
             (mag > self.saturation) & (eq_mag < saturation0),
             1.0,
-            self.completeness(eq_mag),
+            self.survey.completeness(eq_mag),
         )  # 1 padded
         compl = np.where(
             mag < self.saturation, 0.0, compl
@@ -808,70 +592,6 @@ class StreamObserved:
         print(f"Saving injected data to {file_name}")
         data.to_csv(file_name, index=False)
 
-    @staticmethod
-    def getCompleteness(filename):
-        d = np.genfromtxt(
-            filename,
-            delimiter=",",
-            names=True,
-        )
-        x = d["mag_r"]
-
-        selection = "both"
-        if selection == "detected":
-            # Detection efficiency:
-            y = d["eff_star"]
-        elif selection == "classified":
-            # Classification efficiency
-            y = d["classifiction_eff"]
-        elif selection == "both":
-            # Detection and classification efficiency
-            y = d["classification_detection_eff"]
-
-        # Extend to saturation
-        if min(x) > 16:
-            x = np.insert(x, 0, 16.0)
-            y = np.insert(y, 0, y[0])
-
-        # Make efficiency go to zero at faint end
-        if y[-1] > 0:
-            x = np.insert(x, -1, x[-1] + 1)
-            y = np.insert(y, -1, 0)
-
-        f = scipy.interpolate.interp1d(x, y, bounds_error=False, fill_value=0.0)
-
-        return f
-
-    @staticmethod
-    def getPhotoError(filename):
-        """Photometric error model based on the delta-mag from the maglim and
-        the photometric uncertainty estimated from the data
-
-        Parameters
-        ----------
-        filename : photometric error file
-
-        Returns
-        -------
-        interp : interpolation function (mag_err as a function of delta_mag)
-        """
-        d = np.genfromtxt(
-            filename,
-            delimiter=",",
-            names=True,
-        )
-
-        x = d["delta_mag"]
-        y = d["log_mag_err"]
-
-        # Extend on the bright end
-        if min(x) > -10.0:
-            x = np.insert(x, 0, -10.0)
-            y = np.insert(y, 0, y[0])
-
-        f = scipy.interpolate.interp1d(x, y, bounds_error=False, fill_value=1.0)
-
-        return f
 
     @staticmethod
     def magToFlux(mag):
@@ -889,7 +609,7 @@ class StreamObserved:
 
     @staticmethod
     def getFluxError(mag, mag_error):
-        return StreamObserved.magToFlux(mag) * mag_error / 1.0857362
+        return StreamInjector.magToFlux(mag) * mag_error / 1.0857362
 
     def plot_inject(self, data, **kwargs):
         """
