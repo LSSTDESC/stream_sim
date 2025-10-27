@@ -211,8 +211,8 @@ class StreamInjector:
                 rng=rng,
                 **kwargs,
             )
-            data["ra"] = self.stream.icrs.ra.deg
-            data["dec"] = self.stream.icrs.dec.deg
+            data["ra"] = self.stream_coord.icrs.ra.deg
+            data["dec"] = self.stream_coord.icrs.dec.deg
         
         # Sample missing magnitudes if needed
         mag_bands_missing = [band for band in bands if f"mag_{band}" not in data.columns]
@@ -453,23 +453,18 @@ class StreamInjector:
         else:
             raise ValueError("mask_type must be a string or a list of strings.")
 
-        # "footprint" mask as a combination of maglim maps in any bands
-        if "footprint" in mask_type:
-            mask_type.remove("footprint")
-            mask_type.append("maglim_r")
-            mask_type.append("maglim_g")
-
         # Find the minimum nside among the needed maps
         nside_target = []
         maps = {}
         for m in mask_type:
-            if m == "maglim_g":
-                nside = hp.get_nside(self.maglim_map_g)
-                maps[m] = self.maglim_map_g
+            if 'maglim' in m:
+                band = m.split('_')[-1]
+                nside = hp.get_nside(self.survey.maglim_maps[band])
+                maps[m] = self.survey.maglim_maps[band]
                 nside_target.append(nside)
-            elif m == "maglim_r":
-                nside = hp.get_nside(self.maglim_map_r)
-                maps[m] = self.maglim_map_r
+            elif m == "coverage" or m == "footprint":
+                nside = hp.get_nside(self.survey.coverage)
+                maps[m] = self.survey.coverage
                 nside_target.append(nside)
             elif m == "ebv":
                 nside = hp.get_nside(self.ebv_map)
@@ -489,8 +484,11 @@ class StreamInjector:
         # Combine the masks
         mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
         for m in mask_type:
-            if m in ["maglim_g", "maglim_r"]:  # valid if maglim > 0
-                mask_map &= maps[m] > self.saturation
+            if 'maglim' in m: 
+                band = m.split('_')[-1]
+                mask_map &= maps[m] > self.survey.saturation[band]
+            elif m == "coverage" or m == "footprint":
+                mask_map &= maps[m] > 0.5  # covered regions
             elif m == "ebv":  # select low extinction regions
                 mask_map &= maps[m] < ebv_threshold
 
@@ -545,29 +543,6 @@ class StreamInjector:
         threshold = rng.uniform(size=len(mag)) <= compl
 
         return threshold
-
-    def _effective_completeness(
-        self, mag, maglim_map, maglim0, saturation0, clipping_bounds
-    ):
-        delta_mag = mag - np.clip(
-            maglim_map, clipping_bounds[0], clipping_bounds[1]
-        )  # difference between the mag and the maglim at the position of the object
-        eq_mag = (
-            delta_mag + maglim0
-        )  # convert the delta mag to the equivalent mag at maglim0
-        # Apply saturation condition: 1 padding for objects fainter than saturation but equivalent mag brighter than saturation0
-        compl = np.where(
-            (mag > self.saturation) & (eq_mag < saturation0),
-            1.0,
-            self.survey.completeness(eq_mag),
-        )  # 1 padded
-        compl = np.where(
-            mag < self.saturation, 0.0, compl
-        )  # saturation at the bright end
-        compl = np.where(
-            (maglim_map < self.saturation) | np.isnan(maglim_map), 0.0, compl
-        )  # not observed if the area is not covered
-        return compl
 
     def _save_injected_data(self, data, folder):
         """
