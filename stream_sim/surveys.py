@@ -270,7 +270,7 @@ class Survey:
         )  # saturation at the bright end
 
         compl = np.where(
-            (maglim < self.saturation) | np.isnan(maglim), 0.0, compl
+            (maglim < self.saturation[band]) | np.isnan(maglim), 0.0, compl
         )  # not observed if the area is not covered
 
         return compl
@@ -554,37 +554,6 @@ class SurveyFactory:
                 print(f"    ✗ Failed to load {band}-band maglim map: {e}")
                 survey.maglim_maps[band] = None
         
-        # Load band-independent maps
-        print("\nLoading band-independent maps...")
-        band_independent = {
-            "ebv_map": ("E(B-V) extinction map", hp.read_map),
-            "coverage": ("Survey coverage map", hp.read_map),
-        }
-        
-        for attr_name, (description, loader_func) in band_independent.items():
-            cls._load_file(survey, survey_config, attr_name, description, 
-                          loader_func, data_path)
-        
-        # Load completeness function (same for all bands)
-        print("\nLoading completeness/efficiency function...")
-        if "completeness" in survey_config:
-            # Use default saturation if not band-specific
-            default_delta_saturation = props.get("delta_saturation", -10.4)
-            cls._load_file(survey, survey_config, "completeness",
-                          "Completeness/efficiency function",
-                          lambda f: cls.set_completeness(f, delta_saturation=default_delta_saturation),
-                          data_path)
-        
-        # Load photometric error model (same for all bands)
-        print("\nLoading photometric error model...")
-        if "log_photo_error" in survey_config:
-            # Use default saturation if not band-specific
-            default_delta_saturation = props.get("delta_saturation", -10.4)
-            cls._load_file(survey, survey_config, "log_photo_error",
-                          "Photometric error model",
-                          lambda f: cls.set_photo_error(f, delta_saturation=default_delta_saturation),
-                          data_path)
-        
         # Load survey properties per band
         print("\nLoading survey properties...")
         
@@ -606,6 +575,40 @@ class SurveyFactory:
             sys_key = f"sys_error_{band}"
             survey.sys_error[band] = props.get(sys_key, default_sys_error)
         
+        # Load completeness function (same for all bands)
+        print("\nLoading completeness/efficiency function...")
+        if "completeness" in survey_config:
+            # Use default saturation if not band-specific
+            default_delta_saturation = props.get("delta_saturation", -10.4)
+            cls._load_file(survey, survey_config, "completeness",
+                          "Completeness/efficiency function",
+                          lambda f: cls.set_completeness(f, delta_saturation=default_delta_saturation),
+                          data_path)
+        
+        # Load photometric error model (same for all bands)
+        print("\nLoading photometric error model...")
+        if "log_photo_error" in survey_config:
+            # Use default saturation if not band-specific
+            default_delta_saturation = props.get("delta_saturation", -10.4)
+            cls._load_file(survey, survey_config, "log_photo_error",
+                          "Photometric error model",
+                          lambda f: cls.set_photo_error(f, delta_saturation=default_delta_saturation),
+                          data_path)
+
+        # Load band-independent maps
+        print("\nLoading band-independent maps...")
+        band_independent = {
+            "ebv_map": ("E(B-V) extinction map", hp.read_map),
+            "coverage": ("Survey coverage map", hp.read_map),
+        }
+        for attr_name, (description, loader_func) in band_independent.items():
+            cls._load_file(survey, survey_config, attr_name, description, 
+                          loader_func, data_path)
+
+        if survey.coverage is None:
+            print("\nBuilding coverage map from magnitude limit maps...")
+            cls._build_coverage_map(survey)
+
         # Print summary
         print("\nSurvey properties summary:")
         for band in survey.bands:
@@ -776,6 +779,59 @@ class SurveyFactory:
         )
 
         return interpolator
+
+    @classmethod
+    def _build_coverage_map(cls, survey: Survey):
+        """Build coverage map from magnitude limit maps.
+        
+        Parameters
+        ----------
+        survey : Survey
+            Survey object with loaded magnitude limit maps
+            
+        Returns
+        -------
+        np.ndarray
+            HEALPix coverage map (1=observed, 0=not observed)
+        """
+        nside = None
+        coverage_map = None
+
+        # Find the minimum nside among all maglim maps
+        for band, maglim_map in survey.maglim_maps.items():
+            if maglim_map is None:
+                continue
+            
+            nside_candidate = hp.get_nside(maglim_map)
+            if nside is None or nside_candidate < nside:
+                nside = nside_candidate
+        
+        if nside is None:
+            print("  ⚠ Warning: No magnitude limit maps found, cannot build coverage")
+            return None
+        
+        # Initialize coverage map as all True
+        npix = hp.nside2npix(nside)
+        coverage_map = np.ones(npix, dtype=bool)
+        
+        # Accumulate coverage from all bands (logical AND)
+        for band, maglim_map in survey.maglim_maps.items():
+            if maglim_map is None:
+                continue
+
+            # Convert to common nside if needed
+            nside_band = hp.get_nside(maglim_map)
+            if nside_band != nside:
+                maglim_map = hp.ud_grade(maglim_map, nside_out=nside)
+
+            # Update coverage: pixel is covered if maglim is finite and above saturation
+            band_coverage = np.isfinite(maglim_map) & (maglim_map > survey.saturation[band])
+            coverage_map = coverage_map & band_coverage
+        
+        # Convert boolean to float (1.0 = covered, 0.0 = not covered)
+        survey.coverage = coverage_map.astype(float)
+        
+        return survey.coverage
 
 
     
