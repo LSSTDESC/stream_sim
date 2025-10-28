@@ -52,67 +52,76 @@ class StreamInjector:
             ra, dec : coordinates of the stars
             flag_detection : 1 for detected stars, 0 for others
         """
+        # Load data
         data = self._load_data(data)
 
-        # set the seed for reproducibility
+        # Set the seed for reproducibility
         seed = kwargs.pop("seed", None)
         rng = np.random.default_rng(seed)
 
+        # Complete missing columns (ra/dec, magnitudes)
         data = self.complete_data(data, rng=rng, seed=seed, bands=bands, **kwargs)
 
-
+        # Get HEALPix pixel indices
         nside = kwargs.pop("nside", 4096)
-        pix = hp.ang2pix(
-            nside, data["ra"], data["dec"], lonlat=True
-        )
+        pix = hp.ang2pix(nside, data["ra"], data["dec"], lonlat=True)
 
-
+        # Process each band
         for band in bands:
             if band not in ['r', 'g']:
                 raise ValueError("Currently only 'r' and 'g' bands are supported.")
 
-            
-            # Estimate the extinction, errors
+            # Get extinction for this band
             nside_ebv = hp.get_nside(self.survey.ebv_map)
-            pix_ebv = hp.ang2pix(nside_ebv, data["ra"], data["dec"], lonlat=True)
-
-            if nside_ebv != nside:  # adjust the nside to the one of extinction map
+            if nside_ebv != nside:
                 pix_ebv = hp.ang2pix(nside_ebv, data["ra"], data["dec"], lonlat=True)
             else:
                 pix_ebv = pix
-
             extinction_band = self.survey.get_extinction(band, pixel=pix_ebv)
 
-
+            # Get magnitude limits
             nside_maglim = hp.get_nside(self.survey.maglim_maps[band])
-            if nside_maglim != nside:  # adjust the nside to the one of magnitude limit maps
-                pix_maglim = hp.ang2pix(
-                    nside_maglim,
-                    data["ra"],
-                    data["dec"],
-                    lonlat=True,)
+            if nside_maglim != nside:
+                pix_maglim = hp.ang2pix(nside_maglim, data["ra"], data["dec"], lonlat=True)
             else:
                 pix_maglim = pix
 
-            mag_err = self.survey.get_photo_error(band, data["mag_" + band]+extinction_band, self.survey.get_maglim(band, pixel=pix_maglim))
-
-            mag_meas = self.sample_measured_magnitudes(data["mag_" + band]+extinction_band, mag_err,rng=rng,seed=seed, **kwargs)
-
-            new_columns = pd.DataFrame(
-                {
-                    "mag_" + band + "_meas": mag_meas,
-                    "magerr_" + band: mag_err,
-                }
+            # Calculate photometric errors
+            mag_err = self.survey.get_photo_error(
+                band, 
+                data["mag_" + band] + extinction_band, 
+                self.survey.get_maglim(band, pixel=pix_maglim)
             )
-            # Reset the index to force alignment by row position
+
+            # Sample measured magnitudes
+            mag_meas = self.sample_measured_magnitudes(
+                data["mag_" + band] + extinction_band, 
+                mag_err, 
+                rng=rng, 
+                seed=seed, 
+                **kwargs
+            )
+
+            # Add new columns
+            new_columns = pd.DataFrame({
+                "mag_" + band + "_meas": mag_meas,
+                "magerr_" + band: mag_err,
+            })
+            
+            # Reset indices and concatenate
             data = data.reset_index(drop=True)
             new_columns = new_columns.reset_index(drop=True)
-            # Concatenate along axis=1 (columns)
             data = pd.concat([data, new_columns], axis=1)
 
+            # Compute detection flag for r-band (reference band)
             if band == 'r':
                 flag_completeness_r = self.detect_flag(
-                    pix_maglim, mag=data["mag_r"] + extinction_band, band='r', rng=rng, seed=seed, **kwargs
+                    pix_maglim, 
+                    mag=data["mag_r"] + extinction_band, 
+                    band='r', 
+                    rng=rng, 
+                    seed=seed, 
+                    **kwargs
                 )
                     
         # Apply detection threshold
@@ -122,32 +131,30 @@ class StreamInjector:
             else:
                 raise ValueError("Detection flag requires 'r' band to be in bands.")
 
-        # Negative fluxes are set to 'BAD_MAG', so counted as undetected
-        flag_r = (
-            data["mag_r_meas"] != "BAD_MAG"
-        )  # Negative fluxes are set to 'BAD_MAG', so counted as undetected
+        # Check for negative fluxes (set to 'BAD_MAG')
+        flag_r = (data["mag_r_meas"] != "BAD_MAG")
 
-
+        # Combine flags
         flag_detection = flag_r & flag_completeness_r
 
         if 'g' in bands:
             flag_detection &= data["mag_g_meas"] != "BAD_MAG"
 
-
+        # Apply SNR cuts if requested
         detection_mag_cut = kwargs.get("detection_mag_cut", ['g'])
         SNR_min = 5.0
         for band in detection_mag_cut:
             print("Applying detection cut on", band, "band with SNR >=", SNR_min)
-            SNR = 1/data["magerr_" + band]
+            SNR = 1 / data["magerr_" + band]
             flag_detection &= SNR >= SNR_min
 
         data["flag_detection"] = flag_detection
 
+        # Save if requested
         if kwargs.get("save"):
             self._save_injected_data(data, kwargs.get("folder", None))
 
-        self.data = data
-
+        # Return data (do NOT store as instance attribute to avoid conflicts between runs)
         return data
 
     def _load_data(self, data):
@@ -204,15 +211,15 @@ class StreamInjector:
                 )
             
             # Convert coordinates (Phi1, Phi2) into (ra,dec)
-            self.stream_coord = self.phi_to_radec(
+            stream_coord = self.phi_to_radec(
                 data["phi1"],
                 data["phi2"],
                 seed=seed,
                 rng=rng,
                 **kwargs,
             )
-            data["ra"] = self.stream_coord.icrs.ra.deg
-            data["dec"] = self.stream_coord.icrs.dec.deg
+            data["ra"] = stream_coord.icrs.ra.deg
+            data["dec"] = stream_coord.icrs.dec.deg
         
         # Sample missing magnitudes if needed
         mag_bands_missing = [band for band in bands if f"mag_{band}" not in data.columns]
@@ -281,9 +288,9 @@ class StreamInjector:
         if phi1_arr.size == 0 or phi2_arr.size == 0:
             raise ValueError("phi1 and phi2 cannot be empty arrays")
 
-        self.gc_frame = gc_frame
-        if self.gc_frame is None:
-            self.gc_frame = self._find_gc_frame(
+        # Find or use provided great circle frame
+        if gc_frame is None:
+            gc_frame = self._find_gc_frame(
                 rng=rng,
                 seed=seed,
                 mask_type=mask_type,
@@ -292,9 +299,10 @@ class StreamInjector:
                 **kwargs,
             )
 
+        # Transform to sky coordinates
         phi1_deg = phi1_arr * u.deg
         phi2_deg = phi2_arr * u.deg
-        stream_coord = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=self.gc_frame)
+        stream_coord = coord.SkyCoord(phi1=phi1_deg, phi2=phi2_deg, frame=gc_frame)
 
         return stream_coord
 
@@ -349,7 +357,8 @@ class StreamInjector:
             if verbose:
                 print("Using provided HEALPix mask for footprint checking.")
 
-        self.mask = healpix_mask
+        # Do NOT store mask as instance attribute to avoid conflicts between runs
+        # (each run may need a different mask)
 
         # If no mask is available, return a random great circle frame
         if healpix_mask is None:
