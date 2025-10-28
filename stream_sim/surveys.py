@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import scipy.interpolate
 import healpy as hp
+import healsparse as hsp
 from dataclasses import dataclass
 from typing import Optional, Callable
 
@@ -97,7 +98,7 @@ class Survey:
     coeff_extinc: dict = None
     saturation: dict = None
     sys_error: dict = None
-    
+
     # Band-independent functions (same for all bands)
     completeness: Optional[Callable] = None
     log_photo_error: Optional[Callable] = None
@@ -105,6 +106,19 @@ class Survey:
     # Band-independent maps
     ebv_map: Optional[np.ndarray] = None
     coverage: Optional[np.ndarray] = None
+    
+    def __post_init__(self):
+        """Initialize default dictionaries if not provided."""
+        if self.bands is None:
+            self.bands = []
+        if self.maglim_maps is None:
+            self.maglim_maps = {}
+        if self.coeff_extinc is None:
+            self.coeff_extinc = {}
+        if self.saturation is None:
+            self.saturation = {}
+        if self.sys_error is None:
+            self.sys_error = {}
     
     @classmethod
     def load(cls, survey: str, release: Optional[str] = None, 
@@ -591,6 +605,7 @@ class SurveyFactory:
         for band in survey.bands:
             attr_name = f"maglim_map_{band}"
             filename = survey_config.get(attr_name)
+            extension = os.path.splitext(filename)[1] if filename else ""
             
             if filename is None:
                 print(f"  ⚠ Warning: '{attr_name}' not specified in config (skipping {band}-band)")
@@ -605,7 +620,11 @@ class SurveyFactory:
             try:
                 print(f"  Loading {band}-band magnitude limit map...")
                 print(f"    File: {filename}")
-                survey.maglim_maps[band] = hp.read_map(full_path)
+                if extension.lower() == ".hsp":
+                    print(f"    Detected sparse HEALPix format (.hsp)")
+                    survey.maglim_maps[band] = cls.open_map_sparse(full_path)
+                else:
+                    survey.maglim_maps[band] = hp.read_map(full_path)
                 print(f"    ✓ Success")
             except Exception as e:
                 print(f"    ✗ Failed to load {band}-band maglim map: {e}")
@@ -725,6 +744,31 @@ class SurveyFactory:
         except Exception as e:
             print(f"    ✗ Failed to load {attr_name}: {e}")
             setattr(survey, attr_name, None)
+
+    @staticmethod
+    def open_map_sparse(file_path, **kwargs):
+        """
+        Open a sparse HEALPix map and return it as a standard HEALPix map.
+        
+        Parameters
+        ----------
+        file_path : str
+            Full path to the sparse HEALPix file (.hsp).
+        **kwargs
+            Additional keyword arguments (currently unused).
+            
+        Returns
+        -------
+        np.ndarray
+            Standard HEALPix map with NaN for unseen pixels.
+        """
+        hsp_map = hsp.HealSparseMap.read(file_path)
+        nside_sparse = hsp_map.nside_sparse
+        nest = False  # by default set to True in hsp, but to False in healpy
+        map_hpx = hsp_map.generate_healpix_map(nside=nside_sparse, nest=nest)
+        map_hpx = np.where(map_hpx == hp.UNSEEN, np.nan, map_hpx)
+
+        return map_hpx
 
     @staticmethod
     def set_completeness(filename, delta_saturation = -10.4, selection="both"):
