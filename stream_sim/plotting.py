@@ -6,6 +6,8 @@ Plotting functions.
 import numpy as np
 import pylab as plt
 import os
+import pandas as pd
+
 try:
     import healpy as hp
     import skyproj
@@ -65,6 +67,213 @@ def plot_stream(phi1, phi2):
 
     ax = fig.add_subplot(gs[0, 0])
     hist, xedges, yedges, image = draw_stream(phi1, phi2)
+    return fig, ax
+
+
+###############################################################################
+####################### Injection plotting functions ##########################
+###############################################################################
+
+
+def plot_inject(data, survey, bands=None, **kwargs):
+    """
+    Plot injection results showing observed vs unobserved stars.
+    
+    Creates three panels:
+    - Left: Injected stars in the survey footprint (using magnitude limit map)
+    - Center: HR diagram using true magnitudes
+    - Right: HR diagram using measured magnitudes with photometric errors
+    
+    Parameters
+    ----------
+    data : pandas.DataFrame or dict-like
+        Data containing the injected stream. Must have columns:
+        - 'ra', 'dec': Sky coordinates in degrees
+        - 'flag_detection': Boolean flag for detected stars
+        - 'mag_<band>': True magnitudes for each band
+        - 'mag_<band>_meas': Measured magnitudes for each band
+    survey : Survey
+        Survey object containing magnitude limit maps and other properties.
+    bands : list of str, optional
+        Bands to use for HR diagram. Default is ['g', 'r'].
+        Will use first two bands if more are provided.
+    **kwargs : dict
+        Additional keyword arguments:
+        - save : bool, if True saves the figure
+        - folder : str, path to save folder (default: ../data/outputs/)
+        - survey_name : str, survey name for filename (default: uses survey object)
+    
+    Returns
+    -------
+    fig, ax : tuple
+        The matplotlib figure and axes array.
+    
+    Examples
+    --------
+    >>> fig, ax = plot_inject(observed_data, survey, bands=['g', 'r'], save=True)
+    """
+    # Convert to DataFrame if needed
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    
+    # Default to g and r bands
+    if bands is None:
+        bands = ['g', 'r']
+    
+    # Use first two bands for color-magnitude diagram
+    if len(bands) < 2:
+        raise ValueError("Need at least 2 bands for HR diagram")
+    band1, band2 = bands[0], bands[1]
+    
+    # Check required columns
+    required_cols = ['ra', 'dec', 'flag_detection', 
+                     f'mag_{band1}', f'mag_{band2}',
+                     f'mag_{band1}_meas', f'mag_{band2}_meas']
+    missing_cols = [col for col in required_cols if col not in data.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+    
+    # Get detection flags
+    sel = data["flag_detection"].astype(bool)
+    
+    # Create figure
+    fig, ax = plt.subplots(1, 3, figsize=(14, 6))
+    plt.subplots_adjust(left=0.075, right=0.98)
+    
+    # --- Panel 1: Spatial distribution with magnitude limit map ---
+    ax[0].set_title("Injection of the stream into the footprint")
+    
+    # Get magnitude limit map for the first band
+    try:
+        maglim_map = survey.maglim_maps[band1]
+        nside = hp.get_nside(maglim_map)
+        
+        # Determine RA/Dec range from data with some padding
+        ra_min, ra_max = data['ra'].min() - 5, data['ra'].max() + 5
+        dec_min, dec_max = data['dec'].min() - 5, data['dec'].max() + 5
+        
+        # Create grid for the map
+        x = np.linspace(ra_min, ra_max, 200)
+        y = np.linspace(dec_min, dec_max, 200)
+        XX, YY = np.meshgrid(x, y)
+        
+        # Get magnitude limits at each grid point
+        ZZ = maglim_map[hp.ang2pix(nside, XX, YY, lonlat=True)]
+        ZZ[ZZ < 0] = np.nan  # Mask invalid pixels
+        
+        # Plot magnitude limit map
+        mesh = ax[0].pcolormesh(XX, YY, ZZ, shading="auto", cmap='viridis')
+        fig.colorbar(mesh, ax=ax[0], label=f"Mag Limit ({band1})")
+        
+    except (KeyError, AttributeError) as e:
+        # If map not available, just show a simple plot
+        print(f"Warning: Could not plot magnitude limit map: {e}")
+    
+    # Plot stars
+    ax[0].scatter(
+        data["ra"], data["dec"], s=2, alpha=0.5, color="gray", label="Unobserved"
+    )
+    ax[0].scatter(
+        data["ra"][sel],
+        data["dec"][sel],
+        s=4,
+        alpha=1.0,
+        color="red",
+        label="Observed",
+    )
+    ax[0].set_xlabel("RA (deg)")
+    ax[0].set_ylabel("Dec (deg)")
+    ax[0].legend()
+    
+    # --- Panel 2: HR diagram with true magnitudes ---
+    ax[1].set_title("HR diagram using True magnitudes")
+    
+    color_true = data[f"mag_{band1}"] - data[f"mag_{band2}"]
+    mag_true = data[f"mag_{band1}"]
+    
+    ax[1].scatter(
+        color_true,
+        mag_true,
+        s=2,
+        alpha=0.5,
+        color="gray",
+        label="Unobserved",
+    )
+    ax[1].scatter(
+        color_true[sel],
+        mag_true[sel],
+        s=4,
+        alpha=1.0,
+        color="red",
+        label="Observed",
+    )
+    ax[1].set_xlim(-0.5, 1.5)
+    ax[1].set_ylim(30, 16)
+    ax[1].set_xlabel(f"({band1}-{band2})")
+    ax[1].set_ylabel(band1)
+    ax[1].legend()
+    
+    # --- Panel 3: HR diagram with measured magnitudes ---
+    ax[2].set_title("HR diagram using sampled observed magnitudes")
+    
+    # Convert measured magnitudes to numeric, handling "BAD_MAG" strings
+    mag1_meas = pd.to_numeric(data[f"mag_{band1}_meas"], errors="coerce")
+    mag2_meas = pd.to_numeric(data[f"mag_{band2}_meas"], errors="coerce")
+    
+    # Mask out bad measurements
+    mask_good = (~mag1_meas.isna()) & (~mag2_meas.isna())
+    
+    if mask_good.sum() > 0:
+        color_meas = mag1_meas - mag2_meas
+        
+        ax[2].scatter(
+            color_meas[mask_good],
+            mag1_meas[mask_good],
+            s=2,
+            alpha=0.5,
+            color="gray",
+            label="Unobserved",
+        )
+        ax[2].scatter(
+            color_meas[sel & mask_good],
+            mag1_meas[sel & mask_good],
+            s=4,
+            alpha=1.0,
+            color="red",
+            label="Observed",
+        )
+    else:
+        print("Warning: No valid measured magnitudes to plot")
+    
+    ax[2].set_xlim(-0.5, 1.5)
+    ax[2].set_ylim(30, 16)
+    ax[2].set_xlabel(f"({band1}-{band2})")
+    ax[2].set_ylabel(band1)
+    ax[2].legend()
+    
+    # --- Save figure if requested ---
+    if kwargs.pop("save", False):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(current_dir, "..", "data", "outputs")
+        folder = kwargs.pop("folder", path)
+        
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        
+        # Get survey name for filename
+        survey_name = kwargs.pop("survey_name", getattr(survey, 'name', 'unknown'))
+        
+        # Find next available file number
+        existing_files = os.listdir(folder)
+        num_fichier = len(
+            [f for f in existing_files if f.startswith(f"injection_{survey_name}_")]
+        )
+        file_name = f"injection_{survey_name}_{num_fichier:03d}"
+        filename = os.path.join(folder, file_name + ".png")
+        
+        print(f"Saving figure: {filename}...")
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+    
     return fig, ax
 
 
