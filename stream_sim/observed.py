@@ -206,6 +206,9 @@ class StreamInjector:
         rng = kwargs.pop("rng", None)
         seed = kwargs.pop("seed", None)
 
+        # Make explicit copy to avoid SettingWithCopyWarning
+        data = data.copy()
+
         if not ('ra' in data.columns and 'dec' in data.columns):
             if "phi1" not in data.columns or "phi2" not in data.columns:
                 raise ValueError(
@@ -220,8 +223,8 @@ class StreamInjector:
                 rng=rng,
                 **kwargs,
             )
-            data["ra"] = stream_coord.icrs.ra.deg
-            data["dec"] = stream_coord.icrs.dec.deg
+            data.loc[:, "ra"] = stream_coord.icrs.ra.deg
+            data.loc[:, "dec"] = stream_coord.icrs.dec.deg
         
         # Sample missing magnitudes if needed
         mag_bands_missing = [band for band in bands if f"mag_{band}" not in data.columns]

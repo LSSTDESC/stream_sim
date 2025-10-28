@@ -830,6 +830,7 @@ class SurveyFactory:
         
         # Convert boolean to float (1.0 = covered, 0.0 = not covered)
         survey.coverage = coverage_map.astype(float)
+        print(f"  ✓ Built coverage map (nside={nside}, {np.sum(coverage_map)} pixels covered)")
         
         return survey.coverage
 
