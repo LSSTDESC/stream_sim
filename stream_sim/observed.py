@@ -22,6 +22,8 @@ class StreamInjector:
     All survey data is loaded once and cached, making multiple injections efficient.
     """
 
+    mask_cache = {}
+
     def __init__(self, survey, **kwargs):
         """Initialize with survey configuration."""
 
@@ -432,74 +434,133 @@ class StreamInjector:
     def _create_mask(self, mask_type, verbose=True, ebv_threshold=0.2):
         """
         Create a combined boolean mask from specified mask types.
+        
+        This method uses a class-level cache to avoid recomputing masks. The cache key
+        includes the survey name, mask types, and ebv_threshold to ensure correct cache hits.
 
         Parameters
         ----------
         mask_type : str or list of str
             Type(s) of masks to combine. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+        verbose : bool, default True
+            Whether to print status messages.
         ebv_threshold : float, default 0.2
-            E(B-V) threshold for extinction mask.
+            E(B-V) threshold for extinction mask (only used if 'ebv' in mask_type).
 
         Returns
         -------
         numpy.ndarray
-            Combined boolean mask array.
+            Combined boolean mask array, or None if mask_type is None.
 
         Raises
         ------
         ValueError
             If mask_type is invalid or required maps are missing.
         """
-
+        # Normalize mask_type to list
+        if mask_type is None:
+            if verbose:
+                print("⚠ No mask_type provided to build mask.")
+            return None
+        
         if isinstance(mask_type, str):
             mask_type = [mask_type]
-        elif isinstance(mask_type, list):
-            pass
-        elif mask_type is None:
+        elif not isinstance(mask_type, list):
+            raise ValueError("mask_type must be a string, list of strings, or None.")
+        
+        # Sort mask_type for consistent cache keys
+        mask_type = sorted(mask_type)
+        
+        # Create cache key that includes survey name and ebv_threshold if relevant
+        survey_name = getattr(self.survey, 'name', 'unknown')
+        uses_ebv = 'ebv' in mask_type
+        cache_key = (survey_name, tuple(mask_type), ebv_threshold if uses_ebv else None)
+        
+        # Check cache first
+        if cache_key in self.mask_cache:
             if verbose:
-                print("No mask_type provided to build mask.")
-            return None
-        else:
-            raise ValueError("mask_type must be a string or a list of strings.")
-
-        # Find the minimum nside among the needed maps
+                print(f"✓ Using cached mask for {mask_type}")
+            return self.mask_cache[cache_key]
+        
+        if verbose:
+            print(f"Building new mask for {mask_type}...")
+        
+        # Find the minimum nside among the needed maps and collect maps
         nside_target = []
         maps = {}
+        
         for m in mask_type:
             if 'maglim' in m:
                 band = m.split('_')[-1]
+                if band not in self.survey.maglim_maps:
+                    raise ValueError(f"Band '{band}' not found in survey magnitude limit maps. Available: {list(self.survey.maglim_maps.keys())}")
                 nside = hp.get_nside(self.survey.maglim_maps[band])
                 maps[m] = self.survey.maglim_maps[band]
                 nside_target.append(nside)
-            elif m == "coverage" or m == "footprint":
+                
+            elif m in ["coverage", "footprint"]:
+                if self.survey.coverage is None:
+                    raise ValueError("Survey coverage map is not available.")
                 nside = hp.get_nside(self.survey.coverage)
                 maps[m] = self.survey.coverage
                 nside_target.append(nside)
+                
             elif m == "ebv":
-                nside = hp.get_nside(self.ebv_map)
-                maps[m] = self.ebv_map
+                if self.survey.ebv_map is None:
+                    raise ValueError("Survey E(B-V) extinction map is not available.")
+                nside = hp.get_nside(self.survey.ebv_map)
+                maps[m] = self.survey.ebv_map
                 nside_target.append(nside)
             else:
-                raise ValueError(f"Unknown mask type: {m}")
+                raise ValueError(f"Unknown mask type: '{m}'. Valid options: 'footprint', 'coverage', 'maglim_<band>', 'ebv'")
+        
+        if not nside_target:
+            raise ValueError(f"No valid maps found for mask_type: {mask_type}")
+            
         nside_min = min(nside_target)
 
-        # Upgrade all maps to the minimum nside
+        # Upgrade/downgrade all maps to the same nside
         for m in maps:
             nside = hp.get_nside(maps[m])
             if nside != nside_min:
+                if verbose:
+                    print(f"  Resampling {m} from nside={nside} to nside={nside_min}")
                 maps[m] = hp.ud_grade(maps[m], nside_min)
-                print(f"Upgrading {m} from nside {nside} to {nside_min}.")
 
-        # Combine the masks
-        mask_map = np.ones(len(maps[mask_type[0]]), dtype=bool)
+        # Initialize combined mask (start with all True)
+        npix = hp.nside2npix(nside_min)
+        mask_map = np.ones(npix, dtype=bool)
+        
+        # Combine the masks with appropriate thresholds
         for m in mask_type:
             if 'maglim' in m: 
                 band = m.split('_')[-1]
-                mask_map &= maps[m] > self.survey.saturation[band]
-            elif m == "coverage" or m == "footprint":
-                mask_map &= maps[m] > 0.5  # covered regions
-            elif m == "ebv":  # select low extinction regions
+                # Valid regions are where magnitude limit is above saturation
+                if band in self.survey.saturation:
+                    mask_map &= maps[m] > self.survey.saturation[band]
+                    if verbose:
+                        print(f"  Applied saturation cut for {band} band (> {self.survey.saturation[band]} mag)")
+                else:
+                    # If no saturation defined, just check for positive values
+                    mask_map &= maps[m] > 0
+                    if verbose:
+                        print(f"  Applied positivity cut for {band} band (no saturation defined)")       
+            elif m in ["coverage", "footprint"]:
+                # Valid regions have coverage > 0.5
+                mask_map &= maps[m] > 0.5
+            elif m == "ebv":
+                # Valid regions have low extinction
                 mask_map &= maps[m] < ebv_threshold
+        
+        # Store in cache
+        self.mask_cache[cache_key] = mask_map
+        
+        if verbose:
+            total_pixels = len(mask_map)
+            valid_pixels = np.sum(mask_map)
+            coverage_fraction = valid_pixels / total_pixels 
+            print(f"✓ Mask created: valid pixels fraction ({coverage_fraction:.1f}%)")
+            print(f"  Cached with key: {cache_key}")
 
         return mask_map
 
@@ -595,13 +656,83 @@ class StreamInjector:
     def getFluxError(mag, mag_error):
         return StreamInjector.magToFlux(mag) * mag_error / 1.0857362
 
+    @classmethod
+    def clear_mask_cache(cls):
+        """
+        Clear the mask cache.
+        
+        This can be useful if you want to free memory or force masks to be recomputed.
+        
+        Examples
+        --------
+        >>> StreamInjector.clear_mask_cache()
+        """
+        cls.mask_cache.clear()
+        print("✓ Mask cache cleared")
+    
+    @classmethod
+    def list_cached_masks(cls):
+        """
+        List all cached masks.
+        
+        Returns
+        -------
+        list of tuples
+            List of cache keys (survey_name, mask_types, ebv_threshold)
+            
+        Examples
+        --------
+        >>> StreamInjector.list_cached_masks()
+        [('LSST', ('footprint', 'maglim_r'), None),
+         ('LSST', ('ebv', 'footprint'), 0.2)]
+        """
+        if not cls.mask_cache:
+            print("No masks cached")
+            return []
+        
+        print(f"Cached masks ({len(cls.mask_cache)}):")
+        for key in cls.mask_cache.keys():
+            survey_name, mask_types, ebv_thresh = key
+            ebv_str = f", ebv_threshold={ebv_thresh}" if ebv_thresh is not None else ""
+            print(f"  - {survey_name}: {list(mask_types)}{ebv_str}")
+        return list(cls.mask_cache.keys())
 
-    def plot_stream_in_mask(self, **kwargs):
+    def plot_stream_in_mask(self, data, mask_type, ebv_threshold=0.2, **kwargs):
         """
         Plot the stream over the footprint mask.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data containing 'ra' and 'dec' columns.
+        mask_type : str or list of str
+            Type(s) of masks to plot. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+        ebv_threshold : float, default 0.2
+            E(B-V) threshold (only used if 'ebv' in mask_type).
+        **kwargs
+            Additional arguments passed to plotting function, including:
+            - output_folder : str, path to save the figure
+            
+        Returns
+        -------
+        fig, ax : tuple
+            Matplotlib figure and axes.
+            
+        Examples
+        --------
+        >>> fig, ax = injector.plot_stream_in_mask(data, ['footprint', 'maglim_r'])
         """
-        if not hasattr(self, "data"):
-            raise ValueError("No data found. Please run the 'inject' method first.")
-
-        fig,ax = plot_stream_in_mask(self.data["ra"], self.data["dec"], self.mask, output_folder=kwargs.get("output_folder"))
+        # Get or create the mask
+        mask = self._create_mask(mask_type, verbose=False, ebv_threshold=ebv_threshold)
+        
+        if mask is None:
+            raise ValueError("Could not create mask. Check mask_type parameter.")
+        
+        # Call the plotting function
+        fig, ax = plot_stream_in_mask(
+            data["ra"], 
+            data["dec"], 
+            mask, 
+            output_folder=kwargs.get("output_folder")
+        )
         return fig, ax
