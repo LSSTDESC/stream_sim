@@ -1,0 +1,36 @@
+# Configuration file for the survey LSST
+name: lsst
+release: yr1
+survey_files: 
+    # Path to data files (leave empty for default location)
+    file_path: ''
+
+    # Band-specific magnitude limit maps
+    maglim_map_g: baseline_v5.0.0_year_1.0_band_g_nside_128.hsp
+    maglim_map_r: baseline_v5.0.0_year_1.0_band_r_nside_128.hsp
+
+    # Band-independent maps
+    ebv_map: ebv_sfd98_fullres_nside_4096_ring_equatorial.fits
+    completeness: stellar_efficiency_cut['r'].csv
+    log_photo_error: photoerror_r.csv
+
+survey_properties: 
+  bands: ['u', 'g', 'r', 'i', 'z', 'y']
+
+  # Extinction coefficients per band (A_band / E(B-V)) 
+  # from Tab 6 of https://iopscience.iop.org/article/10.1088/0004-637X/737/2/103/pdf
+  coeff_extinc_u: 4.145
+  coeff_extinc_g: 3.237
+  coeff_extinc_r: 2.273
+  coeff_extinc_i: 1.684 
+  coeff_extinc_z: 1.323 
+  coeff_extinc_y: 1.088
+
+  # Systematic photometric errors (mag), or could be specified as sys_error_g, sys_error_r, etc
+  sys_error : 0.005 # Error common to all bands
+  sys_error_i: 0.01  # Example to Override for i-band
+
+
+  # Saturation limits per band, or could be specified as saturation_g, saturation_r, etc
+  saturation: 16.0
+  saturation_u: 15.0  # Override for u-band
