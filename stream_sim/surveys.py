@@ -8,7 +8,8 @@ from typing import Optional, Callable
 
 @dataclass
 class Survey:
-    """Container for survey properties and data.
+    """
+    Container for survey properties and data.
     
     This class stores all survey-specific data including HEALPix maps,
     efficiency functions, and photometric error models. Data is loaded
@@ -20,56 +21,65 @@ class Survey:
     Attributes
     ----------
     name : str
-        Survey identifier (e.g., 'dc2', 'lsst', 'des')
+        Survey identifier (e.g., 'lsst').
     release : str, optional
-        Survey data release version (e.g., 'yr1', 'yr10')
-    bands : list of str
-        List of photometric bands available (e.g., ['g', 'r', 'i'])
-    maglim_maps : dict
-        HEALPix maps of magnitude limits, keyed by band
-        Example: {'g': array(...), 'r': array(...)}
-    coeff_extinc : dict
-        Extinction coefficients A_band/E(B-V), keyed by band
-        Example: {'g': 3.303, 'r': 2.285}
-        Default: LSST values for g and r bands
-    saturation : dict
-        Bright magnitude limits where detector saturates, keyed by band
-        Example: {'g': 16.0, 'r': 16.0}
-        Default: 16.0 mag for all bands
-    sys_error : dict
-        Systematic photometric errors (mag), keyed by band
-        Example: {'g': 0.01, 'r': 0.01}
-        Default: 0.0 for all bands
+        Survey data release version (e.g., 'yr1', 'yr10').
+    bands : list of str, optional
+        List of photometric bands available (e.g., ['g', 'r', 'i']).
+        Default is an empty list.
+    maglim_maps : dict, optional
+        HEALPix maps of magnitude limits, keyed by band.
+        Example: {'g': array(...), 'r': array(...)}.
+        Default is an empty dictionary.
+    coeff_extinc : dict, optional
+        Extinction coefficients A_band/E(B-V), keyed by band.
+        Example: {'g': 3.303, 'r': 2.285}.
+        Default uses LSST values for standard bands.
+    saturation : dict, optional
+        Bright magnitude limits where detector saturates, keyed by band.
+        Example: {'g': 16.0, 'r': 16.0}.
+        Default is 16.0 mag for all bands.
+    sys_error : dict, optional
+        Systematic photometric errors (mag), keyed by band.
+        Example: {'g': 0.01, 'r': 0.01}.
+        Default is 0.0 for all bands.
     ebv_map : np.ndarray, optional
-        HEALPix map of E(B-V) extinction values (band-independent)
+        HEALPix map of E(B-V) extinction values (band-independent).
     coverage : np.ndarray, optional
-        HEALPix map of survey coverage (1=observed, 0=not observed)
+        HEALPix map of survey coverage (1=observed, 0=not observed).
     completeness : callable, optional
-        Efficiency function f(magnitude) -> efficiency [0, 1]
-        Same function used for all bands
+        Efficiency function f(magnitude) -> efficiency [0, 1].
+        Same function used for all bands, obtained from r band.
     log_photo_error : callable, optional
-        Photometric error model f(delta_mag) -> log10(mag_error)
-        Same function used for all bands
+        Photometric error model f(delta_mag) -> log10(mag_error).
+        Same function used for all bands, obtained from r band.
         
     Examples
     --------
-    >>> # Load a survey
+    Load a survey:
+    
     >>> survey = Survey.load('lsst', release='dc2')
-    >>> print(survey.bands)  # ['g', 'r']
+    >>> print(survey.bands)
+    ['g', 'r']
 
-    >>> # Access magnitude limit for g-band at pixel 10000
+    Access magnitude limit for g-band at pixel 10000:
+    
     >>> maglim_g = survey.get_maglim('g', pixel=10000)
     >>> print(maglim_g)
 
-    >>> # Calculate extinction in r-band at pixel 10000
+    Calculate extinction in r-band at pixel 10000:
+    
     >>> extinction_r = survey.get_extinction('r', pixel=10000)
     >>> print(extinction_r)
 
-    >>> # Get detection efficiency for magnitude 24.0 in g-band
-    >>> efficiency_g = survey.completeness(24.0)
+    Get detection efficiency for magnitude 24.0 in g-band:
+    
+    >>> maglim_r = survey.get_maglim('r', pixel=10000)
+    >>> efficiency_g = survey.get_completeness('r', 24.0, maglim_r)
     >>> print(efficiency_g)
 
-    >>> # Calculate photometric error for magnitude 24.0 in r-band
+    Calculate photometric error for magnitude 24.0 in r-band:
+    
     >>> maglim_r = survey.get_maglim('r', pixel=10000)
     >>> photo_error_r = survey.get_photo_error('r', 24.0, maglim_r)
     >>> print(photo_error_r)
@@ -96,63 +106,62 @@ class Survey:
     ebv_map: Optional[np.ndarray] = None
     coverage: Optional[np.ndarray] = None
     
-    def __post_init__(self):
-        """Initialize dictionaries if not provided."""
-        if self.bands is None:
-            self.bands = []
-        if self.maglim_maps is None:
-            self.maglim_maps = {}
-        if self.coeff_extinc is None:
-            self.coeff_extinc = {}
-        if self.saturation is None:
-            self.saturation = {}
-        if self.sys_error is None:
-            self.sys_error = {}
-    
     @classmethod
     def load(cls, survey: str, release: Optional[str] = None, 
              config_file: Optional[dict] = None, **kwargs) -> 'Survey':
-        """Load survey data and return Survey instance.
+        """
+        Load survey data and return Survey instance.
         
         This is a convenience method that calls SurveyFactory.create_survey().
         
         Parameters
         ----------
         survey : str
-            Survey name (e.g., 'dc2', 'lsst', 'des')
+            Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/version (e.g., 'yr1', 'yr10')
+            Survey release/version (e.g., 'yr1', 'yr10').
         config_file : dict, optional
-            Custom configuration dictionary
+            Custom configuration dictionary.
         **kwargs
-            Additional parameters to override config values
+            Additional parameters to override config values.
             
         Returns
         -------
         Survey
-            Loaded Survey instance
+            Loaded Survey instance.
             
         Examples
         --------
+        Load LSST DC2 survey:
+        
         >>> survey = Survey.load('lsst', release='dc2')
+        
+        Load with custom systematic error:
+        
         >>> survey = Survey.load('lsst', release='yr10', sys_error=0.01)
         """
         return SurveyFactory.create_survey(survey, release, config_file, **kwargs)
     
     def get_maglim(self, band: str, pixel: int = None) -> float:
-        """Get magnitude limit for a specific band.
+        """
+        Get magnitude limit for a specific band.
         
         Parameters
         ----------
         band : str
-            Band identifier (e.g., 'g', 'r')
+            Band identifier (e.g., 'g', 'r').
         pixel : int, optional
-            HEALPix pixel index. If None, returns entire map
+            HEALPix pixel index. If None, returns entire map.
             
         Returns
         -------
         float or np.ndarray
-            Magnitude limit(s)
+            Magnitude limit(s). If pixel is None, returns full HEALPix map array.
+            
+        Raises
+        ------
+        ValueError
+            If the specified band is not available in the survey.
         """
         if band not in self.maglim_maps:
             raise ValueError(f"Band '{band}' not available. Available: {self.bands}")
@@ -162,19 +171,25 @@ class Survey:
         return self.maglim_maps[band][pixel]
     
     def get_extinction(self, band: str, pixel: int = None) -> float:
-        """Get extinction (A_band) for a specific band.
+        """
+        Get extinction (A_band) for a specific band.
         
         Parameters
         ----------
         band : str
-            Band identifier (e.g., 'g', 'r')
+            Band identifier (e.g., 'g', 'r').
         pixel : int, optional
-            HEALPix pixel index. If None, returns extinction map for entire sky
+            HEALPix pixel index. If None, returns extinction map for entire sky.
             
         Returns
         -------
         float or np.ndarray
-            Extinction in magnitudes
+            Extinction in magnitudes. If pixel is None, returns full HEALPix map array.
+            
+        Raises
+        ------
+        ValueError
+            If the specified band is not available or E(B-V) map not loaded.
         """
         if band not in self.coeff_extinc:
             raise ValueError(f"Band '{band}' not available. Available: {self.bands}")
@@ -190,21 +205,33 @@ class Survey:
     
     
     def get_photo_error(self, band: str, magnitude: float, maglim: float, **kwargs) -> float:
-        """Get photometric error estimate.
+        """
+        Get photometric error estimate.
         
         Parameters
         ----------
         band : str
-            Band identifier (e.g., 'g', 'r') - used to get band-specific sys_error
+            Band identifier (e.g., 'g', 'r'). Used to get band-specific sys_error.
         magnitude : float or np.ndarray
-            Observed magnitude(s)
+            True apparent magnitude(s).
         maglim : float or np.ndarray
-            Magnitude limit(s) at the position(s)
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments:
+            
+            delta_saturation : float, optional
+                Magnitude difference for saturation threshold in the initial error function. 
+                Default is -10.4.
             
         Returns
         -------
         float or np.ndarray
-            Total photometric error (including systematic component)
+            Total photometric error (including systematic component) in magnitudes.
+            
+        Raises
+        ------
+        ValueError
+            If photo error model is not loaded.
         """
         if self.log_photo_error is None:
             raise ValueError("Photo error model not loaded")
@@ -234,21 +261,35 @@ class Survey:
         return total_error
     
     def get_completeness(self, band: str, magnitude: float, maglim: float, **kwargs) -> float:
-        """Get detection completeness/efficiency.
+        """
+        Get detection completeness/efficiency.
         
         Parameters
         ----------
         band : str
-            Band identifier (e.g., 'g', 'r') - currently unused since same function for all bands
+            Band identifier (e.g., 'g', 'r'). Currently unused since same function
+            is used for all bands.
         magnitude : float or np.ndarray
-            Observed magnitude(s)
+            True apparent magnitude(s).
         maglim : float or np.ndarray
-            Magnitude limit(s) at the position(s)
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments:
+            
+            delta_saturation : float, optional
+                Magnitude difference for saturation threshold in the initial completeness function. 
+                Default is -10.4.
             
         Returns
         -------
         float or np.ndarray
-            Detection efficiency [0, 1]
+            Detection efficiency in range [0, 1]. Value of 0 means no detection,
+            1 means certain detection.
+            
+        Raises
+        ------
+        ValueError
+            If completeness function is not loaded.
         """
         if self.completeness is None:
             raise ValueError("Completeness function not loaded")
@@ -278,9 +319,11 @@ class Survey:
 
 
 class SurveyFactory:
-    """Factory for creating and caching Survey instances.
+    """
+    Factory for creating and caching Survey instances.
     
     This class handles:
+    
     - Loading survey configurations from YAML/JSON files
     - Caching loaded surveys to avoid redundant file I/O
     - Validating survey configurations
@@ -289,7 +332,7 @@ class SurveyFactory:
     Attributes
     ----------
     _cached_surveys : dict
-        Cache of previously loaded Survey objects, keyed by "survey_release"
+        Cache of previously loaded Survey objects, keyed by "survey_release".
     """
     
     _cached_surveys = {}
@@ -297,31 +340,32 @@ class SurveyFactory:
     @classmethod
     def create_survey(cls, survey: str, release: Optional[str] = None, 
                      config_file: Optional[dict] = None, **kwargs) -> Survey:
-        """Create or retrieve a cached Survey instance.
+        """
+        Create or retrieve a cached Survey instance.
         
         Parameters
         ----------
         survey : str
-            Survey name (e.g., 'dc2', 'lsst', 'des')
+            Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/data version (e.g., 'yr1', 'yr10')
-            If None, loads the base survey configuration
+            Survey release/data version (e.g., 'yr1', 'yr10').
+            If None, loads the base survey configuration.
         config_file : dict, optional
-            Custom configuration dictionary to use instead of loading from file
-            If provided, bypasses the standard config file loading
+            Custom configuration dictionary to use instead of loading from file.
+            If provided, bypasses the standard config file loading.
         **kwargs
-            Additional parameters to override values in the config file
+            Additional parameters to override values in the config file.
             
         Returns
         -------
         Survey
-            Fully loaded Survey instance (from cache if available)
+            Fully loaded Survey instance (from cache if available).
             
         Notes
         -----
-        - First call: Loads all data files and caches the result
-        - Subsequent calls: Returns cached instance (much faster)
-        - Use clear_cache() to force reloading from files
+        - First call: Loads all data files and caches the result.
+        - Subsequent calls: Returns cached instance (much faster).
+        - Use clear_cache() to force reloading from files.
         """
         # Generate unique cache key
         cache_key = f"{survey}_{release}" if release else survey
@@ -354,20 +398,29 @@ class SurveyFactory:
     
     @classmethod
     def clear_cache(cls, survey: Optional[str] = None, release: Optional[str] = None):
-        """Clear cached survey data to free memory or force reload.
+        """
+        Clear cached survey data to free memory or force reload.
         
         Parameters
         ----------
         survey : str, optional
-            Survey name to clear. If None, clears all cached surveys
+            Survey name to clear. If None, clears all cached surveys.
         release : str, optional
-            Survey release to clear. Only used if survey is specified
+            Survey release to clear. Only used if survey is specified.
             
         Examples
         --------
-        >>> SurveyFactory.clear_cache()  # Clear all
-        >>> SurveyFactory.clear_cache('lsst')  # Clear all lsst surveys
-        >>> SurveyFactory.clear_cache('lsst', 'yr1')  # Clear only lsst_yr1
+        Clear all cached surveys:
+        
+        >>> SurveyFactory.clear_cache()
+        
+        Clear all LSST surveys:
+        
+        >>> SurveyFactory.clear_cache('lsst')
+        
+        Clear only LSST year 1:
+        
+        >>> SurveyFactory.clear_cache('lsst', 'yr1')
         """
         if survey is None:
             # Clear entire cache
@@ -385,37 +438,39 @@ class SurveyFactory:
     
     @classmethod
     def list_cached_surveys(cls) -> list:
-        """Get list of currently cached survey names.
+        """
+        Get list of currently cached survey names.
         
         Returns
         -------
         list of str
-            Names of cached surveys
+            Names of cached surveys in format "survey_release" or "survey".
         """
         return list(cls._cached_surveys.keys())
     
     @classmethod
     def _load_config(cls, survey: str, release: Optional[str] = None) -> dict:
-        """Load survey configuration from YAML or JSON file.
+        """
+        Load survey configuration from YAML or JSON file.
         
         Parameters
         ----------
         survey : str
-            Survey name
+            Survey name.
         release : str, optional
-            Survey release identifier
+            Survey release identifier.
             
         Returns
         -------
         dict
-            Configuration dictionary containing survey_files and survey_properties
+            Configuration dictionary containing survey_files and survey_properties.
             
         Raises
         ------
         FileNotFoundError
-            If no configuration file is found for the survey
+            If no configuration file is found for the survey.
         ValueError
-            If the loaded config doesn't match the requested survey/release
+            If the loaded config doesn't match the requested survey/release.
         """
         # Construct path to config directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -473,9 +528,11 @@ class SurveyFactory:
     
     @classmethod
     def _load_survey_data(cls, survey: Survey, config: dict):
-        """Load all survey data files into the Survey object.
+        """
+        Load all survey data files into the Survey object.
         
-        This method:
+        This method performs the following operations:
+        
         1. Determines available bands from config
         2. Determines the data directory from config
         3. Loads HEALPix maps for each band (magnitude limits)
@@ -486,9 +543,9 @@ class SurveyFactory:
         Parameters
         ----------
         survey : Survey
-            Empty Survey object to populate
+            Empty Survey object to populate.
         config : dict
-            Configuration dictionary with 'survey_files' and 'survey_properties' keys
+            Configuration dictionary with 'survey_files' and 'survey_properties' keys.
         """
         print("\n" + "="*70)
         print("LOADING SURVEY DATA FILES")
@@ -624,22 +681,23 @@ class SurveyFactory:
     @classmethod
     def _load_file(cls, survey: Survey, config: dict, attr_name: str, 
                    description: str, loader_func: Callable, data_path: str):
-        """Load a single data file and attach it to the survey object.
+        """
+        Load a single data file and attach it to the survey object.
         
         Parameters
         ----------
         survey : Survey
-            Survey object to populate
+            Survey object to populate.
         config : dict
-            Configuration dictionary containing filenames
+            Configuration dictionary containing filenames.
         attr_name : str
-            Attribute name to set on the survey object (e.g., 'ebv_map')
+            Attribute name to set on the survey object (e.g., 'ebv_map').
         description : str
-            Human-readable description for logging
+            Human-readable description for logging.
         loader_func : callable
-            Function to load the file (e.g., hp.read_map)
+            Function to load the file (e.g., hp.read_map).
         data_path : str
-            Directory containing the data files
+            Directory containing the data files.
         """
         # Get filename from config
         filename = config.get(attr_name)
@@ -669,31 +727,46 @@ class SurveyFactory:
             setattr(survey, attr_name, None)
 
     @staticmethod
-    def set_completeness(filename, delta_saturation = -12.0, selection="both"):
-        """Load and interpolate completeness/efficiency function from file.
+    def set_completeness(filename, delta_saturation = -10.4, selection="both"):
+        """
+        Load and interpolate completeness/efficiency function from file.
         
         Parameters
         ----------
         filename : str
             Path to CSV file with columns:
-            - 'delta_mag': Magnitude difference from limit (mag - maglim)
+            
+            - 'delta_mag' : Magnitude difference from limit (mag - maglim)
+            - 'eff_star' : Detection efficiency only
+            - 'classifiction_eff' : Classification efficiency only
+            - 'classification_detection_eff' : Combined efficiency
+            
+        delta_saturation : float, optional
+            Magnitude difference threshold for saturation. Default is -10.4.
         selection : str, optional
             Which efficiency to use:
-            - 'detected': Detection efficiency only (column 'eff_star')
-            - 'classified': Classification efficiency only (column 'classifiction_eff')
-            - 'both': Combined detection and classification (column 'classification_detection_eff')
-            Default: 'both'
+            
+            - 'detected' : Detection efficiency only (column 'eff_star')
+            - 'classified' : Classification efficiency only (column 'classifiction_eff')
+            - 'both' : Combined detection and classification (column 'classification_detection_eff')
+            
+            Default is 'both'.
             
         Returns
         -------
         callable
-            Interpolation function f(delta_mag) -> log10(magnitude_error)
+            Interpolation function f(delta_mag) -> efficiency [0, 1].
+            
+        Raises
+        ------
+        ValueError
+            If selection is not one of 'detected', 'classified', or 'both'.
             
         Notes
         -----
-        - Bright stars (delta_mag << 0): Extended to delta_mag = -10 with constant error
-        - Faint stars (beyond data): Returns log10(error) = 1.0 (error = 10 mag)
-        - The saturation parameter is automatically passed from the survey object
+        - Bright stars (delta_mag <= delta_saturation): Efficiency forced to 0.
+        - Faint stars (beyond data): Returns efficiency = 0.0.
+        - The saturation parameter is automatically passed from the survey object.
         """
         # Load photometric error data
         data = np.genfromtxt(filename, delimiter=",", names=True)
@@ -733,8 +806,9 @@ class SurveyFactory:
         return interpolator
 
     @staticmethod
-    def set_photo_error(filename, delta_saturation = -12.0):
-        """Load photometric error model from file.
+    def set_photo_error(filename, delta_saturation = -10.4):
+        """
+        Load photometric error model from file.
         
         This creates an interpolation function that estimates photometric uncertainty
         as a function of the magnitude difference from the survey limit (delta_mag).
@@ -743,23 +817,24 @@ class SurveyFactory:
         ----------
         filename : str
             Path to CSV file with columns:
-            - 'delta_mag': Magnitude difference from limit (mag - maglim)
-            - 'log_mag_err': Logarithm (base 10) of magnitude error
-        saturation : float, optional
-            Bright magnitude limit for the band
-            Used to determine the bright-end extension point
-            Default: 16.0 mag
+            
+            - 'delta_mag' : Magnitude difference from limit (mag - maglim)
+            - 'log_mag_err' : Logarithm (base 10) of magnitude error
+            
+        delta_saturation : float, optional
+            Bright magnitude difference threshold. Used to determine the bright-end
+            extension point. Default is -10.4.
             
         Returns
         -------
         callable
-            Interpolation function f(delta_mag) -> log10(magnitude_error)
+            Interpolation function f(delta_mag) -> log10(magnitude_error).
             
         Notes
         -----
-        - Bright stars (delta_mag << 0): Extended to delta_mag = -10 with constant error
-        - Faint stars (beyond data): Returns log10(error) = 1.0 (error = 10 mag)
-        - The saturation parameter is automatically passed from the survey object
+        - Bright stars (delta_mag < delta_saturation): Extended with constant error.
+        - Faint stars (beyond data): Returns log10(error) = 1.0 (error = 10 mag).
+        - The saturation parameter is automatically passed from the survey object.
         """
         # Load photometric error data
         data = np.genfromtxt(filename, delimiter=",", names=True)
@@ -782,17 +857,22 @@ class SurveyFactory:
 
     @classmethod
     def _build_coverage_map(cls, survey: Survey):
-        """Build coverage map from magnitude limit maps.
+        """
+        Build coverage map from magnitude limit maps.
+        
+        Creates a combined coverage map by checking all available magnitude limit
+        maps and determining which pixels are covered in all bands (logical AND).
         
         Parameters
         ----------
         survey : Survey
-            Survey object with loaded magnitude limit maps
+            Survey object with loaded magnitude limit maps.
             
         Returns
         -------
-        np.ndarray
-            HEALPix coverage map (1=observed, 0=not observed)
+        np.ndarray or None
+            HEALPix coverage map (1=observed, 0=not observed), or None if no
+            magnitude limit maps are available.
         """
         nside = None
         coverage_map = None

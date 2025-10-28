@@ -16,16 +16,52 @@ from .surveys import Survey
 
 class StreamInjector:
     """
-    Injects observational effects into stream data for a given survey.
+    Inject observational effects into stream data for a given survey.
     
     This class handles the core injection logic while keeping survey data separate.
     All survey data is loaded once and cached, making multiple injections efficient.
+    
+    Attributes
+    ----------
+    survey : Survey
+        Survey instance containing all survey-specific data and functions.
+    mask_cache : dict (class attribute)
+        Cache of previously created HEALPix masks to avoid recomputation.
+        
+    Examples
+    --------
+    Initialize with a survey:
+    
+    >>> injector = StreamInjector('lsst', release='dc2')
+    
+    Or with a pre-loaded Survey object:
+    
+    >>> survey = Survey.load('lsst', release='dc2')
+    >>> injector = StreamInjector(survey)
     """
 
     mask_cache = {}
 
     def __init__(self, survey, **kwargs):
-        """Initialize with survey configuration."""
+        """
+        Initialize with survey configuration.
+        
+        Parameters
+        ----------
+        survey : str or Survey
+            Either a survey name string (e.g., 'lsst') or a pre-loaded Survey instance.
+        **kwargs
+            Additional keyword arguments passed to Survey.load() if survey is a string.
+            Common options include:
+            
+            release : str, optional
+                Survey release version (e.g., 'dc2', 'yr1', 'yr10').
+                
+        Raises
+        ------
+        ValueError
+            If survey is neither a string nor a Survey instance.
+        """
 
         if isinstance(survey, str):
             self.survey = Survey.load(
@@ -39,20 +75,47 @@ class StreamInjector:
 
     def inject(self, data, bands=['r', 'g'], **kwargs):
         """
-        Add observed quantities by the survey to the given data.
+        Add observed quantities from the survey to the given data.
+
+        This method applies observational effects including photometric errors,
+        magnitude measurements, and detection flags based on survey properties.
 
         Parameters
         ----------
         data : str or pd.DataFrame
-            Input data or path to the file.
+            Input data as DataFrame or path to the file (CSV or Excel).
+            Must contain either (ra, dec) or (phi1, phi2) coordinates, and
+            magnitude columns for the specified bands.
+        bands : list of str, optional
+            List of photometric bands to process. Default is ['r', 'g'].
+        **kwargs
+            Additional keyword arguments:
+            
+            seed : int, optional
+                Random seed for reproducibility.
+            nside : int, optional
+                HEALPix nside parameter. Default is 4096.
+            detection_mag_cut : list of str, optional
+                Bands to apply SNR detection cut. Default is ['g'].
+            save : bool, optional
+                Whether to save the output data. Default is False.
+            folder : str or Path, optional
+                Output folder path if save=True.
 
         Returns
         -------
-        DataFrame with the following columns :
-            mag_r_meas, mag_g_meas : observed magnitudes of the survey
-            magerr_r, magerr_g : absolute errors magnitudes of the survey
-            ra, dec : coordinates of the stars
-            flag_detection : 1 for detected stars, 0 for others
+        pd.DataFrame
+            DataFrame with the following added columns:
+            
+            - mag_<band>_meas : Observed magnitudes for each band
+            - magerr_<band> : Photometric errors for each band
+            - flag_detection : Boolean flag (1=detected, 0=not detected)
+            - ra, dec : Sky coordinates (if not already present)
+            
+        Raises
+        ------
+        ValueError
+            If required columns are missing or bands are not supported.
         """
         # Load data
         data = self._load_data(data)
@@ -172,6 +235,11 @@ class StreamInjector:
         -------
         pd.DataFrame
             Loaded DataFrame.
+            
+        Raises
+        ------
+        ValueError
+            If file format is unsupported or data type is invalid.
         """
         if isinstance(data, pd.DataFrame):
             return data
@@ -190,15 +258,32 @@ class StreamInjector:
         """
         Ensure the input data contains all required columns.
 
+        This method validates and completes the input data by adding missing
+        coordinate columns (converting phi1/phi2 to ra/dec if needed).
+
         Parameters
         ----------
         data : pd.DataFrame
             Input DataFrame.
+        bands : list of str, optional
+            List of photometric bands required. Default is ['r', 'g'].
+        **kwargs
+            Additional keyword arguments:
+            
+            rng : numpy.random.Generator, optional
+                Random number generator instance.
+            seed : int, optional
+                Random seed for coordinate transformations.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame with all required columns.
+            DataFrame with all required columns (ra, dec, mag_<band> for each band).
+            
+        Raises
+        ------
+        ValueError
+            If required columns are missing and cannot be inferred.
         """
 
         required_columns = ["ra", "dec"] + [f"mag_{band}" for band in bands]
@@ -264,13 +349,21 @@ class StreamInjector:
             Random seed for reproducible frame selection.
         rng : numpy.random.Generator, optional
             Random number generator instance.
-        mask_type : list of str, default ["footprint"]
+        mask_type : list of str, optional
             Types of masks to use for footprint validation.
-            Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
+            Options: ["footprint", "maglim_g", "maglim_r", "ebv"].
+            Default is ["footprint"].
+        **kwargs
+            Additional keyword arguments passed to _find_gc_frame():
+            
+            percentile_threshold : float, optional
+                Minimum fraction of points that must be in mask. Default is 0.99.
+            max_iter : int, optional
+                Maximum number of random trials. Default is 1000.
 
         Returns
         -------
-        stream : astropy.coordinates.SkyCoord
+        astropy.coordinates.SkyCoord
             Sky coordinates in ICRS frame.
 
         Raises
@@ -282,9 +375,11 @@ class StreamInjector:
 
         Examples
         --------
+        Convert stream coordinates to sky coordinates:
+        
         >>> phi1 = np.linspace(-10, 10, 1000)
         >>> phi2 = np.zeros_like(phi1)
-        >>> coords = obj.phi_to_radec(phi1, phi2, seed=42)
+        >>> coords = injector.phi_to_radec(phi1, phi2, seed=42)
         """
         # Input validation
         phi1_arr = np.asarray(phi1, dtype=float)
@@ -325,7 +420,7 @@ class StreamInjector:
         **kwargs,
     ):
         """
-        Find a great circle frame such that a high fraction of points lie within the chosen mask.
+        Find a great circle frame such that a chosen fraction of points lie within the chosen mask.
 
         This method iteratively tries random great circle orientations until it finds
         one where at least `percentile_threshold` of the stream points fall within
@@ -333,23 +428,31 @@ class StreamInjector:
 
         Parameters
         ----------
-        phi1, phi2 : array-like
+        phi1, phi2 : array-like, optional
             Stream coordinates to validate against the mask.
-        rng : numpy.random.Generator
-            Random number generator instance.
-        mask_type : list of str, default ["footprint"]
+        mask : np.ndarray, optional
+            Pre-computed HEALPix mask. If None, will be created from mask_type.
+        mask_type : list of str, optional
             Types of masks to combine for footprint validation.
-        percentile_threshold : float, default 0.99
+            Default is ["footprint"].
+        percentile_threshold : float, optional
             Minimum fraction of points that must be within the mask.
-        max_iter : int, default 100
-            Maximum number of random trials.
-        verbose : bool, default True
-            Whether to print progress information.
+            Default is 0.99.
+        max_iter : int, optional
+            Maximum number of random trials. Default is 1000.
+        rng : numpy.random.Generator, optional
+            Random number generator instance.
+        seed : int, optional
+            Random seed if rng is not provided.
+        verbose : bool, optional
+            Whether to print progress information. Default is True.
+        **kwargs
+            Additional keyword arguments (currently unused).
 
         Returns
         -------
-        gc_frame : gala.coordinates.GreatCircleICRSFrame or None
-            Great circle frame, or None if no suitable frame found.
+        gala.coordinates.GreatCircleICRSFrame or None
+            Great circle frame, or None if no suitable frame found after max_iter attempts.
         """
         if rng is None:
             rng = np.random.default_rng(seed)
@@ -408,7 +511,19 @@ class StreamInjector:
         return None
 
     def _random_uniform_skycoord(self, rng):
-        """Generate a random point uniformly distributed on the sky."""
+        """
+        Generate a random point uniformly distributed on the sky.
+        
+        Parameters
+        ----------
+        rng : numpy.random.Generator
+            Random number generator instance.
+            
+        Returns
+        -------
+        astropy.coordinates.SkyCoord
+            Random sky coordinate in ICRS frame.
+        """
         z = rng.uniform(-1.0, 1.0)
         dec = np.degrees(np.arcsin(z))
         ra = rng.uniform(0.0, 360.0)
@@ -422,13 +537,13 @@ class StreamInjector:
         ----------
         ra_deg, dec_deg : array-like
             Coordinates in degrees.
-        healpix_mask : array-like
-            Boolean HEALPix mask array.
+        healpix_mask : np.ndarray
+            Boolean HEALPix mask array (1=valid, 0=invalid).
 
         Returns
         -------
         float
-            Fraction of points inside mask (0.0 to 1.0).
+            Fraction of points inside mask (range 0.0 to 1.0).
         """
         nside = hp.get_nside(healpix_mask)
         pix_indices = hp.ang2pix(nside, ra_deg, dec_deg, lonlat=True)
@@ -443,17 +558,19 @@ class StreamInjector:
 
         Parameters
         ----------
-        mask_type : str or list of str
-            Type(s) of masks to combine. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
-        verbose : bool, default True
-            Whether to print status messages.
-        ebv_threshold : float, default 0.2
+        mask_type : str, list of str, or None
+            Type(s) of masks to combine. Options: ["footprint", "coverage", 
+            "maglim_<band>", "ebv"]. If None, returns None.
+        verbose : bool, optional
+            Whether to print status messages. Default is True.
+        ebv_threshold : float, optional
             E(B-V) threshold for extinction mask (only used if 'ebv' in mask_type).
+            Pixels with E(B-V) > ebv_threshold are masked out. Default is 0.2.
 
         Returns
         -------
-        numpy.ndarray
-            Combined boolean mask array, or None if mask_type is None.
+        np.ndarray or None
+            Combined boolean mask array (1=valid, 0=invalid), or None if mask_type is None.
 
         Raises
         ------
@@ -568,6 +685,31 @@ class StreamInjector:
         return mask_map
 
     def sample_measured_magnitudes(self, mag_true, mag_err, **kwargs):
+        """
+        Sample measured magnitudes from true apparent magnitudes and errors.
+        
+        This method adds photometric noise to true magnitudes by sampling
+        from a Gaussian distribution in flux space.
+        
+        Parameters
+        ----------
+        mag_true : float or np.ndarray
+            True apparent magnitude(s).
+        mag_err : float or np.ndarray
+            Magnitude error(s).
+        **kwargs
+            Additional keyword arguments:
+            
+            rng : numpy.random.Generator, optional
+                Random number generator instance.
+            seed : int, optional
+                Random seed if rng is not provided.
+        
+        Returns
+        -------
+        np.ndarray or str
+            Measured magnitude(s). Returns "BAD_MAG" for objects with negative flux.
+        """
         rng = kwargs.pop("rng", None)
         if rng is None:
             seed = kwargs.pop("seed", None)
@@ -587,18 +729,36 @@ class StreamInjector:
 
     def detect_flag(self, pix, mag=None, band='r', **kwargs):
         """
-        Apply the survey selection over the given stars/pixels.
-        Args:
-            pix (Healpy pixels)
-            mag (numpy array, optional): magnitude in r band. Defaults to None.
-            band (str): band to consider for detection. Defaults to 'r'.
-        kwargs:
-            rng (numpy.random.Generator, optional): Random number generator. If None, uses the default random generator with a seed.
-            seed (int, optional): Seed for the random number generator. Used only if rng is None.
-        Raises:
-            ValueError: Must provide either mag_g or mag_r values.
-        Returns:
-            boolean list: 1 for detected stars, 0 for the others
+        Apply the survey selection to determine detection flags for stars.
+        
+        This method uses the survey completeness function and random sampling
+        to determine which stars would be detected by the survey.
+        
+        Parameters
+        ----------
+        pix : int or np.ndarray
+            HEALPix pixel index/indices.
+        mag : float or np.ndarray, optional
+            Magnitude(s). Default is None.
+        band : str, optional
+            Band to consider for detection. Default is 'r'.
+        **kwargs
+            Additional keyword arguments:
+            
+            rng : numpy.random.Generator, optional
+                Random number generator instance.
+            seed : int, optional
+                Random seed if rng is not provided.
+        
+        Returns
+        -------
+        np.ndarray
+            Boolean array: True for detected stars, False otherwise.
+            
+        Raises
+        ------
+        ValueError
+            If magnitude values are not provided.
         """
         
         rng = kwargs.pop("rng", None)
@@ -625,9 +785,9 @@ class StreamInjector:
         ----------
         data : pd.DataFrame
             Data to save.
-
         folder : str or Path, optional
-            Path to the folder where the file will be saved. If not provided, a default folder is used.
+            Path to the folder where the file will be saved. If None, uses default
+            location in package's data/outputs directory.
         """
 
         if folder is None:
@@ -644,19 +804,54 @@ class StreamInjector:
     @staticmethod
     def magToFlux(mag):
         """
-        Convert from an AB magnitude to a flux (Jy)
+        Convert from AB magnitude to flux.
+        
+        Parameters
+        ----------
+        mag : float or np.ndarray
+            AB magnitude(s).
+        
+        Returns
+        -------
+        float or np.ndarray
+            Flux in Janskys (Jy).
         """
         return 3631.0 * 10 ** (-0.4 * mag)
 
     @staticmethod
     def fluxToMag(flux):
         """
-        Convert from flux (Jy) to AB magnitude
+        Convert from flux to AB magnitude.
+        
+        Parameters
+        ----------
+        flux : float or np.ndarray
+            Flux in Janskys (Jy).
+        
+        Returns
+        -------
+        float or np.ndarray
+            AB magnitude(s).
         """
         return -2.5 * np.log10(flux / 3631.0)
 
     @staticmethod
     def getFluxError(mag, mag_error):
+        """
+        Convert magnitude error to flux error.
+        
+        Parameters
+        ----------
+        mag : float or np.ndarray
+            Magnitude(s).
+        mag_error : float or np.ndarray
+            Magnitude error(s).
+        
+        Returns
+        -------
+        float or np.ndarray
+            Flux error in Janskys (Jy).
+        """
         return StreamInjector.magToFlux(mag) * mag_error / 1.0857362
 
     @classmethod
@@ -704,26 +899,47 @@ class StreamInjector:
         """
         Plot the stream over the footprint mask.
         
+        Creates a visualization showing the stream's position relative to the
+        survey footprint or other masks.
+        
         Parameters
         ----------
         data : pd.DataFrame
             Data containing 'ra' and 'dec' columns.
         mask_type : str or list of str
-            Type(s) of masks to plot. Options: ["footprint", "maglim_g", "maglim_r", "ebv"]
-        ebv_threshold : float, default 0.2
-            E(B-V) threshold (only used if 'ebv' in mask_type).
+            Type(s) of masks to plot. Options: ["footprint", "coverage",
+            "maglim_<band>", "ebv"].
+        ebv_threshold : float, optional
+            E(B-V) threshold (only used if 'ebv' in mask_type). Default is 0.2.
         **kwargs
-            Additional arguments passed to plotting function, including:
-            - output_folder : str, path to save the figure
+            Additional arguments passed to plotting function:
+            
+            output_folder : str, optional
+                Path to save the figure.
             
         Returns
         -------
-        fig, ax : tuple
-            Matplotlib figure and axes.
+        fig : matplotlib.figure.Figure
+            The figure object.
+        ax : matplotlib.axes.Axes
+            The axes object.
+            
+        Raises
+        ------
+        ValueError
+            If mask cannot be created from mask_type parameter.
             
         Examples
         --------
+        Plot stream in footprint:
+        
         >>> fig, ax = injector.plot_stream_in_mask(data, ['footprint', 'maglim_r'])
+        
+        Plot with custom E(B-V) threshold:
+        
+        >>> fig, ax = injector.plot_stream_in_mask(
+        ...     data, ['footprint', 'ebv'], ebv_threshold=0.15
+        ... )
         """
         # Get or create the mask
         mask = self._create_mask(mask_type, verbose=False, ebv_threshold=ebv_threshold)
