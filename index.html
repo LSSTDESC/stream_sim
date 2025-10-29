@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Welcome to Stream_Sim’s documentation! &#8212; stream_sim  documentation</title>
+    <title>Welcome to StreamSim’s Documentation! &#8212; stream_sim  documentation</title>
   
   
   
@@ -150,12 +150,15 @@
  </script></div>
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
-        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation &amp; Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -307,7 +310,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Welcome to Stream_Sim’s documentation!</h1>
+    <h1>Welcome to StreamSim’s Documentation!</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -317,11 +320,18 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-features">Key Features</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-usage">Example Usage</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Welcome to StreamSim’s Documentation!</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-streamsim-does">What StreamSim Does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-cases">Use Cases</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation-contents">Documentation Contents</a><ul class="nav section-nav flex-column">
 </ul>
+</li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#indices-and-tables">Indices and Tables</a></li>
+</ul>
+
             </nav>
         </div>
     </div>
@@ -332,41 +342,70 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="welcome-to-stream-sim-s-documentation">
-<h1>Welcome to Stream_Sim’s documentation!<a class="headerlink" href="#welcome-to-stream-sim-s-documentation" title="Link to this heading">#</a></h1>
+  <section id="welcome-to-streamsim-s-documentation">
+<h1>Welcome to StreamSim’s Documentation!<a class="headerlink" href="#welcome-to-streamsim-s-documentation" title="Link to this heading">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>This package is under active development. The API and features may change in future releases.</p>
 </div>
-<p>Stream_Sim is a Python package designed for stellar stream data generation. It provides essential tools for generate mock stellar stream data, and convert them into observable quantities.</p>
-<section id="key-features">
-<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading">#</a></h2>
-<ul>
-<li><p>Generate mock stellar stream data based on chosen parametric models, including:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Positions (phi1, phi2) / (ra, dec)</p></li>
-<li><p>Distances</p></li>
-<li><p>magnitudes in various photometric bands</p></li>
+<p><strong>StreamSim</strong> is a Python package for stellar stream data generation and observation simulation.
+It provides a complete pipeline to transform theoretical or dynamical stream models into realistic
+mock observations as they would appear in astronomical surveys.</p>
+<section id="what-streamsim-does">
+<h2>What StreamSim Does<a class="headerlink" href="#what-streamsim-does" title="Link to this heading">#</a></h2>
+<p>StreamSim enables you to:</p>
+<ol class="arabic simple">
+<li><p><strong>Generate mock stellar stream data</strong> from parametric models</p>
+<ul class="simple">
+<li><p>Create positions of stars along streams (phi1, phi2 or RA, Dec)</p></li>
+<li><p>Model various stream morphologies (linear, sinusoidal, spline-based)</p></li>
+<li><p>Assign distances and velocities to stream stars</p></li>
 </ul>
-</div></blockquote>
 </li>
-<li><p>Convert data mock into observed quantity by a chosen survey (eg. LSST)</p></li>
+<li><p><strong>Assign photometric properties</strong> using stellar isochrones</p>
+<ul class="simple">
+<li><p>Generate magnitudes in multiple photometric bands (eg. g and r)</p></li>
 </ul>
+</li>
+<li><p><strong>Simulate realistic survey observations</strong></p>
+<ul class="simple">
+<li><p>Apply survey footprint and selection functions</p></li>
+<li><p>Include Galactic extinction effects</p></li>
+<li><p>Add photometric errors and detection completeness</p></li>
+<li><p>Simulate observational uncertainties</p></li>
+</ul>
+</li>
+</ol>
 </section>
-<section id="example-usage">
-<h2>Example Usage<a class="headerlink" href="#example-usage" title="Link to this heading">#</a></h2>
-<p>This package can be used to convert the results of dynamic simulations of stellar streams as they would be observed by a survey such as LSST.</p>
+<section id="use-cases">
+<h2>Use Cases<a class="headerlink" href="#use-cases" title="Link to this heading">#</a></h2>
+<p>StreamSim is particularly useful for people who:</p>
+<ul class="simple">
+<li><p>Run <strong>dynamical simulations</strong> and need to convert results into observable quantities</p></li>
+<li><p>Develop <strong>stream detection algorithms</strong> and require realistic test data</p></li>
+<li><p>Plan <strong>survey strategies</strong> for detecting stellar streams</p></li>
+<li><p>Need to generate <strong>mock catalogs</strong> for pipeline validation</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>StreamSim focuses on parametric stream models and observation simulation.
+It is <strong>not</strong> designed for N-body simulations or dynamical modeling.</p>
+</div>
 </section>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
-<p>To install the package and its dependencies, see the <a class="reference internal" href="installation.html"><span class="doc">Installation &amp; Dependencies</span></a> page.</p>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h2>
+<p>New to StreamSim? Start here:</p>
+<ol class="arabic simple">
+<li><p><strong>Installation</strong>: <a class="reference internal" href="installation.html"><span class="doc">Installation &amp; Dependencies</span></a> - Set up StreamSim on your system</p></li>
+<li><p><strong>About</strong>: <a class="reference internal" href="about.html"><span class="doc">About StreamSim</span></a> - Understand StreamSim’s purpose and design</p></li>
+<li><p><strong>Quickstart</strong>: <a class="reference internal" href="quickstart.html"><span class="doc">Quickstart Guide</span></a> - Learn the basics with simple examples</p></li>
+<li><p><strong>API Reference</strong>: <a class="reference internal" href="modules.html"><span class="doc">Content</span></a> - Explore the complete API documentation</p></li>
+</ol>
 </section>
-<section id="citation">
-<h2>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h2>
-<p>If you use this package in your work, please see the <a class="reference internal" href="citation.html"><span class="doc">Citation</span></a> page for citation information.</p>
+<section id="documentation-contents">
+<h2>Documentation Contents<a class="headerlink" href="#documentation-contents" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="about.html#overview">Overview</a></li>
@@ -375,14 +414,6 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="about.html#development-team">Development Team</a></li>
 <li class="toctree-l2"><a class="reference internal" href="about.html#license">License</a></li>
 <li class="toctree-l2"><a class="reference internal" href="about.html#acknowledgments">Acknowledgments</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#generating-mock-stream-data">Generating Mock Stream Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next Steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#key-concepts">Key Concepts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#getting-help">Getting Help</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation &amp; Dependencies</a><ul>
@@ -395,12 +426,25 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="installation.html#development-installation">Development Installation</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#generating-mock-stream-data">Generating Mock Stream Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="citation.html#how-to-cite">How to Cite</a></li>
 <li class="toctree-l2"><a class="reference internal" href="citation.html#related-publications">Related Publications</a></li>
 <li class="toctree-l2"><a class="reference internal" href="citation.html#software-doi">Software DOI</a></li>
 </ul>
 </li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Content</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="stream_sim.html">stream_sim package</a></li>
 </ul>
@@ -408,6 +452,14 @@ document.write(`
 </ul>
 </div>
 </section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">#</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
 </section>
 
 
@@ -446,11 +498,18 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-features">Key Features</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-usage">Example Usage</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Welcome to StreamSim’s Documentation!</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-streamsim-does">What StreamSim Does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-cases">Use Cases</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation-contents">Documentation Contents</a><ul class="nav section-nav flex-column">
 </ul>
+</li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#indices-and-tables">Indices and Tables</a></li>
+</ul>
+
   </nav></div>
 
 </div></div>
