@@ -11,13 +11,6 @@
 
 StreamSim bridges theoretical/dynamical stream models and realistic mock observations as they would appear in astronomical surveys like LSST.
 
-## Key Features
-
-- **Modular pipeline**: Use generation, photometry, and observation components independently
-- **Configuration-driven**: Define stream properties and survey parameters via YAML files (includes example for LSST)
-- **Flexible models**: Supports linear, sinusoidal, and spline-based stream geometries
-- **Realistic effects**: Applies survey footprint, extinction, photometric errors, and completeness
-
 > **Note**: This package is not intended to generate dynamic models or N-body simulations, but rather to study statistical realizations of parametrized stream geometries.
 
 ## Documentation
@@ -51,12 +44,6 @@ StreamSim is particularly useful for:
 - **Algorithm development**: Generate test data for stream detection algorithms
 - **Survey planning**: Predict stream detectability in upcoming surveys
 - **Pipeline validation**: Test analysis workflows with known ground truth
-
-### Basic Usage
-
-**Generate a mock stream:**
-
-See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for more examples.
 
 ## Citation
 
