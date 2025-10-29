@@ -693,7 +693,7 @@ class StreamInjector:
             total_pixels = len(mask_map)
             valid_pixels = np.sum(mask_map)
             coverage_fraction = valid_pixels / total_pixels
-            print(f"✓ Mask created: valid pixels fraction ({coverage_fraction:.1f}%)")
+            print(f"✓ Mask created: valid pixels fraction = {coverage_fraction:.1f}")
             print(f"  Cached with key: {cache_key}")
 
         return mask_map
