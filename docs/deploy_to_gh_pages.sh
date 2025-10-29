@@ -8,7 +8,7 @@ echo "Building and Deploying Documentation"
 echo "=========================================="
 
 # Check we're on the MUST_BRANCH branch
-MUST_BRANCH="main"
+MUST_BRANCH="docs"
 CURRENT_BRANCH=$(git branch --show-current)
 if [ "$CURRENT_BRANCH" != "$MUST_BRANCH" ]; then
     echo "Error: This script must be run from the '$MUST_BRANCH' branch"
@@ -22,12 +22,11 @@ if ! git diff-index --quiet HEAD --; then
     exit 1
 fi
 
-echo "✓ On $MUST_BRANCH branch with no uncommitted changes"
+#echo "✓ On $MUST_BRANCH branch with no uncommitted changes"
 
 # Build the documentation
 echo ""
 echo "Building documentation..."
-cd docs
 make clean
 make html
 cd ..
