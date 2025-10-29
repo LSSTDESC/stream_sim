@@ -8,7 +8,7 @@ echo "Building and Deploying Documentation"
 echo "=========================================="
 
 # Check we're on the MUST_BRANCH branch
-MUST_BRANCH="docs"
+MUST_BRANCH="main"
 CURRENT_BRANCH=$(git branch --show-current)
 if [ "$CURRENT_BRANCH" != "$MUST_BRANCH" ]; then
     echo "Error: This script must be run from the '$MUST_BRANCH' branch"
