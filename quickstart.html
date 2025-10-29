@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Welcome to mycosmo’s documentation! &#8212; stream_sim  documentation</title>
+    <title>Quickstart Guide &#8212; stream_sim  documentation</title>
   
   
   
@@ -40,11 +40,12 @@
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'quickstart';</script>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="About StreamSim" href="about.html" />
+    <link rel="next" title="Installation &amp; Dependencies" href="dependencies.html" />
+    <link rel="prev" title="About StreamSim" href="about.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -107,8 +108,6 @@
       
       
       
-        
-      
       <div class="bd-sidebar-primary bd-sidebar">
         
 
@@ -127,7 +126,7 @@
     
   
 
-<a class="navbar-brand logo" href="#">
+<a class="navbar-brand logo" href="index.html">
   
   
   
@@ -151,9 +150,9 @@
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dependencies.html">Installation &amp; Dependencies</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">stream_sim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -223,7 +222,7 @@
       
       
       
-      <li><a href="_sources/index.rst" target="_blank"
+      <li><a href="_sources/quickstart.md" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -233,7 +232,7 @@
 <span class="btn__icon-container">
   <i class="fas fa-file"></i>
   </span>
-<span class="btn__text-container">.rst</span>
+<span class="btn__text-container">.md</span>
 </a>
 </li>
       
@@ -307,7 +306,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Welcome to mycosmo’s documentation!</h1>
+    <h1>Quickstart Guide</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -317,10 +316,10 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-features">Key Features</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-usage">Example Usage</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-streams-from-configuration">Generating Streams from Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
 </ul>
             </nav>
         </div>
@@ -332,79 +331,49 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="welcome-to-mycosmo-s-documentation">
-<h1>Welcome to mycosmo’s documentation!<a class="headerlink" href="#welcome-to-mycosmo-s-documentation" title="Link to this heading">#</a></h1>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>This package is under active development. The API and features may change in future releases.</p>
+  <section id="quickstart-guide">
+<h1>Quickstart Guide<a class="headerlink" href="#quickstart-guide" title="Link to this heading">#</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>This section needs to be completed.</strong></p>
 </div>
-<p>StreamSim is a Python package designed for stellar stream data generation. It provides essential tools for generate mock stellar stream data, and convert them into observable quantities.</p>
-<section id="key-features">
-<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading">#</a></h2>
-<ul>
-<li><p>Generate mock stellar stream data based on chosen parametric models, including:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Positions (phi1, phi2) / (ra, dec)</p></li>
-<li><p>Distances</p></li>
-<li><p>magnitudes in various photometric bands</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>Convert data mock into observed quantity by a chosen survey (eg. LSST)</p></li>
-</ul>
-</section>
-<section id="example-usage">
-<h2>Example Usage<a class="headerlink" href="#example-usage" title="Link to this heading">#</a></h2>
-<p>This package can be used to convert the results of dynamic simulations of stellar streams as they would be observed by a survey such as LSST.</p>
-</section>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
-<p>To install the package and its dependencies, see the <a class="reference internal" href="dependencies.html"><span class="doc">Installation &amp; Dependencies</span></a> page.</p>
-</section>
-<section id="citation">
-<h2>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h2>
-<p>If you use this package in your work, please see the <a class="reference internal" href="citation.html"><span class="doc">Citation</span></a> page for citation information.</p>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="about.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="about.html#development-team">Development Team</a></li>
-<li class="toctree-l2"><a class="reference internal" href="about.html#license">License</a></li>
-<li class="toctree-l2"><a class="reference internal" href="about.html#acknowledgments">Acknowledgments</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-example">Basic Example</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#generating-streams-from-configuration">Generating Streams from Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next Steps</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="dependencies.html">Installation &amp; Dependencies</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#optional-dependencies">Optional Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#python-version-support">Python Version Support</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#installing-from-source">Installing from Source</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#installing-with-pip-conda">Installing with pip/conda</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dependencies.html#development-installation">Development Installation</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="citation.html#how-to-cite">How to Cite</a></li>
-<li class="toctree-l2"><a class="reference internal" href="citation.html#related-publications">Related Publications</a></li>
-<li class="toctree-l2"><a class="reference internal" href="citation.html#software-doi">Software DOI</a></li>
-<li class="toctree-l2"><a class="reference internal" href="citation.html#acknowledgments-in-publications">Acknowledgments in Publications</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">stream_sim</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stream_sim.html">stream_sim package</a></li>
-</ul>
-</li>
-</ul>
+<p>This page provides a quick introduction to get you started with StreamSim.</p>
+<section id="basic-example">
+<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
+<p><em>To be completed</em></p>
+<p>Example of generating a simple stellar stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example code to be added</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stream_sim</span>
+<span class="c1"># ... your code here</span>
+</pre></div>
 </div>
+</section>
+<section id="generating-streams-from-configuration">
+<h2>Generating Streams from Configuration<a class="headerlink" href="#generating-streams-from-configuration" title="Link to this heading">#</a></h2>
+<p><em>To be completed</em></p>
+<p>Example using configuration files:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Command-line examples to be added</span>
+./bin/generate_stream.py<span class="w"> </span>config/toy1_config.yaml<span class="w"> </span>-o<span class="w"> </span>output.csv<span class="w"> </span>--plot
+</pre></div>
+</div>
+</section>
+<section id="converting-to-observable-quantities">
+<h2>Converting to Observable Quantities<a class="headerlink" href="#converting-to-observable-quantities" title="Link to this heading">#</a></h2>
+<p><em>To be completed</em></p>
+<p>Example of applying survey effects:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example code to be added</span>
+<span class="c1"># ... survey injection example</span>
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
+<p><em>To be completed</em></p>
+<ul class="simple">
+<li><p>Link to full user guide</p></li>
+<li><p>Link to API reference</p></li>
+<li><p>Link to examples</p></li>
+</ul>
 </section>
 </section>
 
@@ -419,12 +388,21 @@ document.write(`
                 <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
-    <a class="right-next"
+    <a class="left-prev"
        href="about.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">About StreamSim</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="dependencies.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">About StreamSim</p>
+        <p class="prev-next-title">Installation &amp; Dependencies</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -444,10 +422,10 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-features">Key Features</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-usage">Example Usage</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-streams-from-configuration">Generating Streams from Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
 </ul>
   </nav></div>
 
