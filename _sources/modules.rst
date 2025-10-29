@@ -1,4 +1,4 @@
-stream_sim
+Content
 ==========
 
 .. toctree::

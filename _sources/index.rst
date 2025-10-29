@@ -3,13 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to mycosmo's documentation!
+Welcome to Stream_Sim's documentation!
 ===================================
 
 .. warning::
    This package is under active development. The API and features may change in future releases.
 
-StreamSim is a Python package designed for stellar stream data generation. It provides essential tools for generate mock stellar stream data, and convert them into observable quantities.
+Stream_Sim is a Python package designed for stellar stream data generation. It provides essential tools for generate mock stellar stream data, and convert them into observable quantities.
 
 
 Key Features
@@ -32,7 +32,7 @@ This package can be used to convert the results of dynamic simulations of stella
 Installation
 ------------
 
-To install the package and its dependencies, see the :doc:`dependencies` page.
+To install the package and its dependencies, see the :doc:`installation` page.
 
 Citation
 --------
@@ -45,6 +45,6 @@ If you use this package in your work, please see the :doc:`citation` page for ci
    
    about
    quickstart
-   dependencies
+   installation
    citation
    modules

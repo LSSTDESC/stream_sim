@@ -45,7 +45,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Quickstart Guide" href="quickstart.html" />
-    <link rel="prev" title="Welcome to mycosmo’s documentation!" href="index.html" />
+    <link rel="prev" title="Welcome to Stream_Sim’s documentation!" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -153,9 +153,9 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">About StreamSim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="dependencies.html">Installation &amp; Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation &amp; Dependencies</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">stream_sim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.model.html">stream_sim.model module</a></li>
@@ -317,6 +317,8 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-streamsim-does">What StreamSim Does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-cases">Use Cases</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development-team">Development Team</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#license">License</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#acknowledgments">Acknowledgments</a></li>
@@ -333,24 +335,60 @@ document.write(`
                   
   <section id="about-streamsim">
 <h1>About StreamSim<a class="headerlink" href="#about-streamsim" title="Link to this heading">#</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><strong>This section needs to be completed.</strong></p>
-</div>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
-<p>StreamSim is a Python package designed for stellar stream data generation and observation simulation.</p>
-<p><em>Content to be added:</em></p>
+<p><strong>StreamSim</strong> is a Python package designed for stellar stream data generation and observation simulation. It provides a complete pipeline to transform theoretical or dynamical stream models into realistic mock observations as they would appear in astronomical surveys.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>StreamSim is <strong>not</strong> intended for generating dynamical models or N-body simulations. Instead, it provides tools to study statistical realizations of parametrized stream geometries and convert simulation outputs into mock observations.</p>
+</div>
+</section>
+<section id="what-streamsim-does">
+<h2>What StreamSim Does<a class="headerlink" href="#what-streamsim-does" title="Link to this heading">#</a></h2>
+<p>StreamSim enables to:</p>
+<ol class="arabic simple">
+<li><p><strong>Generate mock stellar stream data</strong> from parametric models</p>
 <ul class="simple">
-<li><p>Detailed description of the package purpose</p></li>
-<li><p>Scientific motivation and use cases</p></li>
-<li><p>Design philosophy and approach</p></li>
-<li><p>Comparison with other tools (if relevant)</p></li>
+<li><p>Create positions of stars along streams using various parametric descriptions</p></li>
+<li><p>Model stream morphologies including linear, sinusoidal, and spline-based geometries</p></li>
+</ul>
+</li>
+<li><p><strong>Assign photometric properties</strong> to stream stars</p>
+<ul class="simple">
+<li><p>Attribute magnitudes in multiple photometric bands based on stellar isochrones</p></li>
+</ul>
+</li>
+<li><p><strong>Simulate survey observations</strong> of streams</p>
+<ul class="simple">
+<li><p>Convert idealized mock data into observable quantities for specific surveys (e.g., LSST)</p></li>
+<li><p>Apply survey selection functions and detection limits</p></li>
+<li><p>Generate realistic photometric errors and observational uncertainties</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="use-cases">
+<h2>Use Cases<a class="headerlink" href="#use-cases" title="Link to this heading">#</a></h2>
+<p>StreamSim is particularly useful for people who:</p>
+<ul class="simple">
+<li><p>Run <strong>dynamical simulations</strong> of stellar streams and need to convert results into observable quantities</p></li>
+<li><p>Develop <strong>stream detection algorithms</strong> and require realistic test data with known properties</p></li>
+<li><p>Need to generate <strong>mock catalogs</strong> for testing analysis pipelines</p></li>
+<li><p>…</p></li>
 </ul>
 </section>
 <section id="development-team">
 <h2>Development Team<a class="headerlink" href="#development-team" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
+<p>StreamSim is developed and maintained by members of the LSST Dark Energy Science Collaboration (DESC).</p>
+<p><strong>Core Contributors:</strong></p>
+<ul class="simple">
+<li><p><em>To be completed with contributor names and affiliations</em></p></li>
+</ul>
+<p><strong>Contact:</strong></p>
+<ul class="simple">
+<li><p>GitHub: <a class="reference external" href="https://github.com/LSSTDESC/stream_sim">LSSTDESC/stream_sim</a></p></li>
+<li><p>Issues: <a class="reference external" href="https://github.com/LSSTDESC/stream_sim/issues">Report bugs or request features</a></p></li>
+</ul>
 </section>
 <section id="license">
 <h2>License<a class="headerlink" href="#license" title="Link to this heading">#</a></h2>
@@ -358,7 +396,17 @@ document.write(`
 </section>
 <section id="acknowledgments">
 <h2>Acknowledgments<a class="headerlink" href="#acknowledgments" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
+<p>If you use StreamSim in your research, please see the <a class="reference internal" href="citation.html"><span class="std std-doc">Citation</span></a> page for how to properly cite this software.</p>
+<p><strong>Funding and Support:</strong></p>
+<ul class="simple">
+<li><p>This project is supported by the LSST Dark Energy Science Collaboration</p></li>
+<li><p><em>Additional funding sources to be added</em></p></li>
+</ul>
+<p><strong>Related Projects:</strong></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/DarkEnergySurvey/ugali">ugali</a></p></li>
+<li><p><em>Other related tools to be added</em></p></li>
+</ul>
 </section>
 </section>
 
@@ -379,7 +427,7 @@ document.write(`
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Welcome to mycosmo’s documentation!</p>
+        <p class="prev-next-title">Welcome to Stream_Sim’s documentation!</p>
       </div>
     </a>
     <a class="right-next"
@@ -408,6 +456,8 @@ document.write(`
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-streamsim-does">What StreamSim Does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-cases">Use Cases</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development-team">Development Team</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#license">License</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#acknowledgments">Acknowledgments</a></li>

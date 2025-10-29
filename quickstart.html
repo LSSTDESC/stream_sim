@@ -44,7 +44,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation &amp; Dependencies" href="dependencies.html" />
+    <link rel="next" title="Installation &amp; Dependencies" href="installation.html" />
     <link rel="prev" title="About StreamSim" href="about.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -153,9 +153,9 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Quickstart Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="dependencies.html">Installation &amp; Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation &amp; Dependencies</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">stream_sim</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.model.html">stream_sim.model module</a></li>
@@ -316,10 +316,19 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-streams-from-configuration">Generating Streams from Configuration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-mock-stream-data">Generating Mock Stream Data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-1-using-command-line-tools">Example 1: Using Command-Line Tools</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-2-generating-streams-in-python">Example 2: Generating Streams in Python</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-3-applying-survey-effects">Example 3: Applying Survey Effects</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-injector-does">What the Injector Does</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-concepts">Key Concepts</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-help">Getting Help</a></li>
 </ul>
             </nav>
         </div>
@@ -333,46 +342,137 @@ document.write(`
                   
   <section id="quickstart-guide">
 <h1>Quickstart Guide<a class="headerlink" href="#quickstart-guide" title="Link to this heading">#</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><strong>This section needs to be completed.</strong></p>
-</div>
 <p>This page provides a quick introduction to get you started with StreamSim.</p>
-<section id="basic-example">
-<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-<p>Example of generating a simple stellar stream:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example code to be added</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">stream_sim</span>
-<span class="c1"># ... your code here</span>
+<p>First, make sure you have StreamSim installed (see <a class="reference internal" href="installation.html"><span class="std std-doc">Installation</span></a> for details).</p>
+<section id="generating-mock-stream-data">
+<h2>Generating Mock Stream Data<a class="headerlink" href="#generating-mock-stream-data" title="Link to this heading">#</a></h2>
+<p>StreamSim can generate parametric stellar stream models using configuration files or directly in Python.</p>
+<section id="example-1-using-command-line-tools">
+<h3>Example 1: Using Command-Line Tools<a class="headerlink" href="#example-1-using-command-line-tools" title="Link to this heading">#</a></h3>
+<p>The simplest way to generate a stream is using the provided command-line scripts:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Generate a simple linear stream</span>
+./bin/generate_stream.py<span class="w"> </span>config/toy1_config.yaml<span class="w"> </span>-o<span class="w"> </span>toy1_stream.csv<span class="w"> </span>--plot
+
+<span class="c1"># Generate a sinusoidal stream</span>
+./bin/generate_stream.py<span class="w"> </span>config/toy2_config.yaml<span class="w"> </span>-o<span class="w"> </span>toy2_stream.csv<span class="w"> </span>--plot
+
+<span class="c1"># Generate Pal 5 stream from interpolation</span>
+./bin/generate_stream.py<span class="w"> </span>config/pal5_config.yaml<span class="w"> </span>-o<span class="w"> </span>pal5_stream.csv<span class="w"> </span>--plot
+</pre></div>
+</div>
+<p>These commands will:</p>
+<ul class="simple">
+<li><p>Read the stream parameters from the configuration file</p></li>
+<li><p>Generate mock stellar positions (phi1, phi2) and magnitudes</p></li>
+<li><p>Save the results to a CSV file</p></li>
+<li><p>Create visualization plots (with <code class="docutils literal notranslate"><span class="pre">--plot</span></code> flag)</p></li>
+</ul>
+</section>
+<section id="example-2-generating-streams-in-python">
+<h3>Example 2: Generating Streams in Python<a class="headerlink" href="#example-2-generating-streams-in-python" title="Link to this heading">#</a></h3>
+<p>You can also generate streams programmatically:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stream_sim.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stream_sim.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_config</span>
+
+<span class="c1"># Load configuration</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="s1">&#39;config/toy1_config.yaml&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create stream model and generate stars</span>
+<span class="n">stream</span> <span class="o">=</span> <span class="n">StreamModel</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;stream&#39;</span><span class="p">])</span>
+<span class="n">stream_df</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;stream&#39;</span><span class="p">][</span><span class="s1">&#39;nstars&#39;</span><span class="p">])</span>
+
+<span class="c1"># The dataframe contains: phi1, phi2, distance, magnitudes, etc.</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">stream_df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </pre></div>
 </div>
 </section>
-<section id="generating-streams-from-configuration">
-<h2>Generating Streams from Configuration<a class="headerlink" href="#generating-streams-from-configuration" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-<p>Example using configuration files:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Command-line examples to be added</span>
-./bin/generate_stream.py<span class="w"> </span>config/toy1_config.yaml<span class="w"> </span>-o<span class="w"> </span>output.csv<span class="w"> </span>--plot
-</pre></div>
-</div>
 </section>
 <section id="converting-to-observable-quantities">
 <h2>Converting to Observable Quantities<a class="headerlink" href="#converting-to-observable-quantities" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-<p>Example of applying survey effects:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example code to be added</span>
-<span class="c1"># ... survey injection example</span>
+<p>Once you have mock stream data (either generated or from simulations), you can convert it to realistic observations using the <code class="docutils literal notranslate"><span class="pre">StreamInjector</span></code> class.</p>
+<section id="example-3-applying-survey-effects">
+<h3>Example 3: Applying Survey Effects<a class="headerlink" href="#example-3-applying-survey-effects" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stream_sim</span><span class="w"> </span><span class="kn">import</span> <span class="n">surveys</span><span class="p">,</span> <span class="n">observed</span>
+
+<span class="c1"># Load a survey (e.g., LSST Year 1)</span>
+<span class="n">lsst_survey</span> <span class="o">=</span> <span class="n">surveys</span><span class="o">.</span><span class="n">Survey</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">survey</span><span class="o">=</span><span class="s1">&#39;lsst&#39;</span><span class="p">,</span> <span class="n">release</span><span class="o">=</span><span class="s1">&#39;yr1&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create the stream injector</span>
+<span class="n">injector</span> <span class="o">=</span> <span class="n">observed</span><span class="o">.</span><span class="n">StreamInjector</span><span class="p">(</span><span class="n">lsst_survey</span><span class="p">)</span>
+
+<span class="c1"># Create or load your mock stream data</span>
+<span class="c1"># Here we create a simple test dataset</span>
+<span class="c1"># This could contain (ra, dec) coordinates if you want to skip coordinate transformation</span>
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">mock_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s1">&#39;phi1&#39;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>      <span class="c1"># Stream longitude</span>
+    <span class="s1">&#39;phi2&#39;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>      <span class="c1"># Stream latitude</span>
+    <span class="s1">&#39;mag_g&#39;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>    <span class="c1"># g-band magnitude</span>
+    <span class="s1">&#39;mag_r&#39;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>    <span class="c1"># r-band magnitude</span>
+<span class="p">})</span>
+
+<span class="c1"># Apply survey effects: footprint, extinction, photometric errors</span>
+<span class="n">observed_data</span> <span class="o">=</span> <span class="n">injector</span><span class="o">.</span><span class="n">inject</span><span class="p">(</span>
+    <span class="n">mock_data</span><span class="p">,</span> 
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">bands</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">]</span> <span class="c1"># Choose the bands to use</span>
+    <span class="n">mask_type</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;footprint&#39;</span><span class="p">,</span> <span class="s1">&#39;ebv&#39;</span><span class="p">],</span>  <span class="c1"># Restrict injection to a mask created from the footprind and low dust area</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input stars: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">mock_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected stars: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">observed_data</span><span class="p">[</span><span class="n">observed_data</span><span class="p">[</span><span class="s1">&#39;flag_detection&#39;</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
+<section id="what-the-injector-does">
+<h3>What the Injector Does<a class="headerlink" href="#what-the-injector-does" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">StreamInjector</span></code> applies several observational effects:</p>
+<ol class="arabic simple">
+<li><p><strong>Coordinate conversion</strong>: Converts stream coordinates (phi1, phi2) to sky coordinates (RA, Dec)</p></li>
+<li><p><strong>Extinction</strong>: Applies Galactic dust extinction corrections</p></li>
+<li><p><strong>Photometric errors</strong>: Adds realistic magnitude uncertainties</p></li>
+<li><p><strong>Detection completeness</strong>: Applies magnitude-dependent detection probability</p></li>
+</ol>
+<p>The output dataframe includes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ra</span></code>, <code class="docutils literal notranslate"><span class="pre">dec</span></code>: Sky coordinates</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mag_g_meas</span></code>, <code class="docutils literal notranslate"><span class="pre">mag_r_meas</span></code>: Observed magnitudes with errors</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">magerr_g</span></code>, <code class="docutils literal notranslate"><span class="pre">magerr_r</span></code>: Photometric uncertainties</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">flag_detection</span></code>: Detection and clasification flag (1=detected, 0=not detected)</p></li>
+</ul>
+</section>
+</section>
 <section id="next-steps">
 <h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
+<p>Now that you’ve seen the basics, you can:</p>
 <ul class="simple">
-<li><p>Link to full user guide</p></li>
-<li><p>Link to API reference</p></li>
-<li><p>Link to examples</p></li>
+<li><p><strong>Learn more about configuration files</strong>: See the <code class="docutils literal notranslate"><span class="pre">config/</span></code> directory for examples of stream and survey configurations</p></li>
+<li><p><strong>Explore the API</strong>: Check the <a class="reference internal" href="#modules.md"><span class="xref myst">API Reference</span></a> for detailed documentation of all classes and functions</p></li>
+<li><p><strong>View detailed examples</strong>: Visit the <code class="docutils literal notranslate"><span class="pre">notebooks/</span></code> directory for Jupyter notebooks with more complex workflows</p></li>
+<li><p><strong>Customize surveys</strong>: Learn how to define your own survey parameters in YAML files</p></li>
+<li><p><strong>Try different stream models</strong>: Experiment with different parametric stream descriptions</p></li>
+</ul>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Mock generation</strong>: Create idealized stream data with known properties</p></li>
+<li><p><strong>Survey injection</strong>: Apply realistic observational effects to mock data</p></li>
+<li><p><strong>Configuration-driven</strong>: Use YAML files to define stream and survey parameters</p></li>
+<li><p><strong>Modular design</strong>: Use individual components (generation, photometry, observation) independently</p></li>
+</ul>
+</section>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Documentation</strong>: Browse the full documentation for detailed information</p></li>
+<li><p><strong>Examples</strong>: Check the <code class="docutils literal notranslate"><span class="pre">notebooks/</span></code> directory for worked examples</p></li>
+<li><p><strong>Issues</strong>: Report bugs or request features on <a class="reference external" href="https://github.com/LSSTDESC/stream_sim/issues">GitHub</a></p></li>
 </ul>
 </section>
 </section>
@@ -398,7 +498,7 @@ document.write(`
       </div>
     </a>
     <a class="right-next"
-       href="dependencies.html"
+       href="installation.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
@@ -422,10 +522,19 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-example">Basic Example</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-streams-from-configuration">Generating Streams from Configuration</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generating-mock-stream-data">Generating Mock Stream Data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-1-using-command-line-tools">Example 1: Using Command-Line Tools</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-2-generating-streams-in-python">Example 2: Generating Streams in Python</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-to-observable-quantities">Converting to Observable Quantities</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-3-applying-survey-effects">Example 3: Applying Survey Effects</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-injector-does">What the Injector Does</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#key-concepts">Key Concepts</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-help">Getting Help</a></li>
 </ul>
   </nav></div>
 

@@ -35,10 +35,3 @@ List of papers that use or describe this package:
 
 A DOI for this software will be added (e.g., via Zenodo).
 
-## Acknowledgments in Publications
-
-*To be completed*
-
-Suggested acknowledgment text:
-
-> *"This work made use of StreamSim (citation), a Python package for stellar stream simulation."*
