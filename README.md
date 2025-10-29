@@ -1,34 +1,64 @@
-# Simple Stellar Stream Simulator
+# StreamSim: Stellar Stream Simulation & Observation
 
-This package provides some tools for simple stellar stream simulation. The goal is to provide a modular codebase that can be easily configured and run. The user should be able to generate a variety of stream morphologies by changing the configuration files. The output will be the "true" properties of stream stars (e.g., location in stream coordinates, heliocentric distance, magnitude, and velocity) that can be used for image-level or catalog-level injection.
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://lsstdesc.github.io/stream_sim/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Note, this package is not intended to generate dynamic models or N-body simulations, but rather to study statistical realizations of parametrized stream geometries.
+**StreamSim** is a Python package for stellar stream data generation and observation simulation. It provides tools to:
 
-## Installation
+- **Generate mock stellar stream data** from parametric models. The goal is to provide a modular codebase that can be easily configured and run. The user should be able to generate a variety of stream morphologies by changing the configuration files. 
+- **Assign photometric properties** to stars using stellar isochrones  
+- **Simulate realistic survey observations** with observational effects
 
+StreamSim bridges theoretical/dynamical stream models and realistic mock observations as they would appear in astronomical surveys like LSST.
+
+## Key Features
+
+- **Modular pipeline**: Use generation, photometry, and observation components independently
+- **Configuration-driven**: Define stream properties and survey parameters via YAML files (includes example for LSST)
+- **Flexible models**: Supports linear, sinusoidal, and spline-based stream geometries
+- **Realistic effects**: Applies survey footprint, extinction, photometric errors, and completeness
+
+> **Note**: This package is not intended to generate dynamic models or N-body simulations, but rather to study statistical realizations of parametrized stream geometries.
+
+## Documentation
+
+📚 **Full documentation**: https://lsstdesc.github.io/stream_sim/
+
+- [About](https://lsstdesc.github.io/stream_sim/about.html) - Overview and use cases
+- [Quickstart](https://lsstdesc.github.io/stream_sim/quickstart.html) - Get started in minutes
+- [Installation](https://lsstdesc.github.io/stream_sim/installation.html) - Detailed installation guide
+- [API Reference](https://lsstdesc.github.io/stream_sim/modules.html) - Complete API documentation
+
+### Installation
 Installation consists of git cloning `stream_sim`, adding the python module to your `PYTHONPATH`, and adding the `bin` directory to your `PATH`:
 
 ```bash
 git clone https://github.com/LSSTDESC/stream_sim.git
-export PYTHONPATH=${PWD}/stream_sim:${PYTHONPATH}
-export PATH=${PWD}/stream_sim/bin:${PATH}
+cd stream_sim
+export PYTHONPATH=${PWD}:${PYTHONPATH}
+export PATH=${PWD}/bin:${PATH}
 ```
 
-The code has some common dependencies (numpy, scipy, pandas, matplotlib) that should be present in your environment.
+The code has some common dependencies (numpy, scipy, pandas, matplotlib) that should be present in your environment. See [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
 
 Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
 
-## Examples
+## Use Cases
 
-Several simple configuration files are provided as examples in the `config` directory. To generate streams from these config files, use the `generate_streams.py` executable found in the `bin` directory. From the `stream_sim` directory, this code can be executed as shown below.
+StreamSim is particularly useful for:
 
-```bash
-# Simple linear stream
-./bin/generate_stream.py config/toy1_config.yaml -o toy1.csv --plot
-# More complex sinusoidal stream
-./bin/generate_stream.py config/toy2_config.yaml -o toy2.csv --plot
-# Stream generated from Pal 5 interpolation
-./bin/generate_stream.py config/pal5_config.yaml -o pal5.csv --plot
-# Stream generated from Spline interpolation
-./bin/generate_spline_stream.py config/atlas_spline_config.yaml -o atlas_spline.csv --plot
-```
+- **Dynamical simulations**: Convert N-body simulation outputs into observable quantities
+- **Algorithm development**: Generate test data for stream detection algorithms
+- **Survey planning**: Predict stream detectability in upcoming surveys
+- **Pipeline validation**: Test analysis workflows with known ground truth
+
+### Basic Usage
+
+**Generate a mock stream:**
+
+See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for more examples.
+
+## Citation
+
+See the [Citation page](https://lsstdesc.github.io/stream_sim/citation.html) for more information.
+
