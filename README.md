@@ -15,14 +15,14 @@ StreamSim bridges theoretical/dynamical stream models and realistic mock observa
 
 ## Documentation
 
-📚 **Full documentation**: https://lsstdesc.github.io/stream_sim/
+**Full documentation**: https://lsstdesc.github.io/stream_sim/
 
 - [About](https://lsstdesc.github.io/stream_sim/about.html) - Overview and use cases
 - [Quickstart](https://lsstdesc.github.io/stream_sim/quickstart.html) - Get started in minutes
 - [Installation](https://lsstdesc.github.io/stream_sim/installation.html) - Detailed installation guide
 - [API Reference](https://lsstdesc.github.io/stream_sim/modules.html) - Complete API documentation
 
-### Installation
+## Installation
 Installation consists of git cloning `stream_sim`, adding the python module to your `PYTHONPATH`, and adding the `bin` directory to your `PATH`:
 
 ```bash
