@@ -23,6 +23,7 @@ export PATH=${PWD}/bin:${PATH}
 
 Required Python packages:
 
+- ugali
 - numpy
 - scipy
 - pandas

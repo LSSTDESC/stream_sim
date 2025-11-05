@@ -29,7 +29,7 @@ survey_properties:
 
   # Systematic photometric errors (mag), or could be specified as sys_error_g, sys_error_r, etc
   sys_error : 0.005 # Error common to all bands
-  sys_error_i: 0.01  # Example to Override for i-band
+  # sys_error_i: 0.01  # Example to Override for i-band
 
 
   # Saturation limits per band, or could be specified as saturation_g, saturation_r, etc

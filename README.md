@@ -32,7 +32,7 @@ export PYTHONPATH=${PWD}:${PYTHONPATH}
 export PATH=${PWD}/bin:${PATH}
 ```
 
-The code has some common dependencies (numpy, scipy, pandas, matplotlib) that should be present in your environment. See [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
+The code has some common dependencies (numpy, scipy, pandas, matplotlib, ugali...) that should be present in your environment. See [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
 
 Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
 
