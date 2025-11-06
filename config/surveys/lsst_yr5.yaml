@@ -11,7 +11,7 @@ survey_files:
 
     # Band-independent maps
     ebv_map: ebv_sfd98_fullres_nside_4096_ring_equatorial.fits
-    completeness: stellar_efficiency_cut['r'].csv
+    completeness: stellar_efficiency_cutr.csv
     log_photo_error: photoerror_r.csv
 
 survey_properties: 
