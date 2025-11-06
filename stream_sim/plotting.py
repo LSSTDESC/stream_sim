@@ -89,7 +89,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
     data : pandas.DataFrame or dict-like
         Data containing the injected stream. Must have columns:
         - 'ra', 'dec': Sky coordinates in degrees
-        - 'flag_detection': Boolean flag for detected stars
+        - 'flag_observed': Boolean flag for detected stars
         - 'mag_<band>': True magnitudes for each band
         - 'mag_<band>_meas': Measured magnitudes for each band
     survey : Survey
@@ -126,7 +126,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
     band1, band2 = bands[0], bands[1]
     
     # Check required columns
-    required_cols = ['ra', 'dec', 'flag_detection', 
+    required_cols = ['ra', 'dec', 'flag_observed', 
                      f'mag_{band1}', f'mag_{band2}',
                      f'mag_{band1}_meas', f'mag_{band2}_meas']
     missing_cols = [col for col in required_cols if col not in data.columns]
@@ -134,7 +134,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
         raise ValueError(f"Missing required columns: {missing_cols}")
     
     # Get detection flags
-    sel = data["flag_detection"].astype(bool)
+    sel = data["flag_observed"].astype(bool)
     
     # Create figure
     fig, ax = plt.subplots(1, 3, figsize=(14, 6))

@@ -108,7 +108,7 @@ class StreamInjector:
 
             - mag_<band>_meas : Observed magnitudes for each band
             - magerr_<band> : Photometric errors for each band
-            - flag_detection : Boolean flag (1=detected, 0=not detected)
+            - flag_observed : Boolean flag (1=detected, 0=not detected)
             - ra, dec : Sky coordinates (if not already present)
 
         Raises
@@ -205,10 +205,10 @@ class StreamInjector:
         flag_r = data["mag_r_meas"] != "BAD_MAG"
 
         # Combine flags
-        flag_detection = flag_r & flag_completeness_r
+        flag_observed = flag_r & flag_completeness_r
 
         if "g" in bands:
-            flag_detection &= data["mag_g_meas"] != "BAD_MAG"
+            flag_observed &= data["mag_g_meas"] != "BAD_MAG"
 
         # Apply SNR cuts if requested
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
@@ -216,9 +216,9 @@ class StreamInjector:
         for band in detection_mag_cut:
             print("Applying detection cut on", band, "band with SNR >=", SNR_min)
             SNR = 1 / data["magerr_" + band]
-            flag_detection &= SNR >= SNR_min
+            flag_observed &= SNR >= SNR_min
 
-        data["flag_detection"] = flag_detection
+        data["flag_observed"] = flag_observed
 
         # Save if requested
         if kwargs.get("save"):
