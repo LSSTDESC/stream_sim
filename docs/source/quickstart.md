@@ -104,7 +104,7 @@ The `StreamInjector` applies several observational effects:
 
 The output dataframe includes:
 - `ra`, `dec`: Sky coordinates
-- `mag_g_meas`, `mag_r_meas`: Observed magnitudes with errors
+- `mag_g_obs`, `mag_r_obs`: Observed magnitudes with errors
 - `magerr_g`, `magerr_r`: Photometric uncertainties
 - `flag_observed`: Detection and clasification flag (1=detected & classified as a star, 0=not detected of not classified as a star)
 

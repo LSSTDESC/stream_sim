@@ -91,7 +91,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
         - 'ra', 'dec': Sky coordinates in degrees
         - 'flag_observed': Boolean flag for detected stars
         - 'mag_<band>': True magnitudes for each band
-        - 'mag_<band>_meas': Measured magnitudes for each band
+        - 'mag_<band>_obs': Observed magnitudes for each band
     survey : Survey
         Survey object containing magnitude limit maps and other properties.
     bands : list of str, optional
@@ -128,7 +128,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
     # Check required columns
     required_cols = ['ra', 'dec', 'flag_observed', 
                      f'mag_{band1}', f'mag_{band2}',
-                     f'mag_{band1}_meas', f'mag_{band2}_meas']
+                     f'mag_{band1}_obs', f'mag_{band2}_obs']
     missing_cols = [col for col in required_cols if col not in data.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
@@ -217,26 +217,26 @@ def plot_inject(data, survey, bands=None, **kwargs):
     ax[2].set_title("HR diagram using sampled observed magnitudes")
     
     # Convert measured magnitudes to numeric, handling "BAD_MAG" strings
-    mag1_meas = pd.to_numeric(data[f"mag_{band1}_meas"], errors="coerce")
-    mag2_meas = pd.to_numeric(data[f"mag_{band2}_meas"], errors="coerce")
+    mag1_obs = pd.to_numeric(data[f"mag_{band1}_obs"], errors="coerce")
+    mag2_obs = pd.to_numeric(data[f"mag_{band2}_obs"], errors="coerce")
     
     # Mask out bad measurements
-    mask_good = (~mag1_meas.isna()) & (~mag2_meas.isna())
+    mask_good = (~mag1_obs.isna()) & (~mag2_obs.isna())
     
     if mask_good.sum() > 0:
-        color_meas = mag1_meas - mag2_meas
+        color_obs = mag1_obs - mag2_obs
         
         ax[2].scatter(
-            color_meas[mask_good],
-            mag1_meas[mask_good],
+            color_obs[mask_good],
+            mag1_obs[mask_good],
             s=2,
             alpha=0.5,
             color="gray",
             label="Unobserved",
         )
         ax[2].scatter(
-            color_meas[sel & mask_good],
-            mag1_meas[sel & mask_good],
+            color_obs[sel & mask_good],
+            mag1_obs[sel & mask_good],
             s=4,
             alpha=1.0,
             color="red",

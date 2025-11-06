@@ -106,7 +106,7 @@ class StreamInjector:
         pd.DataFrame
             DataFrame with the following added columns:
 
-            - mag_<band>_meas : Observed magnitudes for each band
+            - mag_<band>_obs : Observed magnitudes for each band
             - magerr_<band> : Photometric errors for each band
             - flag_observed : Boolean flag (1=detected, 0=not detected)
             - ra, dec : Sky coordinates (if not already present)
@@ -160,7 +160,7 @@ class StreamInjector:
             )
 
             # Sample measured magnitudes
-            mag_meas = self.sample_measured_magnitudes(
+            mag_obs = self.sample_measured_magnitudes(
                 data["mag_" + band] + extinction_band,
                 mag_err,
                 rng=rng,
@@ -171,7 +171,7 @@ class StreamInjector:
             # Add new columns
             new_columns = pd.DataFrame(
                 {
-                    "mag_" + band + "_meas": mag_meas,
+                    "mag_" + band + "_obs": mag_obs,
                     "magerr_" + band: mag_err,
                 }
             )
@@ -202,13 +202,14 @@ class StreamInjector:
                 raise ValueError("Detection flag requires 'r' band to be in bands.")
 
         # Check for negative fluxes (set to 'BAD_MAG')
-        flag_r = data["mag_r_meas"] != "BAD_MAG"
+        flag_r = data["mag_r_obs"] != "BAD_MAG"
 
         # Combine flags
         flag_observed = flag_r & flag_completeness_r
 
+
         if "g" in bands:
-            flag_observed &= data["mag_g_meas"] != "BAD_MAG"
+            flag_observed &= data["mag_g_obs"] != "BAD_MAG"
 
         # Apply SNR cuts if requested
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
@@ -730,16 +731,16 @@ class StreamInjector:
             rng = np.random.default_rng(seed)
 
         # Sample the fluxes their errors
-        flux_meas = StreamInjector.magToFlux(mag_true) + rng.normal(
+        flux_obs = StreamInjector.magToFlux(mag_true) + rng.normal(
             scale=self.getFluxError(mag_true, mag_err)
         )
 
         # If the flux is negative, set the magnitude to "BAD_MAG" (not detected). Otherwise, convert the flux back to magnitude
-        mag_meas = np.where(
-            flux_meas > 0.0, StreamInjector.fluxToMag(flux_meas), "BAD_MAG"
+        mag_obs = np.where(
+            flux_obs > 0.0, StreamInjector.fluxToMag(flux_obs), "BAD_MAG"
         )
 
-        return mag_meas
+        return mag_obs
 
     def detect_flag(self, pix, mag=None, band="r", **kwargs):
         """
