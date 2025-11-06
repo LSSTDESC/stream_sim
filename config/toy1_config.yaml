@@ -16,6 +16,25 @@ stream:
       type: Constant
       value: 0.2
     sampler: Gaussian
+
+  isochrone:
+    name: Bressan2012
+    survey: lsst
+    age: 12.0
+    z: 0.0006
+    band_1 : g
+    band_2 : r
+    band_1_detection : True
+  
+  distance_modulus:
+    center: 
+      type: Line
+      slope: 0.1
+      intercept: 16.5
+    spread:
+      type: Constant
+      value: 0.0001 
+    sampler: Uniform
    
 background:
   nstars : 1.0e+5
