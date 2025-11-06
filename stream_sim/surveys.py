@@ -585,17 +585,22 @@ class SurveyFactory:
 
         # Get file configuration and determine data path
         survey_config = config.get("survey_files", {})
-        data_path = survey_config.get("file_path", "")
+        data_path_survey = survey_config.get("file_path", "")
 
+        # Find data directory where might be stored additional files
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        survey_name = (
+            f"{survey.name}_{survey.release}" if survey.release else survey.name
+        )
+        data_path_others = os.path.join(current_dir, "..", "data", "others")
         # Use default path if not specified
-        if not data_path:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            survey_name = (
-                f"{survey.name}_{survey.release}" if survey.release else survey.name
+        if not data_path_survey:
+            data_path_survey = os.path.join(
+                current_dir, "..", "data", "surveys", survey_name
             )
-            data_path = os.path.join(current_dir, "..", "data", "surveys", survey_name)
 
-        print(f"Data directory: {data_path}\n")
+        print(f"Survey data directory: {data_path_survey}\n")
+        print(f"Fallback directory for shared data files: {data_path_others}\n")
 
         # Determine available bands from config
         # Look for maglim_map_* entries to discover bands
@@ -633,21 +638,18 @@ class SurveyFactory:
                 )
                 continue
 
-            full_path = os.path.join(data_path, filename)
-            if not os.path.exists(full_path):
-                print(f"  ✗ Error: File not found for {band}-band magnitude limit map")
-                print(f"    Expected: {full_path}")
+            full_path = cls._find_file(filename, data_path_survey, data_path_others)
+
+            if full_path is None:
+                print(f"  ✗ {band}-band magnitude limit: File not found - {filename}")
                 continue
 
             try:
-                print(f"  Loading {band}-band magnitude limit map...")
-                print(f"    File: {filename}")
                 if extension.lower() == ".hsp":
-                    print(f"    Detected sparse HEALPix format (.hsp)")
                     survey.maglim_maps[band] = cls.open_map_sparse(full_path)
                 else:
                     survey.maglim_maps[band] = hp.read_map(full_path)
-                print(f"    ✓ Success")
+                print(f"  ✓ Success for {band}-band magnitude limit")
             except Exception as e:
                 print(f"    ✗ Failed to load {band}-band maglim map: {e}")
                 survey.maglim_maps[band] = None
@@ -688,7 +690,8 @@ class SurveyFactory:
                 lambda f: cls.set_completeness(
                     f, delta_saturation=default_delta_saturation
                 ),
-                data_path,
+                data_path_survey,
+                data_path_others,
             )
 
         # Load photometric error model (same for all bands)
@@ -704,7 +707,8 @@ class SurveyFactory:
                 lambda f: cls.set_photo_error(
                     f, delta_saturation=default_delta_saturation
                 ),
-                data_path,
+                data_path_survey,
+                data_path_others,
             )
 
         # Load band-independent maps
@@ -715,7 +719,13 @@ class SurveyFactory:
         }
         for attr_name, (description, loader_func) in band_independent.items():
             cls._load_file(
-                survey, survey_config, attr_name, description, loader_func, data_path
+                survey,
+                survey_config,
+                attr_name,
+                description,
+                loader_func,
+                data_path_survey,
+                data_path_others,
             )
 
         if survey.coverage is None:
@@ -735,6 +745,39 @@ class SurveyFactory:
         print("=" * 70 + "\n")
 
     @classmethod
+    def _find_file(
+        cls, filename: str, data_path_survey: str, data_path_others: str
+    ) -> Optional[str]:
+        """
+        Find a file by checking data_path_survey first, then data_path_others.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file to find.
+        data_path_survey : str
+            Primary data directory (survey-specific).
+        data_path_others : str
+            Fallback data directory (shared files).
+
+        Returns
+        -------
+        str or None
+            Full path to the file if found, None otherwise.
+        """
+        # Check survey-specific directory first
+        full_path = os.path.join(data_path_survey, filename)
+        if os.path.exists(full_path):
+            return full_path
+
+        # Check shared directory as fallback
+        full_path = os.path.join(data_path_others, filename)
+        if os.path.exists(full_path):
+            return full_path
+
+        return None
+
+    @classmethod
     def _load_file(
         cls,
         survey: Survey,
@@ -742,7 +785,8 @@ class SurveyFactory:
         attr_name: str,
         description: str,
         loader_func: Callable,
-        data_path: str,
+        data_path_survey: str,
+        data_path_others: str = None,
     ):
         """
         Load a single data file and attach it to the survey object.
@@ -759,8 +803,10 @@ class SurveyFactory:
             Human-readable description for logging.
         loader_func : callable
             Function to load the file (e.g., hp.read_map).
-        data_path : str
-            Directory containing the data files.
+        data_path_survey : str
+            Primary directory containing the data files.
+        data_path_others : str, optional
+            Fallback directory for shared data files.
         """
         # Get filename from config
         filename = config.get(attr_name)
@@ -769,13 +815,13 @@ class SurveyFactory:
             print(f"  ⚠ Warning: '{attr_name}' not specified in config (skipping)")
             return
 
-        # Construct full path
-        full_path = os.path.join(data_path, filename)
+        # Find file in data paths
+        full_path = cls._find_file(
+            filename, data_path_survey, data_path_others or data_path_survey
+        )
 
-        # Check if file exists
-        if not os.path.exists(full_path):
-            print(f"  ✗ Error: File not found for {attr_name}")
-            print(f"    Expected: {full_path}")
+        if full_path is None:
+            print(f"  ✗ {description}: File not found - {filename}")
             return
 
         # Load the file
