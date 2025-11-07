@@ -24,8 +24,6 @@ StreamSim bridges theoretical/dynamical stream models and realistic mock observa
 
 ## Installation
 
-### Quick Install
-
 Installation consists of three steps:
 
 ```bash
@@ -41,21 +39,17 @@ export PATH=${PWD}/bin:${PATH}
 python bin/download_data.py
 ```
 
-### Requirements
-
 The code requires common scientific Python packages:
 - numpy, scipy, pandas, matplotlib
 - astropy, healpy, gala
 - ugali (for stellar isochrones)
 
-**Data files**: StreamSim requires magnitude limit maps, dust maps, and survey completeness data. These are automatically downloaded from Zenodo by the `download_data.py` script.
+For full setup (dependencies, optional tools, troubleshooting), see the
+[Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html).  
+If data download fails or you want details on data structure, see the
+[Data page](https://lsstdesc.github.io/stream_sim/data.html).
 
-See the [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
-
-
-```{note}
-So far, installation via pip/conda is not supported.
-```
+Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
 
 ## Quick Start
 
