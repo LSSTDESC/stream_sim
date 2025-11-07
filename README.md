@@ -51,36 +51,6 @@ If data download fails or you want details on data structure, see the
 
 Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
 
-## Quick Start
-
-Once installed, generate your first stream:
-
-```bash
-# Generate a simple test stream
-python bin/generate_stream.py config/toy1_config.yaml -o my_stream.csv --plot
-
-# Generate Pal 5 stream
-python bin/example_generate_pal5.py
-```
-
-Or use the Python API:
-
-```python
-from stream_sim.model import StreamModel
-from stream_sim.utils import parse_config
-
-# Load configuration
-config = parse_config('config/toy1_config.yaml')
-
-# Create model and sample stars
-stream = StreamModel(config['stream'])
-stars = stream.sample(nstars=5000)
-
-print(stars.head())  # phi1, phi2, distance, magnitudes, etc.
-```
-
-See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for more examples.
-
 ## Use Cases
 
 StreamSim is particularly useful for:
@@ -89,6 +59,8 @@ StreamSim is particularly useful for:
 - **Algorithm development**: Generate test data for stream detection algorithms
 - **Survey planning**: Predict stream detectability in upcoming surveys
 - **Pipeline validation**: Test analysis workflows with known ground truth
+
+See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for some examples.
 
 ## Citation
 
