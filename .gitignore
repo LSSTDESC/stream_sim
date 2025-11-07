@@ -1,9 +1,3 @@
-# Large data files
-data/surveys/
-data/others/*.fits
-!data/surveys/.gitkeep
-!data/surveys/README.md
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
