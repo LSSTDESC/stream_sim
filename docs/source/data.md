@@ -2,79 +2,6 @@
 
 This directory contains large data files required for stream simulations. These files are **not** tracked in the git repository due to their size. They must be downloaded separately from Zenodo.
 
-## Data Organization
-
-### Required Data Files
-
-The data directory is organized into three main categories:
-
-#### 1. **Survey-Specific Data** (`surveys/`)
-
-Each survey subdirectory contains magnitude limit maps (maglim maps) in HEALPix format:
-- **Purpose**: Define observational depth and survey footprint for different photometric bands
-- **Format**: HEALPix maps (`.hsp` files) with nside=128
-- **Content**: 5σ magnitude limits for point sources in each band
-- **Usage**: Used to determine which stars would be observable in a given survey
-
-Current surveys:
-- `lsst_yr1/` - LSST baseline v5.0.0, Year 1 observations (g, r bands)
-- `lsst_yr5/` - LSST baseline v5.0.0, Year 5 observations (g, r bands)
-
-Additional surveys can be added by placing maglim maps in new subdirectories.
-
-#### 2. **Auxiliary Data** (`others/`)
-
-Common data files required for all simulations:
-
-- **Dust Extinction Map** (`ebv_sfd98_fullres_nside_4096_ring_equatorial.fits`):
-  - E(B-V) values from Schlegel, Finkbeiner & Davis (1998)
-  - Full-resolution HEALPix map (nside=4096)
-  - Used to apply Galactic extinction corrections to stellar magnitudes
-
-- **Survey Completeness** (`stellar_efficiency_cutr.csv`):
-  - Detection efficiency as a function of magnitude
-  - Accounts for photometric pipeline completeness
-  - Used to model realistic detection probabilities
-
-- **Photometric Errors** (`photoerror_r.csv`):
-  - Magnitude-dependent photometric uncertainties
-  - Band-specific error models
-  - Used to add realistic observational noise to simulated photometry
-
-#### 3. **Stream Models** (root directory)
-
-Reference data for specific stream models:
-
-- `erkal_2016_pal_5_input.csv` - Palomar 5 stream parameters from Erkal et al. (2016)
-- `patrick_2022_splines.csv` - Spline-based stream track parameters
-
-These are small reference files (<100 KB) and are tracked in git.
-
-## Data Structure
-
-```
-data/
-├── README.md
-├── erkal_2016_pal_5_input.csv          # Pal 5 reference data (tracked in git)
-├── patrick_2022_splines.csv            # Spline stream data (tracked in git)
-│
-├── surveys/                             # Survey-specific maglim maps (NOT tracked)
-│   ├── README.md
-│   ├── .gitkeep
-│   ├── lsst_yr1/
-│   │   ├── baseline_v5.0.0_year_1.0_band_g_nside_128.hsp
-│   │   └── baseline_v5.0.0_year_1.0_band_r_nside_128.hsp
-│   └── lsst_yr5/
-│       ├── baseline_v5.0.0_year_5.0_band_g_nside_128.hsp
-│       └── baseline_v5.0.0_year_5.0_band_r_nside_128.hsp
-│
-└── others/                              # Auxiliary data (NOT tracked)
-    ├── .gitkeep
-    ├── ebv_sfd98_fullres_nside_4096_ring_equatorial.fits   # Dust map
-    ├── stellar_efficiency_cutr.csv                          # Completeness
-    └── photoerror_r.csv                                     # Photometric errors
-```
-
 ## Downloading Data
 
 ### Quick Start
@@ -86,7 +13,7 @@ python bin/download_data.py
 ```
 
 The script will:
-1. Download a compressed archive (~4.3 MB) from Zenodo
+1. Download a compressed archive from Zenodo
 2. Extract it to the `data/` directory
 3. Clean up temporary and system files
 4. Verify the installation
@@ -150,13 +77,13 @@ python bin/download_data.py --url https://custom-server.edu/data.zip
 #### Problem: Download fails with "404 Not Found"
 
 **Solution**: The data URL may have changed. Check the latest URL at:
-- Zenodo record: https://zenodo.org/records/17550956
+- Zenodo record: https://zenodo.org/records/17552633
 - Or update `BASE_DATA_URL` in `bin/download_data.py`
 
 #### Problem: Extraction fails
 
 **Solution**: 
-1. Check disk space: The extracted data requires ~6 MB
+1. Check disk space: The extracted data requires ~ 800 MB
 2. Check write permissions in the installation directory
 3. Try re-downloading with `--force`
 
@@ -174,25 +101,62 @@ python bin/download_data.py --url https://custom-server.edu/data.zip
 2. If a survey is missing, check if it's in the Zenodo archive
 3. You may need to download additional survey-specific data separately
 
-#### Problem: Import errors when running simulations
-
-**Solution**:
-1. Ensure data directory exists: `ls -la data/`
-2. Check that required files are present:
-   ```bash
-   ls data/others/ebv_sfd98_fullres_nside_4096_ring_equatorial.fits
-   ls data/surveys/lsst_yr1/*.hsp
-   ```
-3. Re-download if files are missing: `python bin/download_data.py --force`
-
 ## Data Storage and DOI
 
 The data files are hosted on [Zenodo](https://zenodo.org) with a persistent DOI for citation and long-term access.
 
 **DOI**: 10.5281/zenodo.17550956  
-**URL**: https://zenodo.org/records/17550956  
+**URL**: https://zenodo.org/records/17552633 
 **Version**: 1.0  
 **Last Updated**: November 2025
+
+
+## Data Organization
+
+### Required Data Files
+
+The data directory is organized into three main categories:
+
+#### 1. **Survey-Specific Data** (`surveys/`)
+
+Each survey subdirectory contains magnitude limit maps (maglim maps) in HEALPix format:
+- **Purpose**: Define observational depth and survey footprint for different photometric bands
+- **Format**: HEALPix maps (`.hsp` files) with nside=128
+- **Content**: 5σ magnitude limits for point sources in each band
+- **Usage**: Used to determine which stars would be observable in a given survey
+
+Current surveys:
+- `lsst_yr1/` - LSST baseline v5.0.0, Year 1 observations (g, r bands)
+- `lsst_yr5/` - LSST baseline v5.0.0, Year 5 observations (g, r bands)
+
+Additional surveys can be added by placing maglim maps in new subdirectories.
+
+#### 2. **Auxiliary Data** (`others/`)
+
+Common data files required for all simulations:
+
+- **Dust Extinction Map** (`ebv_sfd98_fullres_nside_4096_ring_equatorial.fits`):
+  - E(B-V) values from Schlegel, Finkbeiner & Davis (1998)
+  - Full-resolution HEALPix map (nside=4096)
+  - Used to apply Galactic extinction corrections to stellar magnitudes
+
+- **Survey Completeness** (`stellar_efficiency_cutr.csv`):
+  - Detection and classification efficiencies as a function of difference between apparent magnitude and magnitude limit
+  - Accounts for photometric pipeline completeness
+  - Used to model realistic detection probabilities
+
+- **Photometric Errors** (`photoerror_r.csv`):
+  - Photometric uncertainties as a function of difference between apparent magnitude and magnitude limit
+  - Used to add realistic observational noise to simulated photometry
+
+#### 3. **Stream Models** (root directory)
+
+Reference data for specific stream models:
+
+- `erkal_2016_pal_5_input.csv` 
+- `patrick_2022_splines.csv`
+
+These are small reference files (<100 KB) and are tracked in git.
 
 ## For Developers
 
@@ -200,14 +164,8 @@ The data files are hosted on [Zenodo](https://zenodo.org) with a persistent DOI 
 
 If you need to add or modify data files:
 
-1. **Clean up unwanted files**:
-   ```bash
-   find data -name ".DS_Store" -delete
-   find data -name "*.backup" -delete
-   find data -name "*~" -delete
-   ```
 
-2. **Create a new zip archive**:
+1. **Create a new zip archive**:
    ```bash
    cd /path/to/stream_sim
    zip -r data.zip data/ \
@@ -219,75 +177,62 @@ If you need to add or modify data files:
        -x "*.bak" \
        -x "*~"
    ```
-
-3. **Verify the archive**:
-   ```bash
-   # Check contents
-   unzip -l data.zip | head -30
    
-   # Check size
-   ls -lh data.zip
-   
-   # Test extraction
-   unzip -t data.zip
-   ```
-
-4. **Upload to Zenodo**:
-   - Go to https://zenodo.org/records/17550956
+2. **Upload to Zenodo**:
+   - Go to https://zenodo.org/records/17552633
    - Create a new version
    - Upload the `data.zip` file
    - Add release notes describing changes
    - Publish and note the new record ID
 
-5. **Update the download script**:
+3. **Update the download script**:
    - Edit `bin/download_data.py`
    - Update `BASE_DATA_URL` if record ID changed
    - Update `ARCHIVE_SIZE_MB` if size changed
-   - Update version in this README
+   - Update version in this document
 
-6. **Commit and push**:
+4. **Commit and push**:
    ```bash
-   git add bin/download_data.py data/README.md
+   git add .
    git commit -m "Update data archive to version X.Y"
    git push
    ```
-
-### Important Notes
-
-**Files to exclude from the archive:**
-- `.DS_Store` (macOS system files)
-- `__MACOSX/` (macOS resource forks)
-- `*.backup`, `*.bak`, `*~` (backup/temporary files)
-- `.git*` (Git metadata)
-- `__pycache__/` (Python cache)
-
-The download script automatically cleans these up after extraction, but it's better to not include them in the archive.
 
 ### Adding New Surveys
 
 To add a new survey:
 
-1. Create a new subdirectory in `data/surveys/`:
+1. Create a new subdirectory in `data/surveys/` + its release:
    ```bash
-   mkdir -p data/surveys/new_survey_name
+   mkdir -p data/surveys/new_survey_name_release
    ```
 
 2. Add magnitude limit maps for each band:
-   - Files should be HEALPix format (`.hsp`)
-   - Use consistent naming: `{survey}_{version}_{band}_nside_{resolution}.hsp`
+   - Files should be HEALPix format (`.hsp`) or `.fit`
    - Example: `des_y6_g_band_nside_128.hsp`
+   - Optional: one may add new completeness and photometric errors data. If not provided, the ones in data/others will be used.
 
 3. Create a corresponding survey configuration in `config/surveys/`:
    ```yaml
-   survey_name: "New Survey"
-   maglim_dir: "surveys/new_survey_name"
-   bands: ["g", "r", "i", "z"]
-   # ... other survey parameters
+   name: new_survey
+   release: its_release
+   survey_files: 
+      # Path to data files (leave empty for default location)
+      file_path: ''
+
+      # Band-specific magnitude limit maps
+      maglim_map_g: new_survey_maglim_g_band.hsp
+      maglim_map_r: new_survey_maglim_r_band.hsp
+
+      # Band-independent maps. Keep by defaults files for completeness, ebv map, and photometric errors
+      ebv_map: ebv_sfd98_fullres_nside_4096_ring_equatorial.fits
+      completeness: stellar_efficiency_cutr.csv
+      log_photo_error: photoerror_r.csv
    ```
 
 4. Update the data archive and upload to Zenodo
 
-5. Document the new survey in this README
+5. Document the new survey in this document.
 
 ## Data Sources and Credits
 
