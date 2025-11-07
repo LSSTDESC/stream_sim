@@ -23,18 +23,69 @@ StreamSim bridges theoretical/dynamical stream models and realistic mock observa
 - [API Reference](https://lsstdesc.github.io/stream_sim/modules.html) - Complete API documentation
 
 ## Installation
-Installation consists of git cloning `stream_sim`, adding the python module to your `PYTHONPATH`, and adding the `bin` directory to your `PATH`:
+
+### Quick Install
+
+Installation consists of three steps:
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/LSSTDESC/stream_sim.git
 cd stream_sim
+
+# 2. Set environment variables
 export PYTHONPATH=${PWD}:${PYTHONPATH}
 export PATH=${PWD}/bin:${PATH}
+
+# 3. Download required data files
+python bin/download_data.py
 ```
 
-The code has some common dependencies (numpy, scipy, pandas, matplotlib, ugali...) that should be present in your environment. See [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
+### Requirements
 
-Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
+The code requires common scientific Python packages:
+- numpy, scipy, pandas, matplotlib
+- astropy, healpy, gala
+- ugali (for stellar isochrones)
+
+**Data files**: StreamSim requires magnitude limit maps, dust maps, and survey completeness data. These are automatically downloaded from Zenodo by the `download_data.py` script.
+
+See the [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
+
+
+```{note}
+So far, installation via pip/conda is not supported.
+```
+
+## Quick Start
+
+Once installed, generate your first stream:
+
+```bash
+# Generate a simple test stream
+python bin/generate_stream.py config/toy1_config.yaml -o my_stream.csv --plot
+
+# Generate Pal 5 stream
+python bin/example_generate_pal5.py
+```
+
+Or use the Python API:
+
+```python
+from stream_sim.model import StreamModel
+from stream_sim.utils import parse_config
+
+# Load configuration
+config = parse_config('config/toy1_config.yaml')
+
+# Create model and sample stars
+stream = StreamModel(config['stream'])
+stars = stream.sample(nstars=5000)
+
+print(stars.head())  # phi1, phi2, distance, magnitudes, etc.
+```
+
+See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for more examples.
 
 ## Use Cases
 
