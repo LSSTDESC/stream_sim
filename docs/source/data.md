@@ -77,7 +77,7 @@ python bin/download_data.py --url https://custom-server.edu/data.zip
 #### Problem: Download fails with "404 Not Found"
 
 **Solution**: The data URL may have changed. Check the latest URL at:
-- Zenodo record: https://zenodo.org/records/17552633
+- Zenodo record: https://zenodo.org/records/17553215
 - Or update `BASE_DATA_URL` in `bin/download_data.py`
 
 #### Problem: Extraction fails
@@ -106,7 +106,7 @@ python bin/download_data.py --url https://custom-server.edu/data.zip
 The data files are hosted on [Zenodo](https://zenodo.org) with a persistent DOI for citation and long-term access.
 
 **DOI**: 10.5281/zenodo.17550956  
-**URL**: https://zenodo.org/records/17552633 
+**URL**: https://zenodo.org/records/17553215
 **Version**: 1.0  
 **Last Updated**: November 2025
 
@@ -179,7 +179,7 @@ If you need to add or modify data files:
    ```
    
 2. **Upload to Zenodo**:
-   - Go to https://zenodo.org/records/17552633
+   - Go to https://zenodo.org/records/17553215
    - Create a new version
    - Upload the `data.zip` file
    - Add release notes describing changes
