@@ -137,3 +137,5 @@ dmypy.json
 # Surveys files
 data/surveys/*
 data/others/*
+!data/surveys/.gitkeep
+!data/others/.gitkeep   
