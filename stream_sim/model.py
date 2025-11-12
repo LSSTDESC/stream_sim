@@ -360,7 +360,44 @@ class StreamModel(ConfigurableModel):
                 raise ValueError("Empty catalog; provide size")
             df = pd.DataFrame(index=np.arange(int(size)))
         
+        df = self._standardize_columns_name(df)
+        
         return df, src_path
+
+    def _standardize_columns_name(self, catalog):
+        """Standardize column names in the catalog DataFrame.
+
+        Parameters
+        ----------
+        catalog : pandas.DataFrame
+            Input catalog.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Catalog with standardized column names.
+        """
+        # Mapping of possible column name variants to standard names
+        col_mapping = {
+            'dist': ['dist', 'distance', 'distance_modulus'],
+            'mag_g': ['mag_g', 'g_mag', 'g', 'gmag', 'magnitude_g'],
+            'mag_r': ['mag_r', 'r_mag', 'r', 'rmag', 'magnitude_r'],
+            'phi1': ['phi1', 'phi_1', 'Phi1', 'Phi_1'],
+            'phi2': ['phi2', 'phi_2', 'Phi2', 'Phi_2'],
+            'mu1': ['mu1', 'mu_1'],
+            'mu2': ['mu2', 'mu_2'],
+            'rv': ['rv', 'radial_velocity', 'v_radial'],
+        }
+
+        # Create reverse mapping for renaming
+        reverse_mapping = {}
+        for standard_name, variants in col_mapping.items():
+            for var in variants:
+                reverse_mapping[var.lower()] = standard_name
+
+        catalog = catalog.rename(columns=reverse_mapping)
+
+        return catalog
 
 class DensityModel(ConfigurableModel):
 
