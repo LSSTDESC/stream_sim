@@ -57,6 +57,9 @@ New to StreamSim? Start here:
 3. **Quickstart**: :doc:`quickstart` - Learn the basics with simple examples
 4. **API Reference**: :doc:`modules` - Explore the complete API documentation
 
+.. tip::
+   Having issues with data download? See the :doc:`data` page for detailed troubleshooting.
+
 Documentation Contents
 ----------------------
 
@@ -71,8 +74,9 @@ Documentation Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: Content documentation
+   :caption: Reference
    
+   data
    modules
 
 Indices and Tables

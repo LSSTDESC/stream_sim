@@ -23,16 +23,31 @@ StreamSim bridges theoretical/dynamical stream models and realistic mock observa
 - [API Reference](https://lsstdesc.github.io/stream_sim/modules.html) - Complete API documentation
 
 ## Installation
-Installation consists of git cloning `stream_sim`, adding the python module to your `PYTHONPATH`, and adding the `bin` directory to your `PATH`:
+
+Installation consists of three steps:
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/LSSTDESC/stream_sim.git
 cd stream_sim
+
+# 2. Set environment variables
 export PYTHONPATH=${PWD}:${PYTHONPATH}
 export PATH=${PWD}/bin:${PATH}
+
+# 3. Download required data files
+python bin/download_data.py
 ```
 
-The code has some common dependencies (numpy, scipy, pandas, matplotlib, ugali...) that should be present in your environment. See [Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html) for complete dependency list.
+The code requires common scientific Python packages:
+- numpy, scipy, pandas, matplotlib
+- astropy, healpy, gala
+- ugali (for stellar isochrones)
+
+For full setup (dependencies, optional tools, troubleshooting), see the
+[Installation Guide](https://lsstdesc.github.io/stream_sim/installation.html).  
+If data download fails or you want details on data structure, see the
+[Data page](https://lsstdesc.github.io/stream_sim/data.html).
 
 Eventually stream_sim will be installable through common package managers (i.e., pip and/or conda).
 
@@ -44,6 +59,8 @@ StreamSim is particularly useful for:
 - **Algorithm development**: Generate test data for stream detection algorithms
 - **Survey planning**: Predict stream detectability in upcoming surveys
 - **Pipeline validation**: Test analysis workflows with known ground truth
+
+See the [Quickstart Guide](https://lsstdesc.github.io/stream_sim/quickstart.html) for some examples.
 
 ## Citation
 
