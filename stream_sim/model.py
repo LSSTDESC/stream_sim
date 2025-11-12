@@ -17,6 +17,15 @@ class ConfigurableModel(object):
     """ Baseclass for models built from configs. """
 
     def __init__(self, config, **kwargs):
+        """Initialize with configuration.
+
+        Parameters
+        ----------
+        config : dict or None
+            Configuration used by subclasses to build internal components.
+        **kwargs
+            Optional overrides merged into ``config`` before building.
+        """
         self._config = copy.deepcopy(config)
         if self._config is not None:
             self._config.update(**kwargs)
@@ -37,15 +46,16 @@ class StreamModel(ConfigurableModel):
 
         Parameters
         ----------
-        config : configuration dictionary
-
-        Returns
-        -------
-        self : stream model
+        config : dict
+            Configuration sections: ``density``, ``track``, ``distance_modulus``,
+            ``isochrone``, and optionally ``velocity``.
+        **kwargs
+            Optional overrides merged into ``config`` before building.
         """
         super().__init__(config, **kwargs)
 
     def _create_model(self):
+        """Instantiate sub-models from configuration sections."""
         self.density = self._create_density()
         self.track = self._create_track()
         self.distance_modulus = self._create_distance_modulus()
@@ -53,6 +63,7 @@ class StreamModel(ConfigurableModel):
         self.velocity = self._create_velocity()
 
     def _create_density(self):
+        """Build density sampler from ``config['density']``."""
         config = self._config.get('density')
         return DensityModel(config)
 
@@ -62,10 +73,12 @@ class StreamModel(ConfigurableModel):
         return DensityModel(config)
 
     def _create_track(self):
+        """Build track model (center and spread functions) from ``config['track']``."""
         config = self._config.get('track')
         return TrackModel(config)
 
     def _create_distance_modulus(self):
+        """Build distance-modulus track from ``config['distance_modulus']`` if present."""
         config = self._config.get('distance_modulus')
         if config:
             return TrackModel(config)
@@ -73,6 +86,7 @@ class StreamModel(ConfigurableModel):
             return None
 
     def _create_isochrone(self):
+        """Build isochrone model from ``config['isochrone']`` if present."""
         config = self._config.get('isochrone')
         if config:
             iso = IsochroneModel(config)
@@ -82,6 +96,7 @@ class StreamModel(ConfigurableModel):
             return None
 
     def _create_velocity(self):
+        """Build velocity model from ``config['velocity']`` if present."""
         config = self._config.get('velocity')
         if config:
             return VelocityModel(config)
@@ -89,16 +104,18 @@ class StreamModel(ConfigurableModel):
             return None
 
     def sample(self, size):
-        """
-        Sample the stream stellar distribution parameters.
+        """Sample stream stars and derived quantities.
 
         Parameters
         ----------
-        size : number of stars to generate.
+        size : int
+            Number of stars to generate.
 
         Returns
         -------
-        df : data frame of stream stars.
+        pandas.DataFrame
+            Columns include: ``phi1``, ``phi2``, ``dist``, ``mu1``, ``mu2``,
+            ``rv``, ``mag_g``, ``mag_r`` (some may be None if the sub-model is absent).
         """
 
         # Sample phi1 and phi2
@@ -406,19 +423,35 @@ class StreamModel(ConfigurableModel):
         return catalog
 
 class DensityModel(ConfigurableModel):
+    """Density along the stream; samples ``phi1`` positions."""
 
     def _create_model(self):
+        """Instantiate the density sampler from configuration."""
         kwargs = copy.deepcopy(self._config)
         type_ = kwargs.pop('type').lower()
         self.density = sampler_factory(type_, **kwargs)
 
     def sample(self, size):
+        """Draw ``phi1`` samples.
+
+        Parameters
+        ----------
+        size : int
+            Number of samples.
+
+        Returns
+        -------
+        numpy.ndarray
+            Sampled ``phi1`` values.
+        """
         return self.density.sample(size)
 
 
 class TrackModel(ConfigurableModel):
+    """Transverse track model; samples ``phi2`` given ``phi1``."""
 
     def _create_model(self):
+        """Build center/spread functions from configuration."""
         kwargs = copy.deepcopy(self._config['center'])
         type_ = kwargs.pop('type').lower()
         self.center = function_factory(type_, **kwargs)
@@ -428,6 +461,7 @@ class TrackModel(ConfigurableModel):
         self.spread = function_factory(type_, **kwargs)
 
     def _create_sampler(self, x):
+        """Create the sampler (Gaussian or Uniform) at positions ``x``."""
         type_ = self._config.get('sampler', 'Gaussian').lower()
         if type_ == 'gaussian':
             mu = self.center(x)
@@ -443,6 +477,18 @@ class TrackModel(ConfigurableModel):
         self._sampler = sampler_factory(type_, **kwargs)
 
     def sample(self, x):
+        """Sample ``phi2`` at given ``phi1`` positions ``x``.
+
+        Parameters
+        ----------
+        x : array-like
+            ``phi1`` positions where to sample ``phi2``.
+
+        Returns
+        -------
+        numpy.ndarray
+            Sampled ``phi2`` values.
+        """
         size = len(x)
         self._create_sampler(x)
         return self._sampler.sample(size)
@@ -458,11 +504,18 @@ class DistanceModel(ConfigurableModel):
         
 
 class IsochroneModel(ConfigurableModel):
-    """ Placeholder for isochrone model. """
+    """Isochrone wrapper using ``ugali`` for CMD sampling."""
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)
     
     def create_isochrone(self,config):
+        """Construct the underlying ``ugali`` isochrone from configuration.
+
+        Parameters
+        ----------
+        config : dict
+            Isochrone factory configuration.
+        """
         import ugali.isochrone
         self.iso = ugali.isochrone.factory(**config)
         self.iso.params['distance_modulus'].set_bounds([0,50])
@@ -472,6 +525,20 @@ class IsochroneModel(ConfigurableModel):
         
         
     def sample(self, nstars,distance_modulus,**kwargs):
+        """Simulate magnitudes in g and r bands.
+
+        Parameters
+        ----------
+        nstars : int
+            Number of stars to simulate.
+        distance_modulus : float or array-like
+            Distance modulus per star (broadcast if scalar).
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            ``(mag_g, mag_r)`` arrays.
+        """
         stellar_mass = nstars * self.iso.stellar_mass()
         if np.isscalar(distance_modulus):
             mag_g,mag_r = self.iso.simulate(stellar_mass,distance_modulus=self.iso.distance_modulus)
@@ -516,16 +583,17 @@ class BackgroundModel(StreamModel):
 
 
 class SplineStreamModel(StreamModel):
+    """Spline-based stream model with linear-density component."""
     def __init__(self, config, **kwargs):
-        """ Create the stream from the config object.
+        """Create spline stream from configuration.
 
         Parameters
         ----------
-        config : configuration dictionary
-
-        Returns
-        -------
-        self : stream model
+        config : dict
+            Must include ``linear_density`` and ``track`` sections. Optional
+            ``stream_name`` is propagated to sub-sections.
+        **kwargs
+            Optional overrides merged into ``config`` before building.
         """
 
         stream_name = None
@@ -538,6 +606,7 @@ class SplineStreamModel(StreamModel):
         super().__init__(config, **kwargs)
 
     def _create_model(self):
+        """Instantiate spline-specific components and common sub-models."""
         self.density = self._create_linear_density()
         self.track = self._create_track()
         self.distance_modulus = self._create_distance()
