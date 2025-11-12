@@ -235,7 +235,7 @@ class StreamModel(ConfigurableModel):
                 self._info(verbose, f"Filled {len(idx)} phi2 values.")
 
         # dist (needs phi1)
-        if 'dist' in target_cols:
+        if 'dist' in target_cols or (any(c in target_cols for c in ('mag_g', 'mag_r')) and any(c not in df.columns for c in ('mag_g', 'mag_r'))):
             if 'phi1' not in df.columns or df['phi1'].isna().any():
                 raise ValueError("phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog")
             idx = self._missing_idx(df, 'dist')
