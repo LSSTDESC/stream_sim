@@ -14,6 +14,7 @@ import scipy
 
 from .plotting import plot_stream_in_mask
 from .surveys import Survey
+from .model import StreamModel
 
 
 class StreamInjector:
@@ -262,34 +263,88 @@ class StreamInjector:
 
     def complete_data(self, data, bands=["r", "g"], **kwargs):
         """
-        Ensure the input data contains all required columns.
+        Validate and complete the columns needed for injection.
 
-        This method validates and completes the input data by adding missing
-        coordinate columns (converting phi1/phi2 to ra/dec if needed).
+        This function ensures sky coordinates are present and, if requested,
+        fills missing photometric magnitude columns using a stream model.
+        Specifically:
+
+        - If (ra, dec) are missing but (phi1, phi2) exist, it converts to
+          sky coordinates via ``phi_to_radec``.
+        - It checks for ``mag_<band>`` for each requested band; any missing
+          bands are generated via ``StreamModel.complete_catalog`` when a
+          ``stream_config`` is provided.
+        - Existing columns are preserved and are not overwritten.
 
         Parameters
         ----------
-        data : pd.DataFrame
-            Input DataFrame.
-        bands : list of str, optional
-            List of photometric bands required. Default is ['r', 'g'].
+        data : pandas.DataFrame
+            Input catalog. Must contain either (ra, dec) or (phi1, phi2).
+            The DataFrame is copied; the input object is not modified in place.
+        bands : list[str], optional
+            Photometric bands to ensure (as ``mag_<band>``). Default is
+            ``['r', 'g']``.
         **kwargs
-            Additional keyword arguments:
+            Additional options:
 
             rng : numpy.random.Generator, optional
                 Random number generator instance.
             seed : int, optional
-                Random seed for coordinate transformations.
+                Random seed used to initialize an RNG if ``rng`` is not given.
+            stream_config : dict, optional
+                Configuration passed to ``StreamModel``. Required only when at
+                least one requested magnitude band is missing. See
+                ``StreamModel`` for the expected schema (e.g., track, distance
+                modulus, isochrone).
+
+            Keyword arguments forwarded to ``phi_to_radec`` (only used when
+            converting from (phi1, phi2)):
+
+            gc_frame : gala.coordinates.GreatCircleICRSFrame, optional
+                Great-circle frame to use for the transformation. If omitted,
+                a suitable frame is searched for.
+            mask_type : list[str] or str, optional
+                Mask(s) used when searching a frame (e.g., 'footprint',
+                'maglim_r', 'ebv').
+            percentile_threshold : float, optional
+                Fraction of points that must lie inside the mask when selecting
+                a frame. Default defined in ``phi_to_radec``.
+            max_iter : int, optional
+                Maximum trials when searching a frame. Default defined in
+                ``phi_to_radec``.
 
         Returns
         -------
-        pd.DataFrame
-            DataFrame with all required columns (ra, dec, mag_<band> for each band).
+        pandas.DataFrame
+            A copy of the input with the required columns present:
+            ``ra``, ``dec``, and one ``mag_<band>`` column per requested band.
 
         Raises
         ------
         ValueError
-            If required columns are missing and cannot be inferred.
+            If neither (ra, dec) nor (phi1, phi2) are present; or if one or
+            more magnitude bands are missing and ``stream_config`` is not
+            provided; or if after completion a required column is still absent.
+
+        Notes
+        -----
+        - Only missing magnitude columns are synthesized; existing values are
+          left untouched.
+        - Magnitudes are produced by ``StreamModel.complete_catalog`` and rely
+          on the model's configuration (e.g., isochrone and distance modulus).
+
+        Examples
+        --------
+        Convert from (phi1, phi2) and generate both bands:
+
+        >>> df = pd.DataFrame({'phi1': [-5, 0, 5], 'phi2': [0, 0, 0]})
+        >>> cfg = {...}  # stream model config
+        >>> out = injector.complete_data(df, bands=['r', 'g'], stream_config=cfg)
+
+        Use already existing ra/dec and fill a missing 'g' band from a model:
+
+        >>> df = pd.DataFrame({'phi1': [-5, 0, 5], 'phi2': [0, 0, 0], 'ra': [10.1, 12.5, 24.7], 'dec': [5.2, 6.2, 7.2],})
+        >>> out = injector.complete_data(df, bands=['r', 'g'], stream_config=cfg, seed=42)
         """
 
         required_columns = ["ra", "dec"] + [f"mag_{band}" for band in bands]
@@ -319,9 +374,20 @@ class StreamInjector:
 
         # Sample missing magnitudes if needed
         mag_bands_missing = [
-            band for band in bands if f"mag_{band}" not in data.columns
+            f"mag_{band}" for band in bands if f"mag_{band}" not in data.columns
         ]
-        # to be implemented
+        if mag_bands_missing:
+            stream_config = kwargs.get("stream_config", None)
+            if stream_config is None:
+                raise ValueError(
+                    "`stream_config` must be provided to sample missing magnitudes."
+                )
+            stream_model = StreamModel(stream_config)
+            data = stream_model.complete_catalog(
+                data,
+                inplace=True,
+                columns_to_add=mag_bands_missing,
+            )
 
         for col in required_columns:
             if col not in data.columns:
