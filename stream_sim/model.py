@@ -133,13 +133,62 @@ class StreamModel(ConfigurableModel):
     def complete_catalog(self, catalog, columns_to_add=None, size=None, inplace=False, save_path=None, verbose=True):
         """Complete only the requested columns in a catalog.
 
+        This method takes an input catalog (or a desired size when no catalog
+        is provided) and fills in only the requested stream-model columns
+        while preserving pre-existing non-null values. Columns are generated
+        using the configured sub-models (density, track, distance modulus,
+        isochrone, velocity) and only if those capabilities are available.
+
+        Parameters
+        ----------
+        catalog : pandas.DataFrame or str or dict or None
+            Input catalog. If a string, it is interpreted as a CSV filepath
+            to read. If a dict, it will be converted to a DataFrame.
+            If None, ``size`` must be provided to create an empty frame of
+            that length.
+        columns_to_add : sequence of str or None, optional
+            The columns to ensure in the output. Valid entries are
+            {'phi1','phi2','dist','mag_g','mag_r','mu1','mu2','rv'}.
+            If None, all valid columns supported by the configured model are
+            considered.
+        size : int or None, optional
+            Required when ``catalog`` is None or an empty table; ignored
+            otherwise.
+        inplace : bool, default False
+            If True and a DataFrame or CSV path is provided, modify that
+            object in place (for CSV, overwrite the input file).
+        save_path : str or None, optional
+            If provided, write the completed catalog to this CSV path.
+        verbose : bool, default True
+            If True, print progress/status messages.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The completed catalog. If ``inplace`` is True and a DataFrame was
+            provided, the same object is returned after modification.
+
+        Raises
+        ------
+        ValueError
+            If ``size`` is required but not provided, or when dependencies are
+            missing (e.g., requesting 'phi2' without available 'phi1').
+
         Notes
-        - If catalog is None or empty (size required), a new empty frame of that size is created.
-        - Existing values are preserved; only missing or absent columns are filled.
-        - Dependencies: phi2/dist/velocities require phi1; magnitudes require dist and an isochrone model.
+        -----
+        - Dependencies: 'phi2' and 'dist' require 'phi1'. Magnitudes require
+          'dist' and an isochrone model. Velocities require 'phi1' and a
+          velocity model.
+        - Existing non-null values are preserved; only missing rows are filled,
+          except for magnitudes and velocities where the method intentionally
+          overwrites the whole columns to keep internal consistency (e.g.,
+          colors and kinematic coherence across rows).
+        - When ``catalog`` is a CSV path and ``inplace`` is True, the original
+          file is overwritten.
         """
         # Supported outputs and capability filtering
-        all_cols = ('phi1', 'phi2', 'dist', 'mag_g', 'mag_r', 'mu1', 'mu2', 'rv') # columns this method can fill
+        # Columns this method can fill using the configured model
+        all_cols = ('phi1', 'phi2', 'dist', 'mag_g', 'mag_r', 'mu1', 'mu2', 'rv')
         target_cols = list(all_cols) if columns_to_add is None else [c for c in columns_to_add if c in all_cols]
         unknown = [] if columns_to_add is None else sorted(set(columns_to_add) - set(all_cols))
         if unknown:
@@ -194,21 +243,21 @@ class StreamModel(ConfigurableModel):
                 df.loc[idx, 'dist'] = self.distance_modulus.sample(df.loc[idx, 'phi1'].to_numpy())
                 self._info(verbose, f"Filled {len(idx)} dist values.")
 
-
+        # magnitudes (need dist and isochrone)
         if any(c in target_cols for c in ('mag_g', 'mag_r')):
             # Verify distance modulus availability
-            if not 'dist' in df.columns:
+            if 'dist' not in df.columns:
                 raise ValueError("dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog")
             dist_vals = df['dist'].to_numpy()
-            mag_g, mag_r = self.isochrone.sample(N,dist_vals)
-            # Add both magnitudes if missing to keep colors consistent
+            mag_g, mag_r = self.isochrone.sample(N, dist_vals)
+            # Add both magnitudes to keep colors consistent across rows
             if 'mag_g' in df.columns or 'mag_r' in df.columns:
-                self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")    
+                self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")
             df['mag_g'] = mag_g
             df['mag_r'] = mag_r
             self._info(verbose, f"Filled magnitudes for {N} rows.")
 
-        # velocities require velocity model and phi1
+        # velocities (need phi1 and velocity model)
         if any(c in target_cols for c in ('mu1', 'mu2', 'rv')):
             if 'phi1' not in df.columns or df['phi1'].isna().any():
                 raise ValueError("phi1 required to sample velocities")
@@ -230,18 +279,67 @@ class StreamModel(ConfigurableModel):
         return df
 
     def _missing_idx(self, df: pd.DataFrame, col: str):
-        """Return index of rows missing column `col` (or all rows if absent)."""
+        """Return indices of rows needing a given column.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            DataFrame to inspect.
+        col : str
+            Column name to check.
+
+        Returns
+        -------
+        pandas.Index
+            Index of rows where ``col`` is missing or NaN. If ``col`` is not
+            present in ``df``, returns all row indices.
+        """
         if col not in df.columns:
             return df.index
         return df.index[df[col].isna()]
 
     def _info(self, verbose: bool, msg: str):
-        """Conditional verbose print."""
+        """Conditional verbose print.
+
+        Parameters
+        ----------
+        verbose : bool
+            When True, print ``msg``; otherwise, do nothing.
+        msg : str
+            Message to print.
+        """
         if verbose:
             print(msg)
 
     def _open_catalog(self, catalog, size=None, inplace=False):
-        # Load/normalize input catalog
+        """Load or normalize the input catalog to a DataFrame.
+
+        Parameters
+        ----------
+        catalog : pandas.DataFrame or str or dict or None
+            Input catalog. If str, treated as a CSV file path. If dict,
+            converted to a DataFrame. If None, ``size`` must be provided.
+        size : int or None, optional
+            Required when ``catalog`` is None or an empty table; ignored
+            otherwise.
+        inplace : bool, default False
+            If True and ``catalog`` is a DataFrame, return it as-is; otherwise
+            return a copy to avoid side effects.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            The loaded or constructed DataFrame.
+        src_path : str or None
+            The source CSV path if ``catalog`` was a string; otherwise None.
+
+        Raises
+        ------
+        ValueError
+            If ``size`` is required but not provided.
+        TypeError
+            If ``catalog`` is not one of the supported types.
+        """
         src_path = None
         if catalog is None:
             if size is None:
