@@ -14,7 +14,7 @@ from stream_sim.samplers import sampler_factory
 
 
 class ConfigurableModel(object):
-    """ Baseclass for models built from configs. """
+    """Baseclass for models built from configs."""
 
     def __init__(self, config, **kwargs):
         """Initialize with configuration.
@@ -39,10 +39,10 @@ class ConfigurableModel(object):
 
 
 class StreamModel(ConfigurableModel):
-    """ High-level object for the various components of the stream model. """
+    """High-level object for the various components of the stream model."""
 
     def __init__(self, config, **kwargs):
-        """ Create the stream from the config object.
+        """Create the stream from the config object.
 
         Parameters
         ----------
@@ -64,22 +64,22 @@ class StreamModel(ConfigurableModel):
 
     def _create_density(self):
         """Build density sampler from ``config['density']``."""
-        config = self._config.get('density')
+        config = self._config.get("density")
         return DensityModel(config)
 
     def _create_linear_density(self):
         """to be used with the cubic spline methods"""
-        config = self._config.get('linear_density')
+        config = self._config.get("linear_density")
         return DensityModel(config)
 
     def _create_track(self):
         """Build track model (center and spread functions) from ``config['track']``."""
-        config = self._config.get('track')
+        config = self._config.get("track")
         return TrackModel(config)
 
     def _create_distance_modulus(self):
         """Build distance-modulus track from ``config['distance_modulus']`` if present."""
-        config = self._config.get('distance_modulus')
+        config = self._config.get("distance_modulus")
         if config:
             return TrackModel(config)
         else:
@@ -87,7 +87,7 @@ class StreamModel(ConfigurableModel):
 
     def _create_isochrone(self):
         """Build isochrone model from ``config['isochrone']`` if present."""
-        config = self._config.get('isochrone')
+        config = self._config.get("isochrone")
         if config:
             iso = IsochroneModel(config)
             iso.create_isochrone(config)
@@ -97,7 +97,7 @@ class StreamModel(ConfigurableModel):
 
     def _create_velocity(self):
         """Build velocity model from ``config['velocity']`` if present."""
-        config = self._config.get('velocity')
+        config = self._config.get("velocity")
         if config:
             return VelocityModel(config)
         else:
@@ -130,8 +130,8 @@ class StreamModel(ConfigurableModel):
 
         # Sample magnitudes from isochrone
         if self.isochrone:
-            
-            mag_g, mag_r = self.isochrone.sample(size,dist)
+
+            mag_g, mag_r = self.isochrone.sample(size, dist)
         else:
             mag_g, mag_r = None, None
 
@@ -142,12 +142,29 @@ class StreamModel(ConfigurableModel):
             mu1, mu2, rv = None, None, None
 
         # Create the DataFrame of stream stars
-        df = pd.DataFrame({'phi1': phi1, 'phi2': phi2, 'dist': dist,
-                           'mu1': mu1, 'mu2': mu2, 'rv': rv,
-                           'mag_g': mag_g, 'mag_r': mag_r})
+        df = pd.DataFrame(
+            {
+                "phi1": phi1,
+                "phi2": phi2,
+                "dist": dist,
+                "mu1": mu1,
+                "mu2": mu2,
+                "rv": rv,
+                "mag_g": mag_g,
+                "mag_r": mag_r,
+            }
+        )
         return df
 
-    def complete_catalog(self, catalog, columns_to_add=None, size=None, inplace=False, save_path=None, verbose=True):
+    def complete_catalog(
+        self,
+        catalog,
+        columns_to_add=None,
+        size=None,
+        inplace=False,
+        save_path=None,
+        verbose=True,
+    ):
         """Complete only the requested columns in a catalog.
 
         This method takes an input catalog (or a desired size when no catalog
@@ -205,91 +222,122 @@ class StreamModel(ConfigurableModel):
         """
         # Supported outputs and capability filtering
         # Columns this method can fill using the configured model
-        all_cols = ('phi1', 'phi2', 'dist', 'mag_g', 'mag_r', 'mu1', 'mu2', 'rv')
-        target_cols = list(all_cols) if columns_to_add is None else [c for c in columns_to_add if c in all_cols]
-        unknown = [] if columns_to_add is None else sorted(set(columns_to_add) - set(all_cols))
+        all_cols = ("phi1", "phi2", "dist", "mag_g", "mag_r", "mu1", "mu2", "rv")
+        target_cols = (
+            list(all_cols)
+            if columns_to_add is None
+            else [c for c in columns_to_add if c in all_cols]
+        )
+        unknown = (
+            []
+            if columns_to_add is None
+            else sorted(set(columns_to_add) - set(all_cols))
+        )
         if unknown:
             warnings.warn(f"Ignoring unknown columns: {unknown}")
 
         if self.isochrone is None:
-            removed = [c for c in target_cols if c in ('mag_g', 'mag_r')]
-            target_cols = [c for c in target_cols if c not in ('mag_g', 'mag_r')]
+            removed = [c for c in target_cols if c in ("mag_g", "mag_r")]
+            target_cols = [c for c in target_cols if c not in ("mag_g", "mag_r")]
             if removed:
                 self._info(verbose, "Isochrone model not defined; skipping magnitudes.")
         if self.velocity is None:
-            removed = [c for c in target_cols if c in ('mu1', 'mu2', 'rv')]
-            target_cols = [c for c in target_cols if c not in ('mu1', 'mu2', 'rv')]
+            removed = [c for c in target_cols if c in ("mu1", "mu2", "rv")]
+            target_cols = [c for c in target_cols if c not in ("mu1", "mu2", "rv")]
             if removed:
                 self._info(verbose, "Velocity model not defined; skipping velocities.")
         if self.distance_modulus is None:
-            removed = [c for c in target_cols if c == 'dist']
-            target_cols = [c for c in target_cols if c != 'dist']
+            removed = [c for c in target_cols if c == "dist"]
+            target_cols = [c for c in target_cols if c != "dist"]
             if removed:
-                self._info(verbose, "Distance modulus model not defined; skipping distances.")
+                self._info(
+                    verbose, "Distance modulus model not defined; skipping distances."
+                )
 
         # Load/normalize input catalog
         df, src_path = self._open_catalog(catalog, size=size, inplace=inplace)
         N = len(df)
 
         # phi1
-        if 'phi1' in target_cols:
-            idx = self._missing_idx(df, 'phi1')
+        if "phi1" in target_cols:
+            idx = self._missing_idx(df, "phi1")
             if len(idx) > 0:
                 if self.density is None:
                     raise ValueError("Density model is required to sample phi1")
-                df.loc[idx, 'phi1'] = self.density.sample(len(idx))
+                df.loc[idx, "phi1"] = self.density.sample(len(idx))
                 self._info(verbose, f"Filled {len(idx)} phi1 values.")
 
         # phi2 (needs phi1)
-        if 'phi2' in target_cols:
-            if 'phi1' not in df.columns or df['phi1'].isna().any():
-                raise ValueError("phi1 required to sample phi2; include 'phi1' in columns_to_add or provide it in catalog")
-            idx = self._missing_idx(df, 'phi2')
+        if "phi2" in target_cols:
+            if "phi1" not in df.columns or df["phi1"].isna().any():
+                raise ValueError(
+                    "phi1 required to sample phi2; include 'phi1' in columns_to_add or provide it in catalog"
+                )
+            idx = self._missing_idx(df, "phi2")
             if len(idx) > 0:
                 if self.track is None:
                     raise ValueError("Track model is required to sample phi2")
-                df.loc[idx, 'phi2'] = self.track.sample(df.loc[idx, 'phi1'].to_numpy())
+                df.loc[idx, "phi2"] = self.track.sample(df.loc[idx, "phi1"].to_numpy())
                 self._info(verbose, f"Filled {len(idx)} phi2 values.")
 
         # dist (needs phi1)
-        if 'dist' in target_cols or (any(c in target_cols for c in ('mag_g', 'mag_r')) and any(c not in df.columns for c in ('mag_g', 'mag_r'))):
-            if 'phi1' not in df.columns or df['phi1'].isna().any():
-                raise ValueError("phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog")
-            idx = self._missing_idx(df, 'dist')
+        if "dist" in target_cols or (
+            any(c in target_cols for c in ("mag_g", "mag_r"))
+            and any(c not in df.columns for c in ("mag_g", "mag_r"))
+        ):
+            if "phi1" not in df.columns or df["phi1"].isna().any():
+                raise ValueError(
+                    "phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog"
+                )
+            idx = self._missing_idx(df, "dist")
             if len(idx) > 0:
-                df.loc[idx, 'dist'] = self.distance_modulus.sample(df.loc[idx, 'phi1'].to_numpy())
+                df.loc[idx, "dist"] = self.distance_modulus.sample(
+                    df.loc[idx, "phi1"].to_numpy()
+                )
                 self._info(verbose, f"Filled {len(idx)} dist values.")
 
         # magnitudes (need dist and isochrone)
-        if any(c in target_cols for c in ('mag_g', 'mag_r')):
-            if 'mag_g' in df.columns and 'mag_r' in df.columns:
-                self._info(verbose, "'mag_g' and 'mag_r' already exist; no sampling performed.")
+        if any(c in target_cols for c in ("mag_g", "mag_r")):
+            if "mag_g" in df.columns and "mag_r" in df.columns:
+                self._info(
+                    verbose, "'mag_g' and 'mag_r' already exist; no sampling performed."
+                )
             else:
                 # Verify distance modulus availability
-                if 'dist' not in df.columns:
-                    raise ValueError("dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog")
-                dist_vals = df['dist'].to_numpy()
+                if "dist" not in df.columns:
+                    raise ValueError(
+                        "dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog"
+                    )
+                dist_vals = df["dist"].to_numpy()
                 mag_g, mag_r = self.isochrone.sample(N, dist_vals)
                 # Add both magnitudes to keep colors consistent across rows
-                if 'mag_g' in df.columns or 'mag_r' in df.columns:
-                    self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")
-                df['mag_g'] = mag_g
-                df['mag_r'] = mag_r
+                if "mag_g" in df.columns or "mag_r" in df.columns:
+                    self._info(
+                        verbose,
+                        "Overwriting existing mag_g and/or mag_r to keep colors consistent.",
+                    )
+                df["mag_g"] = mag_g
+                df["mag_r"] = mag_r
                 self._info(verbose, f"Filled magnitudes for {N} rows.")
 
         # velocities (need phi1 and velocity model)
-        if any(c in target_cols for c in ('mu1', 'mu2', 'rv')):
-            if any(c in df.columns for c in ('mu1', 'mu2', 'rv')):
-                self._info(verbose, "Velocity components already exist; no sampling performed.")
+        if any(c in target_cols for c in ("mu1", "mu2", "rv")):
+            if any(c in df.columns for c in ("mu1", "mu2", "rv")):
+                self._info(
+                    verbose, "Velocity components already exist; no sampling performed."
+                )
             else:
-                if 'phi1' not in df.columns or df['phi1'].isna().any():
+                if "phi1" not in df.columns or df["phi1"].isna().any():
                     raise ValueError("phi1 required to sample velocities")
-                mu1, mu2, rv = self.velocity.sample(df['phi1'].to_numpy())
-                if 'rv' in df.columns or 'mu1' in df.columns or 'mu2' in df.columns:
-                    self._info(verbose, "Overwriting existing velocity components to keep consistency.")
-                df['mu1'] = mu1
-                df['mu2'] = mu2
-                df['rv'] = rv
+                mu1, mu2, rv = self.velocity.sample(df["phi1"].to_numpy())
+                if "rv" in df.columns or "mu1" in df.columns or "mu2" in df.columns:
+                    self._info(
+                        verbose,
+                        "Overwriting existing velocity components to keep consistency.",
+                    )
+                df["mu1"] = mu1
+                df["mu2"] = mu2
+                df["rv"] = rv
                 self._info(verbose, f"Filled velocities for {N} rows.")
 
         if save_path is not None:
@@ -382,7 +430,7 @@ class StreamModel(ConfigurableModel):
             if size is None:
                 raise ValueError("Empty catalog; provide size")
             df = pd.DataFrame(index=np.arange(int(size)))
-        
+
         df = self._standardize_columns_name(df)
 
         return df, src_path
@@ -402,14 +450,14 @@ class StreamModel(ConfigurableModel):
         """
         # Mapping of possible column name variants to standard names
         col_mapping = {
-            'dist': ['dist', 'distance', 'distance_modulus'],
-            'mag_g': ['mag_g', 'g_mag', 'g', 'gmag', 'magnitude_g'],
-            'mag_r': ['mag_r', 'r_mag', 'r', 'rmag', 'magnitude_r'],
-            'phi1': ['phi1', 'phi_1', 'Phi1', 'Phi_1'],
-            'phi2': ['phi2', 'phi_2', 'Phi2', 'Phi_2'],
-            'mu1': ['mu1', 'mu_1'],
-            'mu2': ['mu2', 'mu_2'],
-            'rv': ['rv', 'radial_velocity', 'v_radial'],
+            "dist": ["dist", "distance", "distance_modulus"],
+            "mag_g": ["mag_g", "g_mag", "g", "gmag", "magnitude_g"],
+            "mag_r": ["mag_r", "r_mag", "r", "rmag", "magnitude_r"],
+            "phi1": ["phi1", "phi_1", "Phi1", "Phi_1"],
+            "phi2": ["phi2", "phi_2", "Phi2", "Phi_2"],
+            "mu1": ["mu1", "mu_1"],
+            "mu2": ["mu2", "mu_2"],
+            "rv": ["rv", "radial_velocity", "v_radial"],
         }
 
         # Create reverse mapping for renaming
@@ -422,13 +470,14 @@ class StreamModel(ConfigurableModel):
 
         return catalog
 
+
 class DensityModel(ConfigurableModel):
     """Density along the stream; samples ``phi1`` positions."""
 
     def _create_model(self):
         """Instantiate the density sampler from configuration."""
         kwargs = copy.deepcopy(self._config)
-        type_ = kwargs.pop('type').lower()
+        type_ = kwargs.pop("type").lower()
         self.density = sampler_factory(type_, **kwargs)
 
     def sample(self, size):
@@ -452,24 +501,24 @@ class TrackModel(ConfigurableModel):
 
     def _create_model(self):
         """Build center/spread functions from configuration."""
-        kwargs = copy.deepcopy(self._config['center'])
-        type_ = kwargs.pop('type').lower()
+        kwargs = copy.deepcopy(self._config["center"])
+        type_ = kwargs.pop("type").lower()
         self.center = function_factory(type_, **kwargs)
 
-        kwargs = copy.deepcopy(self._config['spread'])
-        type_ = kwargs.pop('type').lower()
+        kwargs = copy.deepcopy(self._config["spread"])
+        type_ = kwargs.pop("type").lower()
         self.spread = function_factory(type_, **kwargs)
 
     def _create_sampler(self, x):
         """Create the sampler (Gaussian or Uniform) at positions ``x``."""
-        type_ = self._config.get('sampler', 'Gaussian').lower()
-        if type_ == 'gaussian':
+        type_ = self._config.get("sampler", "Gaussian").lower()
+        if type_ == "gaussian":
             mu = self.center(x)
             sigma = self.spread(x)
             kwargs = dict(mu=mu, sigma=sigma)
-        elif type_ == 'uniform':
+        elif type_ == "uniform":
             xmin = self.center(x) - self.spread(x)
-            xmax = xmin + 2*self.spread(x)
+            xmax = xmin + 2 * self.spread(x)
             kwargs = dict(xmin=xmin, xmax=xmax)
         else:
             raise Exception(f"Unrecognized sampler: {type_}")
@@ -493,22 +542,18 @@ class TrackModel(ConfigurableModel):
         self._create_sampler(x)
         return self._sampler.sample(size)
 
-    
-    
-    
-    
 
 class DistanceModel(ConfigurableModel):
     pass
-        
-        
+
 
 class IsochroneModel(ConfigurableModel):
     """Isochrone wrapper using ``ugali`` for CMD sampling."""
+
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)
-    
-    def create_isochrone(self,config):
+
+    def create_isochrone(self, config):
         """Construct the underlying ``ugali`` isochrone from configuration.
 
         Parameters
@@ -517,14 +562,16 @@ class IsochroneModel(ConfigurableModel):
             Isochrone factory configuration.
         """
         import ugali.isochrone
+
         self.iso = ugali.isochrone.factory(**config)
-        self.iso.params['distance_modulus'].set_bounds([0,50])
-        if 'distance_modulus' in config:
-            warnings.warn('Please use the "distance_modulus" section of the configuration file, instead of the isochrone section, to define a distance module.')
+        self.iso.params["distance_modulus"].set_bounds([0, 50])
+        if "distance_modulus" in config:
+            warnings.warn(
+                'Please use the "distance_modulus" section of the configuration file, instead of the isochrone section, to define a distance module.'
+            )
         self.iso.distance_modulus = 0
-        
-        
-    def sample(self, nstars,distance_modulus,**kwargs):
+
+    def sample(self, nstars, distance_modulus, **kwargs):
         """Simulate magnitudes in g and r bands.
 
         Parameters
@@ -541,49 +588,59 @@ class IsochroneModel(ConfigurableModel):
         """
         stellar_mass = nstars * self.iso.stellar_mass()
         if np.isscalar(distance_modulus):
-            mag_g,mag_r = self.iso.simulate(stellar_mass,distance_modulus=self.iso.distance_modulus)
-            mag_g, mag_r = [mag + np.ones_like(mag)*distance_modulus  for mag in (mag_g, mag_r)]
+            mag_g, mag_r = self.iso.simulate(
+                stellar_mass, distance_modulus=self.iso.distance_modulus
+            )
+            mag_g, mag_r = [
+                mag + np.ones_like(mag) * distance_modulus for mag in (mag_g, mag_r)
+            ]
         else:
-            mag_g,mag_r = self.iso.simulate(stellar_mass,distance_modulus=self.iso.distance_modulus)
-            mag_g, mag_r = [mag + distance_modulus  for mag in (mag_g, mag_r)]
+            mag_g, mag_r = self.iso.simulate(
+                stellar_mass, distance_modulus=self.iso.distance_modulus
+            )
+            mag_g, mag_r = [mag + distance_modulus for mag in (mag_g, mag_r)]
 
         return mag_g, mag_r
-    
-    def _dist_to_modulus(self,distance):
+
+    def _dist_to_modulus(self, distance):
         """
         Convert physical distances in pc into distance modulus
         """
         if distance is None:
             return 0
         elif np.all(distance == 0):
-            warnings.warn("Distances are equal to 0, distance modulus has been set to 0.")
+            warnings.warn(
+                "Distances are equal to 0, distance modulus has been set to 0."
+            )
             return 0
         else:
-            return 5*np.log10(distance)-5
-        
+            return 5 * np.log10(distance) - 5
+
 
 class VelocityModel(ConfigurableModel):
-    """ Placeholder for velocity model. """
+    """Placeholder for velocity model."""
 
     def sample(self, phi1):
-        """ Placeholder """
+        """Placeholder"""
         warnings.warn("VelocityModel not implemented!")
-        
+
         if np.isscalar(phi1):
             mu1, mu2, rv = np.nan, np.nan, np.nan
         else:
-            mu1, mu2, rv = np.nan*np.ones_like([phi1, phi1, phi1])
-        
+            mu1, mu2, rv = np.nan * np.ones_like([phi1, phi1, phi1])
+
         return mu1, mu2, rv
 
 
 class BackgroundModel(StreamModel):
-    """ Background model. """
+    """Background model."""
+
     pass
 
 
 class SplineStreamModel(StreamModel):
     """Spline-based stream model with linear-density component."""
+
     def __init__(self, config, **kwargs):
         """Create spline stream from configuration.
 

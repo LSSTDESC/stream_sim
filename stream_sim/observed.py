@@ -12,9 +12,9 @@ import pandas as pd
 import pylab as plt
 import scipy
 
+from .model import StreamModel
 from .plotting import plot_stream_in_mask
 from .surveys import Survey
-from .model import StreamModel
 
 
 class StreamInjector:
@@ -207,7 +207,6 @@ class StreamInjector:
 
         # Combine flags
         flag_observed = flag_r & flag_completeness_r
-
 
         if "g" in bands:
             flag_observed &= data["mag_g_obs"] != "BAD_MAG"
