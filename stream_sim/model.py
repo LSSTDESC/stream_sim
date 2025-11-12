@@ -130,6 +130,139 @@ class StreamModel(ConfigurableModel):
                            'mag_g': mag_g, 'mag_r': mag_r})
         return df
 
+    def complete_catalog(self, catalog, columns_to_add=None, size=None, inplace=False, save_path=None, verbose=True):
+        """Complete only the requested columns in a catalog.
+
+        Notes
+        - If catalog is None or empty (size required), a new empty frame of that size is created.
+        - Existing values are preserved; only missing or absent columns are filled.
+        - Dependencies: phi2/dist/velocities require phi1; magnitudes require dist and an isochrone model.
+        """
+        # Supported outputs and capability filtering
+        all_cols = ('phi1', 'phi2', 'dist', 'mag_g', 'mag_r', 'mu1', 'mu2', 'rv') # columns this method can fill
+        target_cols = list(all_cols) if columns_to_add is None else [c for c in columns_to_add if c in all_cols]
+        unknown = [] if columns_to_add is None else sorted(set(columns_to_add) - set(all_cols))
+        if unknown:
+            warnings.warn(f"Ignoring unknown columns: {unknown}")
+
+        if self.isochrone is None:
+            removed = [c for c in target_cols if c in ('mag_g', 'mag_r')]
+            target_cols = [c for c in target_cols if c not in ('mag_g', 'mag_r')]
+            if removed:
+                self._info(verbose, "Isochrone model not defined; skipping magnitudes.")
+        if self.velocity is None:
+            removed = [c for c in target_cols if c in ('mu1', 'mu2', 'rv')]
+            target_cols = [c for c in target_cols if c not in ('mu1', 'mu2', 'rv')]
+            if removed:
+                self._info(verbose, "Velocity model not defined; skipping velocities.")
+        if self.distance_modulus is None:
+            removed = [c for c in target_cols if c == 'dist']
+            target_cols = [c for c in target_cols if c != 'dist']
+            if removed:
+                self._info(verbose, "Distance modulus model not defined; skipping distances.")
+
+        # Load/normalize input catalog
+        df, src_path = self._open_catalog(catalog, size=size, inplace=inplace)
+        N = len(df)
+
+        # phi1
+        if 'phi1' in target_cols:
+            idx = self._missing_idx(df, 'phi1')
+            if len(idx) > 0:
+                if self.density is None:
+                    raise ValueError("Density model is required to sample phi1")
+                df.loc[idx, 'phi1'] = self.density.sample(len(idx))
+                self._info(verbose, f"Filled {len(idx)} phi1 values.")
+
+        # phi2 (needs phi1)
+        if 'phi2' in target_cols:
+            if 'phi1' not in df.columns or df['phi1'].isna().any():
+                raise ValueError("phi1 required to sample phi2; include 'phi1' in columns_to_add or provide it in catalog")
+            idx = self._missing_idx(df, 'phi2')
+            if len(idx) > 0:
+                if self.track is None:
+                    raise ValueError("Track model is required to sample phi2")
+                df.loc[idx, 'phi2'] = self.track.sample(df.loc[idx, 'phi1'].to_numpy())
+                self._info(verbose, f"Filled {len(idx)} phi2 values.")
+
+        # dist (needs phi1)
+        if 'dist' in target_cols:
+            if 'phi1' not in df.columns or df['phi1'].isna().any():
+                raise ValueError("phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog")
+            idx = self._missing_idx(df, 'dist')
+            if len(idx) > 0:
+                df.loc[idx, 'dist'] = self.distance_modulus.sample(df.loc[idx, 'phi1'].to_numpy())
+                self._info(verbose, f"Filled {len(idx)} dist values.")
+
+
+        if any(c in target_cols for c in ('mag_g', 'mag_r')):
+            # Verify distance modulus availability
+            if not 'dist' in df.columns:
+                raise ValueError("dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog")
+            dist_vals = df['dist'].to_numpy()
+            mag_g, mag_r = self.isochrone.sample(N,dist_vals)
+            # Add both magnitudes if missing to keep colors consistent
+            if 'mag_g' in df.columns or 'mag_r' in df.columns:
+                self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")    
+            df['mag_g'] = mag_g
+            df['mag_r'] = mag_r
+            self._info(verbose, f"Filled magnitudes for {N} rows.")
+
+        # velocities require velocity model and phi1
+        if any(c in target_cols for c in ('mu1', 'mu2', 'rv')):
+            if 'phi1' not in df.columns or df['phi1'].isna().any():
+                raise ValueError("phi1 required to sample velocities")
+            mu1, mu2, rv = self.velocity.sample(df['phi1'].to_numpy())
+            if 'rv' in df.columns or 'mu1' in df.columns or 'mu2' in df.columns:
+                self._info(verbose, "Overwriting existing velocity components to keep consistency.")
+            df['mu1'] = mu1
+            df['mu2'] = mu2
+            df['rv'] = rv
+            self._info(verbose, f"Filled velocities for {N} rows.")
+
+        if save_path is not None:
+            df.to_csv(save_path, index=False)
+            self._info(verbose, f"Saved completed catalog to {save_path}.")
+        elif isinstance(catalog, str) and inplace:
+            df.to_csv(src_path, index=False)
+            self._info(verbose, f"Overwrote original catalog at {src_path}.")
+
+        return df
+
+    def _missing_idx(self, df: pd.DataFrame, col: str):
+        """Return index of rows missing column `col` (or all rows if absent)."""
+        if col not in df.columns:
+            return df.index
+        return df.index[df[col].isna()]
+
+    def _info(self, verbose: bool, msg: str):
+        """Conditional verbose print."""
+        if verbose:
+            print(msg)
+
+    def _open_catalog(self, catalog, size=None, inplace=False):
+        # Load/normalize input catalog
+        src_path = None
+        if catalog is None:
+            if size is None:
+                raise ValueError("size must be provided when catalog is None")
+            df = pd.DataFrame(index=np.arange(int(size)))
+        elif isinstance(catalog, str):
+            src_path = catalog
+            df = pd.read_csv(catalog)
+        elif isinstance(catalog, pd.DataFrame):
+            df = catalog if inplace else catalog.copy()
+        elif isinstance(catalog, dict):
+            df = pd.DataFrame(catalog)
+        else:
+            raise TypeError("catalog must be None, path, DataFrame, or dict")
+
+        if len(df) == 0:
+            if size is None:
+                raise ValueError("Empty catalog; provide size")
+            df = pd.DataFrame(index=np.arange(int(size)))
+        
+        return df, src_path
 
 class DensityModel(ConfigurableModel):
 
