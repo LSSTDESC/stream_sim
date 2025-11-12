@@ -245,29 +245,35 @@ class StreamModel(ConfigurableModel):
 
         # magnitudes (need dist and isochrone)
         if any(c in target_cols for c in ('mag_g', 'mag_r')):
-            # Verify distance modulus availability
-            if 'dist' not in df.columns:
-                raise ValueError("dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog")
-            dist_vals = df['dist'].to_numpy()
-            mag_g, mag_r = self.isochrone.sample(N, dist_vals)
-            # Add both magnitudes to keep colors consistent across rows
-            if 'mag_g' in df.columns or 'mag_r' in df.columns:
-                self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")
-            df['mag_g'] = mag_g
-            df['mag_r'] = mag_r
-            self._info(verbose, f"Filled magnitudes for {N} rows.")
+            if 'mag_g' in df.columns and 'mag_r' in df.columns:
+                self._info(verbose, "'mag_g' and 'mag_r' already exist; no sampling performed.")
+            else:
+                # Verify distance modulus availability
+                if 'dist' not in df.columns:
+                    raise ValueError("dist is required to sample apparent magnitudes; include 'dist' in `columns_to_add` or provide it in catalog")
+                dist_vals = df['dist'].to_numpy()
+                mag_g, mag_r = self.isochrone.sample(N, dist_vals)
+                # Add both magnitudes to keep colors consistent across rows
+                if 'mag_g' in df.columns or 'mag_r' in df.columns:
+                    self._info(verbose, "Overwriting existing mag_g and/or mag_r to keep colors consistent.")
+                df['mag_g'] = mag_g
+                df['mag_r'] = mag_r
+                self._info(verbose, f"Filled magnitudes for {N} rows.")
 
         # velocities (need phi1 and velocity model)
         if any(c in target_cols for c in ('mu1', 'mu2', 'rv')):
-            if 'phi1' not in df.columns or df['phi1'].isna().any():
-                raise ValueError("phi1 required to sample velocities")
-            mu1, mu2, rv = self.velocity.sample(df['phi1'].to_numpy())
-            if 'rv' in df.columns or 'mu1' in df.columns or 'mu2' in df.columns:
-                self._info(verbose, "Overwriting existing velocity components to keep consistency.")
-            df['mu1'] = mu1
-            df['mu2'] = mu2
-            df['rv'] = rv
-            self._info(verbose, f"Filled velocities for {N} rows.")
+            if any(c in df.columns for c in ('mu1', 'mu2', 'rv')):
+                self._info(verbose, "Velocity components already exist; no sampling performed.")
+            else:
+                if 'phi1' not in df.columns or df['phi1'].isna().any():
+                    raise ValueError("phi1 required to sample velocities")
+                mu1, mu2, rv = self.velocity.sample(df['phi1'].to_numpy())
+                if 'rv' in df.columns or 'mu1' in df.columns or 'mu2' in df.columns:
+                    self._info(verbose, "Overwriting existing velocity components to keep consistency.")
+                df['mu1'] = mu1
+                df['mu2'] = mu2
+                df['rv'] = rv
+                self._info(verbose, f"Filled velocities for {N} rows.")
 
         if save_path is not None:
             df.to_csv(save_path, index=False)
@@ -361,7 +367,7 @@ class StreamModel(ConfigurableModel):
             df = pd.DataFrame(index=np.arange(int(size)))
         
         df = self._standardize_columns_name(df)
-        
+
         return df, src_path
 
     def _standardize_columns_name(self, catalog):
