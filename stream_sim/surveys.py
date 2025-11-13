@@ -459,12 +459,20 @@ class SurveyFactory:
             print(f"✓ Cleared {num_cleared} cached survey(s)")
         else:
             # Clear specific survey(s)
-            cache_key = f"{survey}_{release}" if release else survey
-            if cache_key in cls._cached_surveys:
-                del cls._cached_surveys[cache_key]
-                print(f"✓ Cleared cached survey '{cache_key}'")
+            if release is None:
+                keys_to_clear = [
+                    key for key in cls._cached_surveys if key.startswith(f"{survey}_")
+                ] + ([survey] if survey in cls._cached_surveys else [])
+                for key in keys_to_clear:
+                    del cls._cached_surveys[key]
+                    print(f"✓ Cleared cached survey '{key}'")
             else:
-                print(f"⚠ Survey '{cache_key}' not found in cache")
+                cache_key = f"{survey}_{release}"
+                if cache_key in cls._cached_surveys:
+                    del cls._cached_surveys[cache_key]
+                    print(f"✓ Cleared cached survey '{cache_key}'")
+                else:
+                    print(f"⚠ Survey '{cache_key}' not found in cache")
 
     @classmethod
     def list_cached_surveys(cls) -> list:
