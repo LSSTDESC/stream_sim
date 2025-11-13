@@ -285,16 +285,22 @@ class StreamModel(ConfigurableModel):
             any(c in target_cols for c in ("mag_g", "mag_r"))
             and any(c not in df.columns for c in ("mag_g", "mag_r"))
         ):
-            if "phi1" not in df.columns or df["phi1"].isna().any():
-                raise ValueError(
-                    "phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog"
+            if 'dist' in df.columns:
+                self._info(
+                    verbose,
+                    "'dist' already exists; no sampling performed.",
                 )
-            idx = self._missing_idx(df, "dist")
-            if len(idx) > 0:
-                df.loc[idx, "dist"] = self.distance_modulus.sample(
-                    df.loc[idx, "phi1"].to_numpy()
-                )
-                self._info(verbose, f"Filled {len(idx)} dist values.")
+            else:
+                if "phi1" not in df.columns or df["phi1"].isna().any():
+                    raise ValueError(
+                        "phi1 required to sample dist; include 'phi1' in columns_to_add or provide it in catalog"
+                    )
+                idx = self._missing_idx(df, "dist")
+                if len(idx) > 0:
+                    df.loc[idx, "dist"] = self.distance_modulus.sample(
+                        df.loc[idx, "phi1"].to_numpy()
+                    )
+                    self._info(verbose, f"Filled {len(idx)} dist values.")
 
         # magnitudes (need dist and isochrone)
         if any(c in target_cols for c in ("mag_g", "mag_r")):
