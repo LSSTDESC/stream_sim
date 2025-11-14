@@ -45,9 +45,10 @@ echo ""
 echo "Switching to gh-pages branch..."
 git checkout gh-pages
 
-# Remove old files (except .git and .nojekyll)
+# Remove old files (except .git, .nojekyll, and important project directories)
+# This protects against accidentally deleting untracked files that Git carries over during checkout
 echo "Removing old documentation files..."
-find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
+find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name 'data' ! -name 'stream_sim' ! -name 'tests' ! -name 'bin' ! -name 'config' ! -name 'notebooks' ! -name 'docs' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
 
 # Copy new files
 echo "Copying new documentation..."
