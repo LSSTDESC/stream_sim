@@ -29,24 +29,25 @@ echo ""
 echo "Building documentation..."
 make clean
 make html
-cd ..
 
 echo "✓ Documentation built successfully"
 
 # Save the HTML to a temporary location
 TMP_DIR=$(mktemp -d)
-cp -r docs/build/html/* "$TMP_DIR/"
+cp -r build/html/* "$TMP_DIR/"
 echo "✓ HTML files copied to temporary location: $TMP_DIR"
+
+# Go back to project root
+cd ..
 
 # Switch to gh-pages branch
 echo ""
 echo "Switching to gh-pages branch..."
 git checkout gh-pages
 
-# Remove old files (except .git)
+# Remove old files (except .git and .nojekyll)
 echo "Removing old documentation files..."
-git rm -rf . 2>/dev/null || true
-find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
+find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
 
 # Copy new files
 echo "Copying new documentation..."
