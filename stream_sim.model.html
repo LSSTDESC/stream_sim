@@ -156,8 +156,9 @@
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="modules.html">Content</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -336,6 +337,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.SplineStreamModel"><code class="docutils literal notranslate"><span class="pre">SplineStreamModel</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel"><code class="docutils literal notranslate"><span class="pre">StreamModel</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel.complete_catalog"><code class="docutils literal notranslate"><span class="pre">StreamModel.complete_catalog()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel.sample"><code class="docutils literal notranslate"><span class="pre">StreamModel.sample()</span></code></a></li>
 </ul>
 </li>
@@ -369,8 +371,11 @@ document.write(`
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code>(size)</p></td>
-<td><p>Sample the stream stellar distribution parameters.</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">complete_catalog</span></code>(catalog[, columns_to_add, ...])</p></td>
+<td><p>Complete only the requested columns in a catalog.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code>(size)</p></td>
+<td><p>Sample stream stars and derived quantities.</p></td>
 </tr>
 </tbody>
 </table>
@@ -402,11 +407,12 @@ document.write(`
 <dt class="sig sig-object py" id="stream_sim.model.DensityModel">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">stream_sim.model.</span></span><span class="sig-name descname"><span class="pre">DensityModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#DensityModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.DensityModel" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stream_sim.model.ConfigurableModel" title="stream_sim.model.ConfigurableModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurableModel</span></code></a></p>
+<p>Density along the stream; samples <code class="docutils literal notranslate"><span class="pre">phi1</span></code> positions.</p>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="table">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><strong>sample</strong></p></td>
-<td></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.model.DensityModel.sample" title="stream_sim.model.DensityModel.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size)</p></td>
+<td><p>Draw <code class="docutils literal notranslate"><span class="pre">phi1</span></code> samples.</p></td>
 </tr>
 </tbody>
 </table>
@@ -414,7 +420,19 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="stream_sim.model.DensityModel.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#DensityModel.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.DensityModel.sample" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Draw <code class="docutils literal notranslate"><span class="pre">phi1</span></code> samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em>) – Number of samples.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sampled <code class="docutils literal notranslate"><span class="pre">phi1</span></code> values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -437,15 +455,15 @@ document.write(`
 <dt class="sig sig-object py" id="stream_sim.model.IsochroneModel">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">stream_sim.model.</span></span><span class="sig-name descname"><span class="pre">IsochroneModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#IsochroneModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.IsochroneModel" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stream_sim.model.ConfigurableModel" title="stream_sim.model.ConfigurableModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurableModel</span></code></a></p>
-<p>Placeholder for isochrone model.</p>
+<p>Isochrone wrapper using <code class="docutils literal notranslate"><span class="pre">ugali</span></code> for CMD sampling.</p>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="table">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><strong>create_isochrone</strong></p></td>
-<td></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.model.IsochroneModel.create_isochrone" title="stream_sim.model.IsochroneModel.create_isochrone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_isochrone</span></code></a>(config)</p></td>
+<td><p>Construct the underlying <code class="docutils literal notranslate"><span class="pre">ugali</span></code> isochrone from configuration.</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>sample</strong></p></td>
-<td></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#stream_sim.model.IsochroneModel.sample" title="stream_sim.model.IsochroneModel.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(nstars, distance_modulus, **kwargs)</p></td>
+<td><p>Simulate magnitudes in g and r bands.</p></td>
 </tr>
 </tbody>
 </table>
@@ -453,12 +471,33 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="stream_sim.model.IsochroneModel.create_isochrone">
 <span class="sig-name descname"><span class="pre">create_isochrone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#IsochroneModel.create_isochrone"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.IsochroneModel.create_isochrone" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Construct the underlying <code class="docutils literal notranslate"><span class="pre">ugali</span></code> isochrone from configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> (<em>dict</em>) – Isochrone factory configuration.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="stream_sim.model.IsochroneModel.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nstars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_modulus</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#IsochroneModel.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.IsochroneModel.sample" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Simulate magnitudes in g and r bands.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nstars</strong> (<em>int</em>) – Number of stars to simulate.</p></li>
+<li><p><strong>distance_modulus</strong> (<em>float</em><em> or </em><em>array-like</em>) – Distance modulus per star (broadcast if scalar).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(mag_g,</span> <span class="pre">mag_r)</span></code> arrays.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple of numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -466,11 +505,15 @@ document.write(`
 <dt class="sig sig-object py" id="stream_sim.model.SplineStreamModel">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">stream_sim.model.</span></span><span class="sig-name descname"><span class="pre">SplineStreamModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#SplineStreamModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.SplineStreamModel" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stream_sim.model.StreamModel" title="stream_sim.model.StreamModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">StreamModel</span></code></a></p>
+<p>Spline-based stream model with linear-density component.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code>(size)</p></td>
-<td><p>Sample the stream stellar distribution parameters.</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">complete_catalog</span></code>(catalog[, columns_to_add, ...])</p></td>
+<td><p>Complete only the requested columns in a catalog.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code>(size)</p></td>
+<td><p>Sample stream stars and derived quantities.</p></td>
 </tr>
 </tbody>
 </table>
@@ -485,25 +528,83 @@ document.write(`
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.model.StreamModel.sample" title="stream_sim.model.StreamModel.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size)</p></td>
-<td><p>Sample the stream stellar distribution parameters.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.model.StreamModel.complete_catalog" title="stream_sim.model.StreamModel.complete_catalog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">complete_catalog</span></code></a>(catalog[, columns_to_add, ...])</p></td>
+<td><p>Complete only the requested columns in a catalog.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#stream_sim.model.StreamModel.sample" title="stream_sim.model.StreamModel.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(size)</p></td>
+<td><p>Sample stream stars and derived quantities.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="stream_sim.model.StreamModel.sample">
-<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#StreamModel.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.StreamModel.sample" title="Link to this definition">#</a></dt>
-<dd><p>Sample the stream stellar distribution parameters.</p>
+<dt class="sig sig-object py" id="stream_sim.model.StreamModel.complete_catalog">
+<span class="sig-name descname"><span class="pre">complete_catalog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns_to_add</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#StreamModel.complete_catalog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.StreamModel.complete_catalog" title="Link to this definition">#</a></dt>
+<dd><p>Complete only the requested columns in a catalog.</p>
+<p>This method takes an input catalog (or a desired size when no catalog
+is provided) and fills in only the requested stream-model columns
+while preserving pre-existing non-null values. Columns are generated
+using the configured sub-models (density, track, distance modulus,
+isochrone, velocity) and only if those capabilities are available.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>size</strong> (<em>number</em><em> of </em><em>stars to generate.</em>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>catalog</strong> (<em>pandas.DataFrame</em><em> or </em><em>str</em><em> or </em><em>dict</em><em> or </em><em>None</em>) – Input catalog. If a string, it is interpreted as a CSV filepath
+to read. If a dict, it will be converted to a DataFrame.
+If None, <code class="docutils literal notranslate"><span class="pre">size</span></code> must be provided to create an empty frame of
+that length.</p></li>
+<li><p><strong>columns_to_add</strong> (<em>sequence</em><em> of </em><em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – The columns to ensure in the output. Valid entries are
+{‘phi1’,’phi2’,’dist’,’mag_g’,’mag_r’,’mu1’,’mu2’,’rv’}.
+If None, all valid columns supported by the configured model are
+considered.</p></li>
+<li><p><strong>size</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Required when <code class="docutils literal notranslate"><span class="pre">catalog</span></code> is None or an empty table; ignored
+otherwise.</p></li>
+<li><p><strong>inplace</strong> (<em>bool</em><em>, </em><em>default False</em>) – If True and a DataFrame or CSV path is provided, modify that
+object in place (for CSV, overwrite the input file).</p></li>
+<li><p><strong>save_path</strong> (<em>str</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – If provided, write the completed catalog to this CSV path.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>default True</em>) – If True, print progress/status messages.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>df</strong></p>
+<dd class="field-even"><p>The completed catalog. If <code class="docutils literal notranslate"><span class="pre">inplace</span></code> is True and a DataFrame was
+provided, the same object is returned after modification.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data frame of stream stars.</p>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">size</span></code> is required but not provided, or when dependencies are
+missing (e.g., requesting ‘phi2’ without available ‘phi1’).</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Dependencies: ‘phi2’ and ‘dist’ require ‘phi1’. Magnitudes require
+‘dist’ and an isochrone model. Velocities require ‘phi1’ and a
+velocity model.</p></li>
+<li><p>Existing non-null values are preserved; only missing rows are filled,
+except for magnitudes and velocities where the method intentionally
+overwrites the whole columns to keep internal consistency (e.g.,
+colors and kinematic coherence across rows).</p></li>
+<li><p>When <code class="docutils literal notranslate"><span class="pre">catalog</span></code> is a CSV path and <code class="docutils literal notranslate"><span class="pre">inplace</span></code> is True, the original
+file is overwritten.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stream_sim.model.StreamModel.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#StreamModel.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.StreamModel.sample" title="Link to this definition">#</a></dt>
+<dd><p>Sample stream stars and derived quantities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>int</em>) – Number of stars to generate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Columns include: <code class="docutils literal notranslate"><span class="pre">phi1</span></code>, <code class="docutils literal notranslate"><span class="pre">phi2</span></code>, <code class="docutils literal notranslate"><span class="pre">dist</span></code>, <code class="docutils literal notranslate"><span class="pre">mu1</span></code>, <code class="docutils literal notranslate"><span class="pre">mu2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">rv</span></code>, <code class="docutils literal notranslate"><span class="pre">mag_g</span></code>, <code class="docutils literal notranslate"><span class="pre">mag_r</span></code> (some may be None if the sub-model is absent).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
 </dd>
 </dl>
 </dd></dl>
@@ -514,11 +615,12 @@ document.write(`
 <dt class="sig sig-object py" id="stream_sim.model.TrackModel">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">stream_sim.model.</span></span><span class="sig-name descname"><span class="pre">TrackModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#TrackModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.TrackModel" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#stream_sim.model.ConfigurableModel" title="stream_sim.model.ConfigurableModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurableModel</span></code></a></p>
+<p>Transverse track model; samples <code class="docutils literal notranslate"><span class="pre">phi2</span></code> given <code class="docutils literal notranslate"><span class="pre">phi1</span></code>.</p>
 <p class="rubric">Methods</p>
-<div class="pst-scrollable-table-container"><table class="table">
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><strong>sample</strong></p></td>
-<td></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.model.TrackModel.sample" title="stream_sim.model.TrackModel.sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample</span></code></a>(x)</p></td>
+<td><p>Sample <code class="docutils literal notranslate"><span class="pre">phi2</span></code> at given <code class="docutils literal notranslate"><span class="pre">phi1</span></code> positions <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -526,7 +628,19 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="stream_sim.model.TrackModel.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/model.html#TrackModel.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.model.TrackModel.sample" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Sample <code class="docutils literal notranslate"><span class="pre">phi2</span></code> at given <code class="docutils literal notranslate"><span class="pre">phi1</span></code> positions <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>array-like</em>) – <code class="docutils literal notranslate"><span class="pre">phi1</span></code> positions where to sample <code class="docutils literal notranslate"><span class="pre">phi2</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sampled <code class="docutils literal notranslate"><span class="pre">phi2</span></code> values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -616,6 +730,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.SplineStreamModel"><code class="docutils literal notranslate"><span class="pre">SplineStreamModel</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel"><code class="docutils literal notranslate"><span class="pre">StreamModel</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel.complete_catalog"><code class="docutils literal notranslate"><span class="pre">StreamModel.complete_catalog()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#stream_sim.model.StreamModel.sample"><code class="docutils literal notranslate"><span class="pre">StreamModel.sample()</span></code></a></li>
 </ul>
 </li>

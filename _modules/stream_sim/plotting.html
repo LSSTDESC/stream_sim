@@ -155,8 +155,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -372,9 +373,9 @@ document.write(`
 <span class="sd">    data : pandas.DataFrame or dict-like</span>
 <span class="sd">        Data containing the injected stream. Must have columns:</span>
 <span class="sd">        - &#39;ra&#39;, &#39;dec&#39;: Sky coordinates in degrees</span>
-<span class="sd">        - &#39;flag_detection&#39;: Boolean flag for detected stars</span>
+<span class="sd">        - &#39;flag_observed&#39;: Boolean flag for detected stars</span>
 <span class="sd">        - &#39;mag_&lt;band&gt;&#39;: True magnitudes for each band</span>
-<span class="sd">        - &#39;mag_&lt;band&gt;_meas&#39;: Measured magnitudes for each band</span>
+<span class="sd">        - &#39;mag_&lt;band&gt;_obs&#39;: Observed magnitudes for each band</span>
 <span class="sd">    survey : Survey</span>
 <span class="sd">        Survey object containing magnitude limit maps and other properties.</span>
 <span class="sd">    bands : list of str, optional</span>
@@ -409,15 +410,15 @@ document.write(`
     <span class="n">band1</span><span class="p">,</span> <span class="n">band2</span> <span class="o">=</span> <span class="n">bands</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bands</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
     
     <span class="c1"># Check required columns</span>
-    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="s1">&#39;flag_detection&#39;</span><span class="p">,</span> 
+    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="s1">&#39;flag_observed&#39;</span><span class="p">,</span> 
                      <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band2</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
-                     <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band1</span><span class="si">}</span><span class="s1">_meas&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band2</span><span class="si">}</span><span class="s1">_meas&#39;</span><span class="p">]</span>
+                     <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band1</span><span class="si">}</span><span class="s1">_obs&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band2</span><span class="si">}</span><span class="s1">_obs&#39;</span><span class="p">]</span>
     <span class="n">missing_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">missing_cols</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required columns: </span><span class="si">{</span><span class="n">missing_cols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     
     <span class="c1"># Get detection flags</span>
-    <span class="n">sel</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag_detection&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">sel</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag_observed&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
     
     <span class="c1"># Create figure</span>
     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
@@ -500,26 +501,26 @@ document.write(`
     <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;HR diagram using sampled observed magnitudes&quot;</span><span class="p">)</span>
     
     <span class="c1"># Convert measured magnitudes to numeric, handling &quot;BAD_MAG&quot; strings</span>
-    <span class="n">mag1_meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band1</span><span class="si">}</span><span class="s2">_meas&quot;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
-    <span class="n">mag2_meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band2</span><span class="si">}</span><span class="s2">_meas&quot;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+    <span class="n">mag1_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band1</span><span class="si">}</span><span class="s2">_obs&quot;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+    <span class="n">mag2_obs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band2</span><span class="si">}</span><span class="s2">_obs&quot;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
     
     <span class="c1"># Mask out bad measurements</span>
-    <span class="n">mask_good</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">mag1_meas</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">mag2_meas</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span>
+    <span class="n">mask_good</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">mag1_obs</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">mag2_obs</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span>
     
     <span class="k">if</span> <span class="n">mask_good</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">color_meas</span> <span class="o">=</span> <span class="n">mag1_meas</span> <span class="o">-</span> <span class="n">mag2_meas</span>
+        <span class="n">color_obs</span> <span class="o">=</span> <span class="n">mag1_obs</span> <span class="o">-</span> <span class="n">mag2_obs</span>
         
         <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-            <span class="n">color_meas</span><span class="p">[</span><span class="n">mask_good</span><span class="p">],</span>
-            <span class="n">mag1_meas</span><span class="p">[</span><span class="n">mask_good</span><span class="p">],</span>
+            <span class="n">color_obs</span><span class="p">[</span><span class="n">mask_good</span><span class="p">],</span>
+            <span class="n">mag1_obs</span><span class="p">[</span><span class="n">mask_good</span><span class="p">],</span>
             <span class="n">s</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
             <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
             <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Unobserved&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-            <span class="n">color_meas</span><span class="p">[</span><span class="n">sel</span> <span class="o">&amp;</span> <span class="n">mask_good</span><span class="p">],</span>
-            <span class="n">mag1_meas</span><span class="p">[</span><span class="n">sel</span> <span class="o">&amp;</span> <span class="n">mask_good</span><span class="p">],</span>
+            <span class="n">color_obs</span><span class="p">[</span><span class="n">sel</span> <span class="o">&amp;</span> <span class="n">mask_good</span><span class="p">],</span>
+            <span class="n">mag1_obs</span><span class="p">[</span><span class="n">sel</span> <span class="o">&amp;</span> <span class="n">mask_good</span><span class="p">],</span>
             <span class="n">s</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
             <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
             <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>

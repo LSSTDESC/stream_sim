@@ -1,28 +1,45 @@
 # Installation & Dependencies
 
-```{note}
-**This section needs to be completed.**
-```
+This guide provides complete instructions for installing `stream_sim` and its dependencies.
 
-## Installation
-
-*To be completed with detailed installation instructions*
-
-Current installation method:
+## Quick Start
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/LSSTDESC/stream_sim.git
 cd stream_sim
+
+# 2. Set environment variables
 export PYTHONPATH=${PWD}:${PYTHONPATH}
 export PATH=${PWD}/bin:${PATH}
+
+# 3. Download required data files
+python bin/download_data.py
 ```
 
-## Requirements
+## Data Download
+
+`stream_sim` needs external data files (maglim maps, dust map, completeness, photometric errors). Use the downloader and refer to the Data page for details.
+
+```bash
+# Download required data (default location: data/)
+python bin/download_data.py
+
+# Useful options
+python bin/download_data.py --list          # Show what's installed
+python bin/download_data.py --force         # Re-download/overwrite
+python bin/download_data.py --data-dir DIR  # Custom install location
+```
+
+For troubleshooting and data structure, see :doc:`data`.
+
+## Dependences
 
 *To be completed*
 
 Required Python packages:
 
+- ugali
 - numpy
 - scipy
 - pandas
@@ -33,38 +50,13 @@ Required Python packages:
 - healsparse
 - *(complete list to be added)*
 
+
 ## Optional Dependencies
-
-*To be completed*
-
-## Python Version Support
-
-*To be completed*
-
-- Python 3.8+
-- *(specify supported versions)*
-
-## Installing from Source
 
 *To be completed*
 
 ## Installing with pip/conda
 
-*To be completed*
-
 ```{note}
 Package installation via pip/conda is planned for future releases.
-```
-
-## Development Installation
-
-*To be completed*
-
-For developers who want to contribute:
-
-```bash
-# Instructions to be added
-git clone https://github.com/LSSTDESC/stream_sim.git
-cd stream_sim
-# ... additional setup steps
 ```

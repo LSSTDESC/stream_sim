@@ -156,8 +156,9 @@
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="modules.html">Content</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -395,7 +396,7 @@ All survey data is loaded once and cached, making multiple injections efficient.
 <td><p>Clear the mask cache.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#stream_sim.observed.StreamInjector.complete_data" title="stream_sim.observed.StreamInjector.complete_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">complete_data</span></code></a>(data[, bands])</p></td>
-<td><p>Ensure the input data contains all required columns.</p></td>
+<td><p>Validate and complete the columns needed for injection.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#stream_sim.observed.StreamInjector.detect_flag" title="stream_sim.observed.StreamInjector.detect_flag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">detect_flag</span></code></a>(pix[, mag, band])</p></td>
 <td><p>Apply the survey selection to determine detection flags for stars.</p></td>
@@ -441,34 +442,88 @@ All survey data is loaded once and cached, making multiple injections efficient.
 <dl class="py method">
 <dt class="sig sig-object py" id="stream_sim.observed.StreamInjector.complete_data">
 <span class="sig-name descname"><span class="pre">complete_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['r',</span> <span class="pre">'g']</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/stream_sim/observed.html#StreamInjector.complete_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#stream_sim.observed.StreamInjector.complete_data" title="Link to this definition">#</a></dt>
-<dd><p>Ensure the input data contains all required columns.</p>
-<p>This method validates and completes the input data by adding missing
-coordinate columns (converting phi1/phi2 to ra/dec if needed).</p>
+<dd><p>Validate and complete the columns needed for injection.</p>
+<p>This function ensures sky coordinates are present and, if requested,
+fills missing photometric magnitude columns using a stream model.
+Specifically:</p>
+<ul class="simple">
+<li><p>If (ra, dec) are missing but (phi1, phi2) exist, it converts to
+sky coordinates via <code class="docutils literal notranslate"><span class="pre">phi_to_radec</span></code>.</p></li>
+<li><p>It checks for <code class="docutils literal notranslate"><span class="pre">mag_&lt;band&gt;</span></code> for each requested band; any missing
+bands are generated via <code class="docutils literal notranslate"><span class="pre">StreamModel.complete_catalog</span></code> when a
+<code class="docutils literal notranslate"><span class="pre">stream_config</span></code> is provided.</p></li>
+<li><p>Existing columns are preserved and are not overwritten.</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – Input DataFrame.</p></li>
-<li><p><strong>bands</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – List of photometric bands required. Default is [‘r’, ‘g’].</p></li>
-<li><p><strong>**kwargs</strong> – <p>Additional keyword arguments:</p>
+<li><p><strong>data</strong> (<em>pandas.DataFrame</em>) – Input catalog. Must contain either (ra, dec) or (phi1, phi2).
+The DataFrame is copied; the input object is not modified in place.</p></li>
+<li><p><strong>bands</strong> (<em>list</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – Photometric bands to ensure (as <code class="docutils literal notranslate"><span class="pre">mag_&lt;band&gt;</span></code>). Default is
+<code class="docutils literal notranslate"><span class="pre">['r',</span> <span class="pre">'g']</span></code>.</p></li>
+<li><p><strong>**kwargs</strong> – <p>Additional options:</p>
 <dl class="simple">
 <dt>rng<span class="classifier">numpy.random.Generator, optional</span></dt><dd><p>Random number generator instance.</p>
 </dd>
-<dt>seed<span class="classifier">int, optional</span></dt><dd><p>Random seed for coordinate transformations.</p>
+<dt>seed<span class="classifier">int, optional</span></dt><dd><p>Random seed used to initialize an RNG if <code class="docutils literal notranslate"><span class="pre">rng</span></code> is not given.</p>
+</dd>
+<dt>stream_config<span class="classifier">dict, optional</span></dt><dd><p>Configuration passed to <code class="docutils literal notranslate"><span class="pre">StreamModel</span></code>. Required only when at
+least one requested magnitude band is missing. See
+<code class="docutils literal notranslate"><span class="pre">StreamModel</span></code> for the expected schema (e.g., track, distance
+modulus, isochrone).</p>
+</dd>
+</dl>
+<p>Keyword arguments forwarded to <code class="docutils literal notranslate"><span class="pre">phi_to_radec</span></code> (only used when
+converting from (phi1, phi2)):</p>
+<dl class="simple">
+<dt>gc_frame<span class="classifier">gala.coordinates.GreatCircleICRSFrame, optional</span></dt><dd><p>Great-circle frame to use for the transformation. If omitted,
+a suitable frame is searched for.</p>
+</dd>
+<dt>mask_type<span class="classifier">list[str] or str, optional</span></dt><dd><p>Mask(s) used when searching a frame (e.g., ‘footprint’,
+‘maglim_r’, ‘ebv’).</p>
+</dd>
+<dt>percentile_threshold<span class="classifier">float, optional</span></dt><dd><p>Fraction of points that must lie inside the mask when selecting
+a frame. Default defined in <code class="docutils literal notranslate"><span class="pre">phi_to_radec</span></code>.</p>
+</dd>
+<dt>max_iter<span class="classifier">int, optional</span></dt><dd><p>Maximum trials when searching a frame. Default defined in
+<code class="docutils literal notranslate"><span class="pre">phi_to_radec</span></code>.</p>
 </dd>
 </dl>
 </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>DataFrame with all required columns (ra, dec, mag_&lt;band&gt; for each band).</p>
+<dd class="field-even"><p>A copy of the input with the required columns present:
+<code class="docutils literal notranslate"><span class="pre">ra</span></code>, <code class="docutils literal notranslate"><span class="pre">dec</span></code>, and one <code class="docutils literal notranslate"><span class="pre">mag_&lt;band&gt;</span></code> column per requested band.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>pd.DataFrame</p>
+<dd class="field-odd"><p>pandas.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>ValueError</strong> – If required columns are missing and cannot be inferred.</p>
+<dd class="field-even"><p><strong>ValueError</strong> – If neither (ra, dec) nor (phi1, phi2) are present; or if one or
+more magnitude bands are missing and <code class="docutils literal notranslate"><span class="pre">stream_config</span></code> is not
+provided; or if after completion a required column is still absent.</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Only missing magnitude columns are synthesized; existing values are
+left untouched.</p></li>
+<li><p>Magnitudes are produced by <code class="docutils literal notranslate"><span class="pre">StreamModel.complete_catalog</span></code> and rely
+on the model’s configuration (e.g., isochrone and distance modulus).</p></li>
+</ul>
+<p class="rubric">Examples</p>
+<p>Convert from (phi1, phi2) and generate both bands:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;phi1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="s1">&#39;phi2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span> <span class="o">=</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>  <span class="c1"># stream model config</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="n">injector</span><span class="o">.</span><span class="n">complete_data</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">],</span> <span class="n">stream_config</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use already existing ra/dec and fill a missing ‘g’ band from a model:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;phi1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="s1">&#39;phi2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;ra&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">10.1</span><span class="p">,</span> <span class="mf">12.5</span><span class="p">,</span> <span class="mf">24.7</span><span class="p">],</span> <span class="s1">&#39;dec&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">5.2</span><span class="p">,</span> <span class="mf">6.2</span><span class="p">,</span> <span class="mf">7.2</span><span class="p">],})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="n">injector</span><span class="o">.</span><span class="n">complete_data</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">],</span> <span class="n">stream_config</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -574,9 +629,9 @@ magnitude columns for the specified bands.</p></li>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><p>DataFrame with the following added columns:</p>
 <ul class="simple">
-<li><p>mag_&lt;band&gt;_meas : Observed magnitudes for each band</p></li>
+<li><p>mag_&lt;band&gt;_obs : Observed magnitudes for each band</p></li>
 <li><p>magerr_&lt;band&gt; : Photometric errors for each band</p></li>
-<li><p>flag_detection : Boolean flag (1=detected, 0=not detected)</p></li>
+<li><p>flag_observed : Boolean flag (1=detected, 0=not detected)</p></li>
 <li><p>ra, dec : Sky coordinates (if not already present)</p></li>
 </ul>
 </p>

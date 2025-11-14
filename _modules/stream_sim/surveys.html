@@ -155,8 +155,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -759,12 +760,20 @@ document.write(`
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Cleared </span><span class="si">{</span><span class="n">num_cleared</span><span class="si">}</span><span class="s2"> cached survey(s)&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Clear specific survey(s)</span>
-            <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">survey</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">release</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">release</span> <span class="k">else</span> <span class="n">survey</span>
-            <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span><span class="p">:</span>
-                <span class="k">del</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Cleared cached survey &#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">release</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">keys_to_clear</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span> <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">survey</span><span class="si">}</span><span class="s2">_&quot;</span><span class="p">)</span>
+                <span class="p">]</span> <span class="o">+</span> <span class="p">([</span><span class="n">survey</span><span class="p">]</span> <span class="k">if</span> <span class="n">survey</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span> <span class="k">else</span> <span class="p">[])</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys_to_clear</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Cleared cached survey &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Survey &#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39; not found in cache&quot;</span><span class="p">)</span></div>
+                <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">survey</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">release</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_cached_surveys</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Cleared cached survey &#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠ Survey &#39;</span><span class="si">{</span><span class="n">cache_key</span><span class="si">}</span><span class="s2">&#39; not found in cache&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="SurveyFactory.list_cached_surveys">
@@ -889,17 +898,22 @@ document.write(`
 
         <span class="c1"># Get file configuration and determine data path</span>
         <span class="n">survey_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;survey_files&quot;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">data_path</span> <span class="o">=</span> <span class="n">survey_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">data_path_survey</span> <span class="o">=</span> <span class="n">survey_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 
+        <span class="c1"># Find data directory where might be stored additional files</span>
+        <span class="n">current_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+        <span class="n">survey_name</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">survey</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">survey</span><span class="o">.</span><span class="n">release</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">survey</span><span class="o">.</span><span class="n">release</span> <span class="k">else</span> <span class="n">survey</span><span class="o">.</span><span class="n">name</span>
+        <span class="p">)</span>
+        <span class="n">data_path_others</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_dir</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;others&quot;</span><span class="p">)</span>
         <span class="c1"># Use default path if not specified</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path</span><span class="p">:</span>
-            <span class="n">current_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
-            <span class="n">survey_name</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">survey</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">survey</span><span class="o">.</span><span class="n">release</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">survey</span><span class="o">.</span><span class="n">release</span> <span class="k">else</span> <span class="n">survey</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path_survey</span><span class="p">:</span>
+            <span class="n">data_path_survey</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">current_dir</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;surveys&quot;</span><span class="p">,</span> <span class="n">survey_name</span>
             <span class="p">)</span>
-            <span class="n">data_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_dir</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;surveys&quot;</span><span class="p">,</span> <span class="n">survey_name</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data directory: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Survey data directory: </span><span class="si">{</span><span class="n">data_path_survey</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback directory for shared data files: </span><span class="si">{</span><span class="n">data_path_others</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># Determine available bands from config</span>
         <span class="c1"># Look for maglim_map_* entries to discover bands</span>
@@ -937,21 +951,18 @@ document.write(`
                 <span class="p">)</span>
                 <span class="k">continue</span>
 
-            <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✗ Error: File not found for </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">-band magnitude limit map&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Expected: </span><span class="si">{</span><span class="n">full_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">full_path</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_find_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">data_path_survey</span><span class="p">,</span> <span class="n">data_path_others</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">full_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✗ </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">-band magnitude limit: File not found - </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">continue</span>
 
             <span class="k">try</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Loading </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">-band magnitude limit map...&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    File: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">extension</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;.hsp&quot;</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Detected sparse HEALPix format (.hsp)&quot;</span><span class="p">)</span>
                     <span class="n">survey</span><span class="o">.</span><span class="n">maglim_maps</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">open_map_sparse</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">survey</span><span class="o">.</span><span class="n">maglim_maps</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    ✓ Success&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✓ Success for </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">-band magnitude limit&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    ✗ Failed to load </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">-band maglim map: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">survey</span><span class="o">.</span><span class="n">maglim_maps</span><span class="p">[</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -992,7 +1003,8 @@ document.write(`
                 <span class="k">lambda</span> <span class="n">f</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">set_completeness</span><span class="p">(</span>
                     <span class="n">f</span><span class="p">,</span> <span class="n">delta_saturation</span><span class="o">=</span><span class="n">default_delta_saturation</span>
                 <span class="p">),</span>
-                <span class="n">data_path</span><span class="p">,</span>
+                <span class="n">data_path_survey</span><span class="p">,</span>
+                <span class="n">data_path_others</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Load photometric error model (same for all bands)</span>
@@ -1008,7 +1020,8 @@ document.write(`
                 <span class="k">lambda</span> <span class="n">f</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">set_photo_error</span><span class="p">(</span>
                     <span class="n">f</span><span class="p">,</span> <span class="n">delta_saturation</span><span class="o">=</span><span class="n">default_delta_saturation</span>
                 <span class="p">),</span>
-                <span class="n">data_path</span><span class="p">,</span>
+                <span class="n">data_path_survey</span><span class="p">,</span>
+                <span class="n">data_path_others</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Load band-independent maps</span>
@@ -1019,7 +1032,13 @@ document.write(`
         <span class="p">}</span>
         <span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="p">(</span><span class="n">description</span><span class="p">,</span> <span class="n">loader_func</span><span class="p">)</span> <span class="ow">in</span> <span class="n">band_independent</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">cls</span><span class="o">.</span><span class="n">_load_file</span><span class="p">(</span>
-                <span class="n">survey</span><span class="p">,</span> <span class="n">survey_config</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">loader_func</span><span class="p">,</span> <span class="n">data_path</span>
+                <span class="n">survey</span><span class="p">,</span>
+                <span class="n">survey_config</span><span class="p">,</span>
+                <span class="n">attr_name</span><span class="p">,</span>
+                <span class="n">description</span><span class="p">,</span>
+                <span class="n">loader_func</span><span class="p">,</span>
+                <span class="n">data_path_survey</span><span class="p">,</span>
+                <span class="n">data_path_others</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">survey</span><span class="o">.</span><span class="n">coverage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1039,6 +1058,39 @@ document.write(`
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_file</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_path_survey</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_path_others</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find a file by checking data_path_survey first, then data_path_others.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            Name of the file to find.</span>
+<span class="sd">        data_path_survey : str</span>
+<span class="sd">            Primary data directory (survey-specific).</span>
+<span class="sd">        data_path_others : str</span>
+<span class="sd">            Fallback data directory (shared files).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str or None</span>
+<span class="sd">            Full path to the file if found, None otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check survey-specific directory first</span>
+        <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_path_survey</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">full_path</span>
+
+        <span class="c1"># Check shared directory as fallback</span>
+        <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_path_others</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">full_path</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_file</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">survey</span><span class="p">:</span> <span class="n">Survey</span><span class="p">,</span>
@@ -1046,7 +1098,8 @@ document.write(`
         <span class="n">attr_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">loader_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
-        <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">data_path_survey</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">data_path_others</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load a single data file and attach it to the survey object.</span>
@@ -1063,8 +1116,10 @@ document.write(`
 <span class="sd">            Human-readable description for logging.</span>
 <span class="sd">        loader_func : callable</span>
 <span class="sd">            Function to load the file (e.g., hp.read_map).</span>
-<span class="sd">        data_path : str</span>
-<span class="sd">            Directory containing the data files.</span>
+<span class="sd">        data_path_survey : str</span>
+<span class="sd">            Primary directory containing the data files.</span>
+<span class="sd">        data_path_others : str, optional</span>
+<span class="sd">            Fallback directory for shared data files.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Get filename from config</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
@@ -1073,13 +1128,13 @@ document.write(`
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ⚠ Warning: &#39;</span><span class="si">{</span><span class="n">attr_name</span><span class="si">}</span><span class="s2">&#39; not specified in config (skipping)&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
-        <span class="c1"># Construct full path</span>
-        <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="c1"># Find file in data paths</span>
+        <span class="n">full_path</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_find_file</span><span class="p">(</span>
+            <span class="n">filename</span><span class="p">,</span> <span class="n">data_path_survey</span><span class="p">,</span> <span class="n">data_path_others</span> <span class="ow">or</span> <span class="n">data_path_survey</span>
+        <span class="p">)</span>
 
-        <span class="c1"># Check if file exists</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">full_path</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✗ Error: File not found for </span><span class="si">{</span><span class="n">attr_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Expected: </span><span class="si">{</span><span class="n">full_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">full_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ✗ </span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2">: File not found - </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
         <span class="c1"># Load the file</span>

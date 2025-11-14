@@ -156,8 +156,9 @@
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -319,13 +320,11 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-download">Data Download</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependences">Dependences</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-dependencies">Optional Dependencies</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-version-support">Python Version Support</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-from-source">Installing from Source</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-with-pip-conda">Installing with pip/conda</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development-installation">Development Installation</a></li>
 </ul>
             </nav>
         </div>
@@ -339,26 +338,42 @@ document.write(`
                   
   <section id="installation-dependencies">
 <h1>Installation &amp; Dependencies<a class="headerlink" href="#installation-dependencies" title="Link to this heading">#</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><strong>This section needs to be completed.</strong></p>
-</div>
-<section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
-<p><em>To be completed with detailed installation instructions</em></p>
-<p>Current installation method:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/LSSTDESC/stream_sim.git
+<p>This guide provides complete instructions for installing <code class="docutils literal notranslate"><span class="pre">stream_sim</span></code> and its dependencies.</p>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/LSSTDESC/stream_sim.git
 <span class="nb">cd</span><span class="w"> </span>stream_sim
+
+<span class="c1"># 2. Set environment variables</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span>:<span class="si">${</span><span class="nv">PYTHONPATH</span><span class="si">}</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span>/bin:<span class="si">${</span><span class="nv">PATH</span><span class="si">}</span>
+
+<span class="c1"># 3. Download required data files</span>
+python<span class="w"> </span>bin/download_data.py
 </pre></div>
 </div>
 </section>
-<section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<section id="data-download">
+<h2>Data Download<a class="headerlink" href="#data-download" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">stream_sim</span></code> needs external data files (maglim maps, dust map, completeness, photometric errors). Use the downloader and refer to the Data page for details.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download required data (default location: data/)</span>
+python<span class="w"> </span>bin/download_data.py
+
+<span class="c1"># Useful options</span>
+python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--list<span class="w">          </span><span class="c1"># Show what&#39;s installed</span>
+python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--force<span class="w">         </span><span class="c1"># Re-download/overwrite</span>
+python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--data-dir<span class="w"> </span>DIR<span class="w">  </span><span class="c1"># Custom install location</span>
+</pre></div>
+</div>
+<p>For troubleshooting and data structure, see :doc:<code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
+</section>
+<section id="dependences">
+<h2>Dependences<a class="headerlink" href="#dependences" title="Link to this heading">#</a></h2>
 <p><em>To be completed</em></p>
 <p>Required Python packages:</p>
 <ul class="simple">
+<li><p>ugali</p></li>
 <li><p>numpy</p></li>
 <li><p>scipy</p></li>
 <li><p>pandas</p></li>
@@ -374,35 +389,11 @@ document.write(`
 <h2>Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Link to this heading">#</a></h2>
 <p><em>To be completed</em></p>
 </section>
-<section id="python-version-support">
-<h2>Python Version Support<a class="headerlink" href="#python-version-support" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-<ul class="simple">
-<li><p>Python 3.8+</p></li>
-<li><p><em>(specify supported versions)</em></p></li>
-</ul>
-</section>
-<section id="installing-from-source">
-<h2>Installing from Source<a class="headerlink" href="#installing-from-source" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-</section>
 <section id="installing-with-pip-conda">
 <h2>Installing with pip/conda<a class="headerlink" href="#installing-with-pip-conda" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Package installation via pip/conda is planned for future releases.</p>
-</div>
-</section>
-<section id="development-installation">
-<h2>Development Installation<a class="headerlink" href="#development-installation" title="Link to this heading">#</a></h2>
-<p><em>To be completed</em></p>
-<p>For developers who want to contribute:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Instructions to be added</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/LSSTDESC/stream_sim.git
-<span class="nb">cd</span><span class="w"> </span>stream_sim
-<span class="c1"># ... additional setup steps</span>
-</pre></div>
 </div>
 </section>
 </section>
@@ -452,13 +443,11 @@ git<span class="w"> </span>clone<span class="w"> </span>https://github.com/LSSTD
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-download">Data Download</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependences">Dependences</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#optional-dependencies">Optional Dependencies</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-version-support">Python Version Support</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-from-source">Installing from Source</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-with-pip-conda">Installing with pip/conda</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development-installation">Development Installation</a></li>
 </ul>
   </nav></div>
 

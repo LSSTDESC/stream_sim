@@ -1,0 +1,768 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Stream Simulation Data Files &#8212; stream_sim  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=eba8b062" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'data';</script>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Content" href="modules.html" />
+    <link rel="prev" title="Citation" href="citation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">stream_sim  documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="about.html">About StreamSim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation &amp; Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citation.html">Citation</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Stream Simulation Data Files</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.functions.html">stream_sim.functions module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.model.html">stream_sim.model module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.observed.html">stream_sim.observed module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.plotting.html">stream_sim.plotting module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.samplers.html">stream_sim.samplers module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.surveys.html">stream_sim.surveys module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stream_sim.utils.html">stream_sim.utils module</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/data.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Stream Simulation Data Files</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-data">Downloading Data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#available-commands">Available Commands</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#check-current-data">Check Current Data</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#force-re-download">Force Re-download</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-data-location">Custom Data Location</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-archive">Keep Archive</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-data-url">Custom Data URL</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting-data-download">Troubleshooting Data Download</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-download-fails-with-404-not-found">Problem: Download fails with “404 Not Found”</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-extraction-fails">Problem: Extraction fails</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-data-directory-is-empty-after-download">Problem: Data directory is empty after download</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-missing-specific-survey-data">Problem: Missing specific survey data</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-storage-and-doi">Data Storage and DOI</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-organization">Data Organization</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#required-data-files">Required Data Files</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#survey-specific-data-surveys">1. <strong>Survey-Specific Data</strong> (<code class="docutils literal notranslate"><span class="pre">surveys/</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#auxiliary-data-others">2. <strong>Auxiliary Data</strong> (<code class="docutils literal notranslate"><span class="pre">others/</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-models-root-directory">3. <strong>Stream Models</strong> (root directory)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#for-developers">For Developers</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#updating-the-data-archive">Updating the Data Archive</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-new-surveys">Adding New Surveys</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-sources-and-credits">Data Sources and Credits</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="stream-simulation-data-files">
+<h1>Stream Simulation Data Files<a class="headerlink" href="#stream-simulation-data-files" title="Link to this heading">#</a></h1>
+<p>This directory contains large data files required for stream simulations. These files are <strong>not</strong> tracked in the git repository due to their size. They must be downloaded separately from Zenodo.</p>
+<section id="downloading-data">
+<h2>Downloading Data<a class="headerlink" href="#downloading-data" title="Link to this heading">#</a></h2>
+<section id="quick-start">
+<h3>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h3>
+<p>After cloning the repository, download all required data files:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py
+</pre></div>
+</div>
+<p>The script will:</p>
+<ol class="arabic simple">
+<li><p>Download a compressed archive from Zenodo</p></li>
+<li><p>Extract it to the <code class="docutils literal notranslate"><span class="pre">data/</span></code> directory</p></li>
+<li><p>Clean up temporary and system files</p></li>
+<li><p>Verify the installation</p></li>
+</ol>
+</section>
+<section id="available-commands">
+<h3>Available Commands<a class="headerlink" href="#available-commands" title="Link to this heading">#</a></h3>
+<section id="check-current-data">
+<h4>Check Current Data<a class="headerlink" href="#check-current-data" title="Link to this heading">#</a></h4>
+<p>View what data is currently installed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--list
+</pre></div>
+</div>
+<p>Output shows:</p>
+<ul class="simple">
+<li><p>Subdirectories in the data folder</p></li>
+<li><p>Number of files per subdirectory</p></li>
+<li><p>Total size of installed data</p></li>
+</ul>
+</section>
+<section id="force-re-download">
+<h4>Force Re-download<a class="headerlink" href="#force-re-download" title="Link to this heading">#</a></h4>
+<p>If data is corrupted or you need to update:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--force
+</pre></div>
+</div>
+<p>This will:</p>
+<ul class="simple">
+<li><p>Re-download the archive even if data exists</p></li>
+<li><p>Overwrite existing files</p></li>
+<li><p>Clean up unwanted files</p></li>
+</ul>
+</section>
+<section id="custom-data-location">
+<h4>Custom Data Location<a class="headerlink" href="#custom-data-location" title="Link to this heading">#</a></h4>
+<p>Specify a different data directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--data-dir<span class="w"> </span>/path/to/custom/data
+</pre></div>
+</div>
+</section>
+<section id="keep-archive">
+<h4>Keep Archive<a class="headerlink" href="#keep-archive" title="Link to this heading">#</a></h4>
+<p>Save the downloaded zip file after extraction:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--keep-archive
+</pre></div>
+</div>
+<p>The archive will be saved as <code class="docutils literal notranslate"><span class="pre">data.zip</span></code> in the repository root.</p>
+</section>
+<section id="custom-data-url">
+<h4>Custom Data URL<a class="headerlink" href="#custom-data-url" title="Link to this heading">#</a></h4>
+<p>Use a different data source:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bin/download_data.py<span class="w"> </span>--url<span class="w"> </span>https://custom-server.edu/data.zip
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting-data-download">
+<h3>Troubleshooting Data Download<a class="headerlink" href="#troubleshooting-data-download" title="Link to this heading">#</a></h3>
+<section id="problem-download-fails-with-404-not-found">
+<h4>Problem: Download fails with “404 Not Found”<a class="headerlink" href="#problem-download-fails-with-404-not-found" title="Link to this heading">#</a></h4>
+<p><strong>Solution</strong>: The data URL may have changed. Check the latest URL at:</p>
+<ul class="simple">
+<li><p>Zenodo record: https://zenodo.org/records/17589908</p></li>
+<li><p>Or update <code class="docutils literal notranslate"><span class="pre">BASE_DATA_URL</span></code> in <code class="docutils literal notranslate"><span class="pre">bin/download_data.py</span></code></p></li>
+</ul>
+</section>
+<section id="problem-extraction-fails">
+<h4>Problem: Extraction fails<a class="headerlink" href="#problem-extraction-fails" title="Link to this heading">#</a></h4>
+<p><strong>Solution</strong>:</p>
+<ol class="arabic simple">
+<li><p>Check disk space: The extracted data requires ~ 800 MB</p></li>
+<li><p>Check write permissions in the installation directory</p></li>
+<li><p>Try re-downloading with <code class="docutils literal notranslate"><span class="pre">--force</span></code></p></li>
+</ol>
+</section>
+<section id="problem-data-directory-is-empty-after-download">
+<h4>Problem: Data directory is empty after download<a class="headerlink" href="#problem-data-directory-is-empty-after-download" title="Link to this heading">#</a></h4>
+<p><strong>Solution</strong>:</p>
+<ol class="arabic simple">
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">bin/download_data.py</span> <span class="pre">--list</span></code> to check status</p></li>
+<li><p>Verify the archive was extracted correctly</p></li>
+<li><p>Check for error messages during extraction</p></li>
+</ol>
+</section>
+<section id="problem-missing-specific-survey-data">
+<h4>Problem: Missing specific survey data<a class="headerlink" href="#problem-missing-specific-survey-data" title="Link to this heading">#</a></h4>
+<p><strong>Solution</strong>:</p>
+<ol class="arabic simple">
+<li><p>Verify which surveys are included: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">bin/download_data.py</span> <span class="pre">--list</span></code></p></li>
+<li><p>If a survey is missing, check if it’s in the Zenodo archive</p></li>
+<li><p>You may need to download additional survey-specific data separately</p></li>
+</ol>
+</section>
+</section>
+</section>
+<section id="data-storage-and-doi">
+<h2>Data Storage and DOI<a class="headerlink" href="#data-storage-and-doi" title="Link to this heading">#</a></h2>
+<p>The data files are hosted on <a class="reference external" href="https://zenodo.org">Zenodo</a> with a persistent DOI for citation and long-term access.</p>
+<p><strong>DOI</strong>: 10.5281/zenodo.17550956<br />
+<strong>URL</strong>: https://zenodo.org/records/17589908
+<strong>Version</strong>: 1.0<br />
+<strong>Last Updated</strong>: November 2025</p>
+</section>
+<section id="data-organization">
+<h2>Data Organization<a class="headerlink" href="#data-organization" title="Link to this heading">#</a></h2>
+<section id="required-data-files">
+<h3>Required Data Files<a class="headerlink" href="#required-data-files" title="Link to this heading">#</a></h3>
+<p>The data directory is organized into three main categories:</p>
+<section id="survey-specific-data-surveys">
+<h4>1. <strong>Survey-Specific Data</strong> (<code class="docutils literal notranslate"><span class="pre">surveys/</span></code>)<a class="headerlink" href="#survey-specific-data-surveys" title="Link to this heading">#</a></h4>
+<p>Each survey subdirectory contains magnitude limit maps (maglim maps) in HEALPix format:</p>
+<ul class="simple">
+<li><p><strong>Purpose</strong>: Define observational depth and survey footprint for different photometric bands</p></li>
+<li><p><strong>Format</strong>: HEALPix maps (<code class="docutils literal notranslate"><span class="pre">.hsp</span></code> files) with nside=128</p></li>
+<li><p><strong>Content</strong>: 5σ magnitude limits for point sources in each band</p></li>
+<li><p><strong>Usage</strong>: Used to determine which stars would be observable in a given survey</p></li>
+</ul>
+<p>Current surveys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lsst_yr1/</span></code> - LSST baseline v5.0.0, Year 1 observations (g, r bands)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lsst_yr5/</span></code> - LSST baseline v5.0.0, Year 5 observations (g, r bands)</p></li>
+</ul>
+<p>Additional surveys can be added by placing maglim maps in new subdirectories.</p>
+</section>
+<section id="auxiliary-data-others">
+<h4>2. <strong>Auxiliary Data</strong> (<code class="docutils literal notranslate"><span class="pre">others/</span></code>)<a class="headerlink" href="#auxiliary-data-others" title="Link to this heading">#</a></h4>
+<p>Common data files required for all simulations:</p>
+<ul class="simple">
+<li><p><strong>Dust Extinction Map</strong> (<code class="docutils literal notranslate"><span class="pre">ebv_sfd98_fullres_nside_4096_ring_equatorial.fits</span></code>):</p>
+<ul>
+<li><p>E(B-V) values from Schlegel, Finkbeiner &amp; Davis (1998)</p></li>
+<li><p>Full-resolution HEALPix map (nside=4096)</p></li>
+<li><p>Used to apply Galactic extinction corrections to stellar magnitudes</p></li>
+</ul>
+</li>
+<li><p><strong>Survey Completeness</strong> (<code class="docutils literal notranslate"><span class="pre">stellar_efficiency_cutr.csv</span></code>):</p>
+<ul>
+<li><p>Detection and classification efficiencies as a function of difference between apparent magnitude and magnitude limit</p></li>
+<li><p>Accounts for photometric pipeline completeness</p></li>
+<li><p>Used to model realistic detection probabilities</p></li>
+</ul>
+</li>
+<li><p><strong>Photometric Errors</strong> (<code class="docutils literal notranslate"><span class="pre">photoerror_r.csv</span></code>):</p>
+<ul>
+<li><p>Photometric uncertainties as a function of difference between apparent magnitude and magnitude limit</p></li>
+<li><p>Used to add realistic observational noise to simulated photometry</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="stream-models-root-directory">
+<h4>3. <strong>Stream Models</strong> (root directory)<a class="headerlink" href="#stream-models-root-directory" title="Link to this heading">#</a></h4>
+<p>Reference data for specific stream models:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">erkal_2016_pal_5_input.csv</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">patrick_2022_splines.csv</span></code></p></li>
+</ul>
+<p>These are small reference files (&lt;100 KB) and are tracked in git.</p>
+</section>
+</section>
+</section>
+<section id="for-developers">
+<h2>For Developers<a class="headerlink" href="#for-developers" title="Link to this heading">#</a></h2>
+<section id="updating-the-data-archive">
+<h3>Updating the Data Archive<a class="headerlink" href="#updating-the-data-archive" title="Link to this heading">#</a></h3>
+<p>If you need to add or modify data files:</p>
+<ol class="arabic">
+<li><p><strong>Create a new zip archive</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/path/to/stream_sim
+zip<span class="w"> </span>-r<span class="w"> </span>data.zip<span class="w"> </span>data/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;*.DS_Store&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;*__MACOSX*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;data/.git*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;data/__pycache__/*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;*.backup&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;*.bak&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-x<span class="w"> </span><span class="s2">&quot;*~&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Upload to Zenodo</strong>:</p>
+<ul class="simple">
+<li><p>Go to https://zenodo.org/records/17589908</p></li>
+<li><p>Create a new version</p></li>
+<li><p>Upload the <code class="docutils literal notranslate"><span class="pre">data.zip</span></code> file</p></li>
+<li><p>Add release notes describing changes</p></li>
+<li><p>Publish and note the new record ID</p></li>
+</ul>
+</li>
+<li><p><strong>Update the download script</strong>:</p>
+<ul class="simple">
+<li><p>Edit <code class="docutils literal notranslate"><span class="pre">bin/download_data.py</span></code></p></li>
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">BASE_DATA_URL</span></code> if record ID changed</p></li>
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">ARCHIVE_SIZE_MB</span></code> if size changed</p></li>
+<li><p>Update version in this document</p></li>
+</ul>
+</li>
+<li><p><strong>Commit and push</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Update data archive to version X.Y&quot;</span>
+git<span class="w"> </span>push
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="adding-new-surveys">
+<h3>Adding New Surveys<a class="headerlink" href="#adding-new-surveys" title="Link to this heading">#</a></h3>
+<p>To add a new survey:</p>
+<ol class="arabic">
+<li><p>Create a new subdirectory in <code class="docutils literal notranslate"><span class="pre">data/surveys/</span></code> + its release:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>data/surveys/new_survey_name_release
+</pre></div>
+</div>
+</li>
+<li><p>Add magnitude limit maps for each band:</p>
+<ul class="simple">
+<li><p>Files should be HEALPix format (<code class="docutils literal notranslate"><span class="pre">.hsp</span></code>) or <code class="docutils literal notranslate"><span class="pre">.fit</span></code></p></li>
+<li><p>Example: <code class="docutils literal notranslate"><span class="pre">des_y6_g_band_nside_128.hsp</span></code></p></li>
+<li><p>Optional: one may add new completeness and photometric errors data. If not provided, the ones in data/others will be used.</p></li>
+</ul>
+</li>
+<li><p>Create a corresponding survey configuration in <code class="docutils literal notranslate"><span class="pre">config/surveys/</span></code>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_survey</span>
+<span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">its_release</span>
+<span class="nt">survey_files</span><span class="p">:</span><span class="w"> </span>
+<span class="w">   </span><span class="c1"># Path to data files (leave empty for default location)</span>
+<span class="w">   </span><span class="nt">file_path</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;&#39;</span>
+
+<span class="w">   </span><span class="c1"># Band-specific magnitude limit maps</span>
+<span class="w">   </span><span class="nt">maglim_map_g</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_survey_maglim_g_band.hsp</span>
+<span class="w">   </span><span class="nt">maglim_map_r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_survey_maglim_r_band.hsp</span>
+
+<span class="w">   </span><span class="c1"># Band-independent maps. Keep by defaults files for completeness, ebv map, and photometric errors</span>
+<span class="w">   </span><span class="nt">ebv_map</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ebv_sfd98_fullres_nside_4096_ring_equatorial.fits</span>
+<span class="w">   </span><span class="nt">completeness</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stellar_efficiency_cutr.csv</span>
+<span class="w">   </span><span class="nt">log_photo_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">photoerror_r.csv</span>
+</pre></div>
+</div>
+</li>
+<li><p>Update the data archive and upload to Zenodo</p></li>
+<li><p>Document the new survey in this document.</p></li>
+</ol>
+</section>
+</section>
+<section id="data-sources-and-credits">
+<h2>Data Sources and Credits<a class="headerlink" href="#data-sources-and-credits" title="Link to this heading">#</a></h2>
+<p><strong>To be completed</strong></p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="citation.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Citation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="modules.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Content</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-data">Downloading Data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#available-commands">Available Commands</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#check-current-data">Check Current Data</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#force-re-download">Force Re-download</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-data-location">Custom Data Location</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#keep-archive">Keep Archive</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-data-url">Custom Data URL</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting-data-download">Troubleshooting Data Download</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-download-fails-with-404-not-found">Problem: Download fails with “404 Not Found”</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-extraction-fails">Problem: Extraction fails</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-data-directory-is-empty-after-download">Problem: Data directory is empty after download</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#problem-missing-specific-survey-data">Problem: Missing specific survey data</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-storage-and-doi">Data Storage and DOI</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-organization">Data Organization</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#required-data-files">Required Data Files</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#survey-specific-data-surveys">1. <strong>Survey-Specific Data</strong> (<code class="docutils literal notranslate"><span class="pre">surveys/</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#auxiliary-data-others">2. <strong>Auxiliary Data</strong> (<code class="docutils literal notranslate"><span class="pre">others/</span></code>)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-models-root-directory">3. <strong>Stream Models</strong> (root directory)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#for-developers">For Developers</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#updating-the-data-archive">Updating the Data Archive</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-new-surveys">Adding New Surveys</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-sources-and-credits">Data Sources and Credits</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By DESC
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, DESC.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

@@ -155,8 +155,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../citation.html">Citation</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Content documentation</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../data.html">Stream Simulation Data Files</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../modules.html">Content</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../stream_sim.html">stream_sim package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../stream_sim.functions.html">stream_sim.functions module</a></li>
@@ -287,6 +288,7 @@ document.write(`
 <span class="kn">import</span><span class="w"> </span><span class="nn">pylab</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamModel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_stream_in_mask</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.surveys</span><span class="w"> </span><span class="kn">import</span> <span class="n">Survey</span>
 
@@ -385,9 +387,9 @@ document.write(`
 <span class="sd">        pd.DataFrame</span>
 <span class="sd">            DataFrame with the following added columns:</span>
 
-<span class="sd">            - mag_&lt;band&gt;_meas : Observed magnitudes for each band</span>
+<span class="sd">            - mag_&lt;band&gt;_obs : Observed magnitudes for each band</span>
 <span class="sd">            - magerr_&lt;band&gt; : Photometric errors for each band</span>
-<span class="sd">            - flag_detection : Boolean flag (1=detected, 0=not detected)</span>
+<span class="sd">            - flag_observed : Boolean flag (1=detected, 0=not detected)</span>
 <span class="sd">            - ra, dec : Sky coordinates (if not already present)</span>
 
 <span class="sd">        Raises</span>
@@ -439,7 +441,7 @@ document.write(`
             <span class="p">)</span>
 
             <span class="c1"># Sample measured magnitudes</span>
-            <span class="n">mag_meas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_measured_magnitudes</span><span class="p">(</span>
+            <span class="n">mag_obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_measured_magnitudes</span><span class="p">(</span>
                 <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mag_&quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">]</span> <span class="o">+</span> <span class="n">extinction_band</span><span class="p">,</span>
                 <span class="n">mag_err</span><span class="p">,</span>
                 <span class="n">rng</span><span class="o">=</span><span class="n">rng</span><span class="p">,</span>
@@ -450,7 +452,7 @@ document.write(`
             <span class="c1"># Add new columns</span>
             <span class="n">new_columns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;mag_&quot;</span> <span class="o">+</span> <span class="n">band</span> <span class="o">+</span> <span class="s2">&quot;_meas&quot;</span><span class="p">:</span> <span class="n">mag_meas</span><span class="p">,</span>
+                    <span class="s2">&quot;mag_&quot;</span> <span class="o">+</span> <span class="n">band</span> <span class="o">+</span> <span class="s2">&quot;_obs&quot;</span><span class="p">:</span> <span class="n">mag_obs</span><span class="p">,</span>
                     <span class="s2">&quot;magerr_&quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">:</span> <span class="n">mag_err</span><span class="p">,</span>
                 <span class="p">}</span>
             <span class="p">)</span>
@@ -481,13 +483,13 @@ document.write(`
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Detection flag requires &#39;r&#39; band to be in bands.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Check for negative fluxes (set to &#39;BAD_MAG&#39;)</span>
-        <span class="n">flag_r</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mag_r_meas&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;BAD_MAG&quot;</span>
+        <span class="n">flag_r</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mag_r_obs&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;BAD_MAG&quot;</span>
 
         <span class="c1"># Combine flags</span>
-        <span class="n">flag_detection</span> <span class="o">=</span> <span class="n">flag_r</span> <span class="o">&amp;</span> <span class="n">flag_completeness_r</span>
+        <span class="n">flag_observed</span> <span class="o">=</span> <span class="n">flag_r</span> <span class="o">&amp;</span> <span class="n">flag_completeness_r</span>
 
         <span class="k">if</span> <span class="s2">&quot;g&quot;</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">:</span>
-            <span class="n">flag_detection</span> <span class="o">&amp;=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mag_g_meas&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;BAD_MAG&quot;</span>
+            <span class="n">flag_observed</span> <span class="o">&amp;=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mag_g_obs&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;BAD_MAG&quot;</span>
 
         <span class="c1"># Apply SNR cuts if requested</span>
         <span class="n">detection_mag_cut</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detection_mag_cut&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;g&quot;</span><span class="p">])</span>
@@ -495,9 +497,9 @@ document.write(`
         <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">detection_mag_cut</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Applying detection cut on&quot;</span><span class="p">,</span> <span class="n">band</span><span class="p">,</span> <span class="s2">&quot;band with SNR &gt;=&quot;</span><span class="p">,</span> <span class="n">SNR_min</span><span class="p">)</span>
             <span class="n">SNR</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;magerr_&quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">]</span>
-            <span class="n">flag_detection</span> <span class="o">&amp;=</span> <span class="n">SNR</span> <span class="o">&gt;=</span> <span class="n">SNR_min</span>
+            <span class="n">flag_observed</span> <span class="o">&amp;=</span> <span class="n">SNR</span> <span class="o">&gt;=</span> <span class="n">SNR_min</span>
 
-        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag_detection&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">flag_detection</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag_observed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">flag_observed</span>
 
         <span class="c1"># Save if requested</span>
         <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;save&quot;</span><span class="p">):</span>
@@ -543,34 +545,88 @@ document.write(`
 <a class="viewcode-back" href="../../stream_sim.observed.html#stream_sim.observed.StreamInjector.complete_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">complete_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;g&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Ensure the input data contains all required columns.</span>
+<span class="sd">        Validate and complete the columns needed for injection.</span>
 
-<span class="sd">        This method validates and completes the input data by adding missing</span>
-<span class="sd">        coordinate columns (converting phi1/phi2 to ra/dec if needed).</span>
+<span class="sd">        This function ensures sky coordinates are present and, if requested,</span>
+<span class="sd">        fills missing photometric magnitude columns using a stream model.</span>
+<span class="sd">        Specifically:</span>
+
+<span class="sd">        - If (ra, dec) are missing but (phi1, phi2) exist, it converts to</span>
+<span class="sd">          sky coordinates via ``phi_to_radec``.</span>
+<span class="sd">        - It checks for ``mag_&lt;band&gt;`` for each requested band; any missing</span>
+<span class="sd">          bands are generated via ``StreamModel.complete_catalog`` when a</span>
+<span class="sd">          ``stream_config`` is provided.</span>
+<span class="sd">        - Existing columns are preserved and are not overwritten.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        data : pd.DataFrame</span>
-<span class="sd">            Input DataFrame.</span>
-<span class="sd">        bands : list of str, optional</span>
-<span class="sd">            List of photometric bands required. Default is [&#39;r&#39;, &#39;g&#39;].</span>
+<span class="sd">        data : pandas.DataFrame</span>
+<span class="sd">            Input catalog. Must contain either (ra, dec) or (phi1, phi2).</span>
+<span class="sd">            The DataFrame is copied; the input object is not modified in place.</span>
+<span class="sd">        bands : list[str], optional</span>
+<span class="sd">            Photometric bands to ensure (as ``mag_&lt;band&gt;``). Default is</span>
+<span class="sd">            ``[&#39;r&#39;, &#39;g&#39;]``.</span>
 <span class="sd">        **kwargs</span>
-<span class="sd">            Additional keyword arguments:</span>
+<span class="sd">            Additional options:</span>
 
 <span class="sd">            rng : numpy.random.Generator, optional</span>
 <span class="sd">                Random number generator instance.</span>
 <span class="sd">            seed : int, optional</span>
-<span class="sd">                Random seed for coordinate transformations.</span>
+<span class="sd">                Random seed used to initialize an RNG if ``rng`` is not given.</span>
+<span class="sd">            stream_config : dict, optional</span>
+<span class="sd">                Configuration passed to ``StreamModel``. Required only when at</span>
+<span class="sd">                least one requested magnitude band is missing. See</span>
+<span class="sd">                ``StreamModel`` for the expected schema (e.g., track, distance</span>
+<span class="sd">                modulus, isochrone).</span>
+
+<span class="sd">            Keyword arguments forwarded to ``phi_to_radec`` (only used when</span>
+<span class="sd">            converting from (phi1, phi2)):</span>
+
+<span class="sd">            gc_frame : gala.coordinates.GreatCircleICRSFrame, optional</span>
+<span class="sd">                Great-circle frame to use for the transformation. If omitted,</span>
+<span class="sd">                a suitable frame is searched for.</span>
+<span class="sd">            mask_type : list[str] or str, optional</span>
+<span class="sd">                Mask(s) used when searching a frame (e.g., &#39;footprint&#39;,</span>
+<span class="sd">                &#39;maglim_r&#39;, &#39;ebv&#39;).</span>
+<span class="sd">            percentile_threshold : float, optional</span>
+<span class="sd">                Fraction of points that must lie inside the mask when selecting</span>
+<span class="sd">                a frame. Default defined in ``phi_to_radec``.</span>
+<span class="sd">            max_iter : int, optional</span>
+<span class="sd">                Maximum trials when searching a frame. Default defined in</span>
+<span class="sd">                ``phi_to_radec``.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        pd.DataFrame</span>
-<span class="sd">            DataFrame with all required columns (ra, dec, mag_&lt;band&gt; for each band).</span>
+<span class="sd">        pandas.DataFrame</span>
+<span class="sd">            A copy of the input with the required columns present:</span>
+<span class="sd">            ``ra``, ``dec``, and one ``mag_&lt;band&gt;`` column per requested band.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        ValueError</span>
-<span class="sd">            If required columns are missing and cannot be inferred.</span>
+<span class="sd">            If neither (ra, dec) nor (phi1, phi2) are present; or if one or</span>
+<span class="sd">            more magnitude bands are missing and ``stream_config`` is not</span>
+<span class="sd">            provided; or if after completion a required column is still absent.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - Only missing magnitude columns are synthesized; existing values are</span>
+<span class="sd">          left untouched.</span>
+<span class="sd">        - Magnitudes are produced by ``StreamModel.complete_catalog`` and rely</span>
+<span class="sd">          on the model&#39;s configuration (e.g., isochrone and distance modulus).</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Convert from (phi1, phi2) and generate both bands:</span>
+
+<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({&#39;phi1&#39;: [-5, 0, 5], &#39;phi2&#39;: [0, 0, 0]})</span>
+<span class="sd">        &gt;&gt;&gt; cfg = {...}  # stream model config</span>
+<span class="sd">        &gt;&gt;&gt; out = injector.complete_data(df, bands=[&#39;r&#39;, &#39;g&#39;], stream_config=cfg)</span>
+
+<span class="sd">        Use already existing ra/dec and fill a missing &#39;g&#39; band from a model:</span>
+
+<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({&#39;phi1&#39;: [-5, 0, 5], &#39;phi2&#39;: [0, 0, 0], &#39;ra&#39;: [10.1, 12.5, 24.7], &#39;dec&#39;: [5.2, 6.2, 7.2],})</span>
+<span class="sd">        &gt;&gt;&gt; out = injector.complete_data(df, bands=[&#39;r&#39;, &#39;g&#39;], stream_config=cfg, seed=42)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">required_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
@@ -600,9 +656,20 @@ document.write(`
 
         <span class="c1"># Sample missing magnitudes if needed</span>
         <span class="n">mag_bands_missing</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">band</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span> <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span>
+            <span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span> <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span>
         <span class="p">]</span>
-        <span class="c1"># to be implemented</span>
+        <span class="k">if</span> <span class="n">mag_bands_missing</span><span class="p">:</span>
+            <span class="n">stream_config</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stream_config&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">stream_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;`stream_config` must be provided to sample missing magnitudes.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">stream_model</span> <span class="o">=</span> <span class="n">StreamModel</span><span class="p">(</span><span class="n">stream_config</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">stream_model</span><span class="o">.</span><span class="n">complete_catalog</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span>
+                <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">columns_to_add</span><span class="o">=</span><span class="n">mag_bands_missing</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_columns</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
@@ -1018,16 +1085,16 @@ document.write(`
             <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
         <span class="c1"># Sample the fluxes their errors</span>
-        <span class="n">flux_meas</span> <span class="o">=</span> <span class="n">StreamInjector</span><span class="o">.</span><span class="n">magToFlux</span><span class="p">(</span><span class="n">mag_true</span><span class="p">)</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+        <span class="n">flux_obs</span> <span class="o">=</span> <span class="n">StreamInjector</span><span class="o">.</span><span class="n">magToFlux</span><span class="p">(</span><span class="n">mag_true</span><span class="p">)</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
             <span class="n">scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getFluxError</span><span class="p">(</span><span class="n">mag_true</span><span class="p">,</span> <span class="n">mag_err</span><span class="p">)</span>
         <span class="p">)</span>
 
         <span class="c1"># If the flux is negative, set the magnitude to &quot;BAD_MAG&quot; (not detected). Otherwise, convert the flux back to magnitude</span>
-        <span class="n">mag_meas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="n">flux_meas</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">StreamInjector</span><span class="o">.</span><span class="n">fluxToMag</span><span class="p">(</span><span class="n">flux_meas</span><span class="p">),</span> <span class="s2">&quot;BAD_MAG&quot;</span>
+        <span class="n">mag_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">flux_obs</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">StreamInjector</span><span class="o">.</span><span class="n">fluxToMag</span><span class="p">(</span><span class="n">flux_obs</span><span class="p">),</span> <span class="s2">&quot;BAD_MAG&quot;</span>
         <span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">mag_meas</span></div>
+        <span class="k">return</span> <span class="n">mag_obs</span></div>
 
 
 <div class="viewcode-block" id="StreamInjector.detect_flag">
