@@ -40,15 +40,20 @@ echo "✓ HTML files copied to temporary location: $TMP_DIR"
 # Go back to project root
 cd ..
 
+# Stash any untracked files to prevent them from being carried over to gh-pages
+echo ""
+echo "Stashing untracked files..."
+git stash push --include-untracked --keep-index -m "Temporary stash for gh-pages deployment"
+STASHED=$?
+
 # Switch to gh-pages branch
 echo ""
 echo "Switching to gh-pages branch..."
 git checkout gh-pages
 
-# Remove old files (except .git, .nojekyll, and important project directories)
-# This protects against accidentally deleting untracked files that Git carries over during checkout
+# Remove old files (except .git and .nojekyll)
 echo "Removing old documentation files..."
-find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name 'data' ! -name 'stream_sim' ! -name 'tests' ! -name 'bin' ! -name 'config' ! -name 'notebooks' ! -name 'docs' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
+find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
 
 # Copy new files
 echo "Copying new documentation..."
@@ -79,6 +84,13 @@ rm -rf "$TMP_DIR"
 echo ""
 echo "Switching back to $MUST_BRANCH branch..."
 git checkout $MUST_BRANCH
+
+# Restore stashed untracked files if they were stashed
+if [ $STASHED -eq 0 ]; then
+    echo ""
+    echo "Restoring untracked files..."
+    git stash pop
+fi
 
 echo ""
 echo "=========================================="
