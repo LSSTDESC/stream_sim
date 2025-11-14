@@ -114,7 +114,7 @@ The output dataframe includes:
 Now that you've seen the basics, you can:
 
 - **Learn more about configuration files**: See the `config/` directory for examples of stream and survey configurations
-- **Explore the API**: Check the [API Reference](modules.md) for detailed documentation of all classes and functions
+- **Explore the API**: Check the [API Reference](modules.rst) for detailed documentation of all classes and functions
 - **View detailed examples**: Visit the `notebooks/` directory for Jupyter notebooks with more complex workflows
 - **Customize surveys**: Learn how to define your own survey parameters in YAML files
 - **Try different stream models**: Experiment with different parametric stream descriptions
