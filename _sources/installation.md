@@ -31,11 +31,9 @@ python bin/download_data.py --force         # Re-download/overwrite
 python bin/download_data.py --data-dir DIR  # Custom install location
 ```
 
-For troubleshooting and data structure, see :doc:`data`.
+For troubleshooting and data structure, see [Citation](data.md).
 
 ## Dependences
-
-*To be completed*
 
 Required Python packages:
 
@@ -48,12 +46,11 @@ Required Python packages:
 - gala
 - healpy
 - healsparse
-- *(complete list to be added)*
-
 
 ## Optional Dependencies
 
-*To be completed*
+- skyproj
+
 
 ## Installing with pip/conda
 

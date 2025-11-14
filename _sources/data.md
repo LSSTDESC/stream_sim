@@ -1,4 +1,4 @@
-# Stream Simulation Data Files
+# StreamSim Data Files
 
 This directory contains large data files required for stream simulations. These files are **not** tracked in the git repository due to their size. They must be downloaded separately from Zenodo.
 

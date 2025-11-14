@@ -47,7 +47,8 @@ StreamSim is developed and maintained by members of the LSST Dark Energy Science
 
 ## License
 
-*To be completed*
+[MIT Licence](https://opensource.org/license/MIT)
+
 
 ## Acknowledgments
 
