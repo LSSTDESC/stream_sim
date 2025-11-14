@@ -79,10 +79,10 @@ echo "✓ HTML files copied to temporary location: $TMP_DIR"
 # Go back to project root
 cd ..
 
-# Stash any untracked files to prevent them from being carried over to gh-pages
+# Stash any untracked and ignored files to prevent them from being carried over to gh-pages
 echo ""
-echo "Stashing untracked files..."
-git stash push --include-untracked --keep-index -m "Temporary stash for gh-pages deployment" || true
+echo "Stashing untracked and ignored files..."
+git stash push --all --keep-index -m "Temporary stash for gh-pages deployment" || true
 
 # Switch to gh-pages branch
 echo ""
