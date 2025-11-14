@@ -9,8 +9,6 @@ import gala.coordinates as gc
 import healpy as hp
 import numpy as np
 import pandas as pd
-import pylab as plt
-import scipy
 
 from .model import StreamModel
 from .plotting import plot_stream_in_mask

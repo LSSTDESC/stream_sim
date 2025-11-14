@@ -3,6 +3,45 @@
 
 set -e  # Exit on error
 
+# Cleanup function to ensure we return to the original branch and restore stashed files
+cleanup() {
+    local exit_code=$?
+    echo ""
+    echo "=========================================="
+    echo "Cleaning up..."
+    echo "=========================================="
+    
+    # Remove temporary directory if it exists
+    if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then
+        rm -rf "$TMP_DIR"
+        echo "✓ Temporary directory cleaned up"
+    fi
+    
+    # Switch back to original branch if we're not already there
+    CURRENT=$(git branch --show-current)
+    if [ "$CURRENT" != "$MUST_BRANCH" ]; then
+        echo "Switching back to $MUST_BRANCH branch..."
+        git checkout "$MUST_BRANCH"
+    fi
+    
+    # Restore stashed files if they exist
+    if git stash list | grep -q "Temporary stash for gh-pages deployment"; then
+        echo "Restoring stashed untracked files..."
+        git stash pop
+        echo "✓ Untracked files restored"
+    fi
+    
+    if [ $exit_code -ne 0 ]; then
+        echo ""
+        echo "⚠ Script exited with errors, but cleanup completed successfully"
+    fi
+    
+    exit $exit_code
+}
+
+# Set trap to run cleanup on exit (whether successful or not)
+trap cleanup EXIT
+
 echo "=========================================="
 echo "Building and Deploying Documentation"
 echo "=========================================="
@@ -29,24 +68,30 @@ echo ""
 echo "Building documentation..."
 make clean
 make html
-cd ..
 
 echo "✓ Documentation built successfully"
 
 # Save the HTML to a temporary location
 TMP_DIR=$(mktemp -d)
-cp -r docs/build/html/* "$TMP_DIR/"
+cp -r build/html/* "$TMP_DIR/"
 echo "✓ HTML files copied to temporary location: $TMP_DIR"
+
+# Go back to project root
+cd ..
+
+# Stash any untracked and ignored files to prevent them from being carried over to gh-pages
+echo ""
+echo "Stashing untracked and ignored files..."
+git stash push --all --keep-index -m "Temporary stash for gh-pages deployment" || true
 
 # Switch to gh-pages branch
 echo ""
 echo "Switching to gh-pages branch..."
 git checkout gh-pages
 
-# Remove old files (except .git)
+# Remove old files (except .git and .nojekyll)
 echo "Removing old documentation files..."
-git rm -rf . 2>/dev/null || true
-find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
+find . -maxdepth 1 ! -name '.git' ! -name '.nojekyll' ! -name '.' -exec rm -rf {} \; 2>/dev/null || true
 
 # Copy new files
 echo "Copying new documentation..."
@@ -63,20 +108,17 @@ else
     git commit -m "Update documentation ($(date '+%Y-%m-%d %H:%M:%S'))"
     echo "✓ Changes committed"
     
-    # Push to remote
+    # Push to remote (allow this to fail without stopping the script)
     echo ""
     echo "Pushing to GitHub..."
-    git push origin gh-pages
-    echo "✓ Documentation deployed successfully!"
+    if git push origin gh-pages; then
+        echo "✓ Documentation deployed successfully!"
+    else
+        echo "⚠ Warning: Push to GitHub failed. You may need to push manually."
+        echo "  This can happen if the commit is too large."
+        echo "  Try: git push origin gh-pages --no-verify"
+    fi
 fi
-
-# Clean up
-rm -rf "$TMP_DIR"
-
-# Switch back to MUST_BRANCH branch
-echo ""
-echo "Switching back to $MUST_BRANCH branch..."
-git checkout $MUST_BRANCH
 
 echo ""
 echo "=========================================="
