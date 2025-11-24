@@ -1,0 +1,35 @@
+# Configuration file for the survey DES
+name: des
+release: yr6
+survey_files: 
+    # Path to data files (leave empty for default location)
+    file_path: ''
+
+    # Band-specific magnitude limit maps
+    maglim_map_g: des_y6_maglim_band_g_nside_128.hsp # y6a2_decasu_g_maglim_wmean.hs
+    maglim_map_r: des_y6_maglim_band_r_nside_128.hsp
+
+    # Band-independent maps
+    ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits
+    completeness: des_stellar_efficiency.csv
+    log_photo_error: des_photoerror_r.csv
+
+survey_properties: 
+  bands: ['g', 'r', 'i', 'z', 'Y']
+
+  # Extinction coefficients per band (A_band / E(B-V)) 
+  # from Tab 6 of https://iopscience.iop.org/article/10.1088/0004-637X/737/2/103/pdf
+  coeff_extinc_g: 3.186
+  coeff_extinc_r: 2.140
+  coeff_extinc_i: 1.569
+  coeff_extinc_z: 1.196
+  coeff_extinc_y: 1.048
+  coeff_extinc_Y: 1.048
+
+  # Systematic photometric errors (mag), or could be specified as sys_error_g, sys_error_r, etc
+  sys_error : 0.005 # Error common to all bands
+  # sys_error_i: 0.01  # Example to Override for i-band
+
+
+  # Saturation limits per band, or could be specified as saturation_g, saturation_r, etc
+  saturation: 16.0
