@@ -28,6 +28,9 @@ class StreamInjector:
         Survey instance containing all survey-specific data and functions.
     mask_cache : dict (class attribute)
         Cache of previously created HEALPix masks to avoid recomputation.
+    _last_gc_frame : GreatCircleICRSFrame or None
+        The most recently used great circle frame. This allows reusing the same
+        sky location across multiple inject() calls when gc_frame='last'.
 
     Examples
     --------
@@ -70,6 +73,9 @@ class StreamInjector:
             self.survey = survey
         else:
             raise ValueError("survey must be a string or Survey instance.")
+        
+        # Instance attribute to store the last used gc_frame
+        self._last_gc_frame = None
 
     def inject(self, data, bands=["r", "g"], **kwargs):
         """
@@ -288,6 +294,9 @@ class StreamInjector:
                 Random number generator instance.
             seed : int, optional
                 Random seed used to initialize an RNG if ``rng`` is not given.
+            gc_frame : gala.coordinates.GreatCircleICRSFrame or 'last', optional
+                Great circle frame to use. If 'last', uses the frame from the
+                previous call. If None, generates a new random frame.
             stream_config : dict, optional
                 Configuration passed to ``StreamModel``. Required only when at
                 least one requested magnitude band is missing. See
@@ -297,9 +306,6 @@ class StreamInjector:
             Keyword arguments forwarded to ``phi_to_radec`` (only used when
             converting from (phi1, phi2)):
 
-            gc_frame : gala.coordinates.GreatCircleICRSFrame, optional
-                Great-circle frame to use for the transformation. If omitted,
-                a suitable frame is searched for.
             mask_type : list[str] or str, optional
                 Mask(s) used when searching a frame (e.g., 'footprint',
                 'maglim_r', 'ebv').
@@ -329,6 +335,8 @@ class StreamInjector:
           left untouched.
         - Magnitudes are produced by ``StreamModel.complete_catalog`` and rely
           on the model's configuration (e.g., isochrone and distance modulus).
+        - When a new gc_frame is created or used, it is stored in ``self._last_gc_frame``
+          for potential reuse via ``gc_frame='last'``.
 
         Examples
         --------
@@ -342,6 +350,11 @@ class StreamInjector:
 
         >>> df = pd.DataFrame({'phi1': [-5, 0, 5], 'phi2': [0, 0, 0], 'ra': [10.1, 12.5, 24.7], 'dec': [5.2, 6.2, 7.2],})
         >>> out = injector.complete_data(df, bands=['r', 'g'], stream_config=cfg, seed=42)
+
+        Reuse the same gc_frame for multiple streams:
+
+        >>> data1 = injector.complete_data(df1, seed=42)  # Creates new frame
+        >>> data2 = injector.complete_data(df2, gc_frame='last')  # Reuses frame from data1
         """
 
         required_columns = ["ra", "dec"] + [f"mag_{band}" for band in bands]
@@ -357,6 +370,11 @@ class StreamInjector:
                 raise ValueError(
                     "Input data must contain either (ra, dec) or (phi1, phi2) columns."
                 )
+
+            # Handle 'last' keyword for gc_frame
+            gc_frame_param = kwargs.get("gc_frame", None)
+            if gc_frame_param == "last":
+                kwargs["gc_frame"] = self._last_gc_frame
 
             # Convert coordinates (Phi1, Phi2) into (ra,dec)
             stream_coord = self.phi_to_radec(
@@ -409,12 +427,16 @@ class StreamInjector:
         frame. If no frame is provided, it automatically finds one randomly chosen such that a given percentile
         of the points lie within the mask defined with mask_type.
 
+        The frame used (whether provided or generated) is stored in ``self._last_gc_frame``
+        for potential reuse via ``gc_frame='last'`` in subsequent calls.
+
         Parameters
         ----------
         phi1, phi2 : array-like
             Stream coordinates in degrees.
-        gc_frame : gala.coordinates.GreatCircleICRSFrame, optional
+        gc_frame : gala.coordinates.GreatCircleICRSFrame or 'last', optional
             Great circle coordinate frame. If None, will be automatically determined.
+            If 'last', uses the frame from the previous call (stored in self._last_gc_frame).
         seed : int, optional
             Random seed for reproducible frame selection.
         rng : numpy.random.Generator, optional
@@ -450,6 +472,10 @@ class StreamInjector:
         >>> phi1 = np.linspace(-10, 10, 1000)
         >>> phi2 = np.zeros_like(phi1)
         >>> coords = injector.phi_to_radec(phi1, phi2, seed=42)
+
+        Reuse the frame from a previous call:
+
+        >>> coords2 = injector.phi_to_radec(phi1_2, phi2_2, gc_frame='last')
         """
         # Input validation
         phi1_arr = np.asarray(phi1, dtype=float)
@@ -457,6 +483,10 @@ class StreamInjector:
 
         if phi1_arr.size == 0 or phi2_arr.size == 0:
             raise ValueError("phi1 and phi2 cannot be empty arrays")
+
+        # Handle 'last' keyword for gc_frame
+        if gc_frame == "last":
+            gc_frame = self._last_gc_frame
 
         # Find or use provided great circle frame
         if gc_frame is None:
@@ -468,6 +498,9 @@ class StreamInjector:
                 phi2=phi2_arr,
                 **kwargs,
             )
+
+        # Store the frame for potential reuse
+        self._last_gc_frame = gc_frame
 
         # Transform to sky coordinates
         phi1_deg = phi1_arr * u.deg
