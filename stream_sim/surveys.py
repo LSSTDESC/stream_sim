@@ -279,7 +279,7 @@ class Survey:
         )  # saturation at the bright end
 
         # Add band-specific systematic error in quadrature
-        sys_err = self.sys_error.get(band, 0.0)
+        sys_err = self.sys_error.get(band, 0.005)
         total_error = np.sqrt(mag_err_stat**2 + sys_err**2)
 
         return total_error
