@@ -180,8 +180,15 @@ class StreamInjector:
             if dust_correction:
                 if verbose:
                     print(f"Applying dust correction for {band}-band on observed magnitudes.")
-                # Correct observed magnitudes for extinction
-                mag_obs -= extinction_band
+                # Correct observed magnitudes for extinction (only for valid detections)
+                valid_mask = mag_obs != "BAD_MAG"
+                # Create a float array for corrected magnitudes
+                mag_obs_corrected = np.empty(len(mag_obs), dtype=object)
+                mag_obs_corrected[~valid_mask] = "BAD_MAG"
+                mag_obs_corrected[valid_mask] = (
+                    mag_obs[valid_mask].astype(float) - extinction_band[valid_mask]
+                )
+                mag_obs = mag_obs_corrected
 
             # Add new columns
             new_columns = pd.DataFrame(
