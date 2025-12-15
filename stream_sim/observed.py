@@ -121,6 +121,8 @@ class StreamInjector:
         ValueError
             If required columns are missing or bands are not supported.
         """
+        verbose = kwargs.get("verbose", True)
+
         # Load data
         data = self._load_data(data)
 
@@ -134,6 +136,7 @@ class StreamInjector:
         # Get HEALPix pixel indices
         nside = kwargs.pop("nside", 4096)
         pix = hp.ang2pix(nside, data["ra"], data["dec"], lonlat=True)
+
 
         # Process each band
         for band in bands:
@@ -172,6 +175,13 @@ class StreamInjector:
                 seed=seed,
                 **kwargs,
             )
+
+            dust_correction = kwargs.get("dust_correction", True)
+            if dust_correction:
+                if verbose:
+                    print(f"Applying dust correction for {band}-band on observed magnitudes.")
+                # Correct observed magnitudes for extinction
+                mag_obs -= extinction_band
 
             # Add new columns
             new_columns = pd.DataFrame(
@@ -219,7 +229,8 @@ class StreamInjector:
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
         SNR_min = 5.0
         for band in detection_mag_cut:
-            print("Applying detection cut on", band, "band with SNR >=", SNR_min)
+            if verbose:
+                print("Applying detection cut on", band, "band with SNR >=", SNR_min)
             SNR = 1 / data["magerr_" + band]
             flag_observed &= SNR >= SNR_min
 
