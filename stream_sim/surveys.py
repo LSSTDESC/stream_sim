@@ -288,7 +288,112 @@ class Survey:
         self, band: str, magnitude: float, maglim: float, **kwargs
     ) -> float:
         """
-        Get detection completeness/efficiency.
+        Get detection completeness (combined detection and classification efficiency).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="completeness"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Detection efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_detection_efficiency : Detection-only efficiency.
+        get_classification_efficiency : Classification-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="completeness", **kwargs
+        )
+
+    def get_detection_efficiency(
+        self, band: str, magnitude: float, maglim: float, **kwargs
+    ) -> float:
+        """
+        Get detection-only efficiency (ignoring classification).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="detection_efficiency"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Detection efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_completeness : Combined detection and classification efficiency.
+        get_classification_efficiency : Classification-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="detection_efficiency", **kwargs
+        )
+    
+    def get_classification_efficiency(
+        self, band: str, magnitude: float, maglim: float, **kwargs
+    ) -> float:
+        """
+        Get classification-only efficiency (star/galaxy separation).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="classification_efficiency"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Classification efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_completeness : Combined detection and classification efficiency.
+        get_detection_efficiency : Detection-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="classification_efficiency", **kwargs
+        )
+
+    def get_efficiency(
+        self, band: str, magnitude: float, maglim: float, type="completeness", **kwargs
+    ) -> float:
+        """
+        Get efficiency function values.
 
         Parameters
         ----------
@@ -299,9 +404,12 @@ class Survey:
             True apparent magnitude(s).
         maglim : float or np.ndarray
             Magnitude limit(s) at the position(s).
+        
         **kwargs
             Additional keyword arguments:
-
+            type : str, optional
+                Type of efficiency function to use. Options are "completeness", "detection_efficiency", or "classification_efficiency".
+                Default is "completeness".
             delta_saturation : float, optional
                 Magnitude difference for saturation threshold in the initial completeness function.
                 Default is -10.4.
@@ -315,10 +423,45 @@ class Survey:
         Raises
         ------
         ValueError
-            If completeness function is not loaded.
+            If the efficiency function for the requested ``type`` is not loaded,
+            or if ``type`` is not one of the recognized values.
+
+        Notes
+        -----
+        The efficiency is set to 0 in the following cases:
+
+        - Source is brighter than saturation limit (``magnitude < saturation``)
+        - Survey does not cover the position (``maglim < saturation`` or ``maglim`` is NaN)
+        - Source is too faint for reliable detection
+
+        Examples
+        --------
+        Get completeness for a single source:
+
+        >>> maglim = survey.get_maglim('r', pixel=10000)
+        >>> eff = survey.get_efficiency('r', 24.0, maglim)
+
+        Get detection efficiency for an array of magnitudes:
+
+        >>> mags = np.linspace(18, 28, 100)
+        >>> eff = survey.get_efficiency('r', mags, maglim, type="detection_efficiency")
+
+        See Also
+        --------
+        get_completeness : Convenience wrapper for combined efficiency.
+        get_detection_efficiency : Convenience wrapper for detection-only.
+        get_classification_efficiency : Convenience wrapper for classification-only.
         """
-        if self.completeness is None:
-            raise ValueError("Completeness function not loaded")
+        if type == "completeness":
+            func = self.completeness
+        elif type == "detection_efficiency":
+            func = self.efficiency_detection
+        elif type == "classification_efficiency":
+            func = self.efficiency_classification
+        else:
+            raise ValueError(f"Efficiency type '{type}' not recognized.")
+        if func is None:
+            raise ValueError(f"Efficiency function for type '{type}' not loaded")
 
         delta_saturation = kwargs.get("delta_saturation", -10.4)
 
@@ -329,7 +472,7 @@ class Survey:
         compl = np.where(
             (magnitude > self.saturation[band]) & (delta_mag <= delta_saturation),
             1.0,
-            self.completeness(delta_mag),
+            func(delta_mag),
         )  # 1 padded
 
         compl = np.where(
@@ -696,11 +839,45 @@ class SurveyFactory:
                 "completeness",
                 "Completeness/efficiency function",
                 lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation
+                    f, delta_saturation=default_delta_saturation,  selection="both"
                 ),
                 data_path_survey,
                 data_path_others,
             )
+
+            # Load detection and classification efficiencies separately, which can be usefull to study selection effects
+            # eg. perfect star-galaxy separation vs imperfect one
+            # Try to load detection efficiency
+            try:
+                cls._load_file(
+                survey,
+                survey_config,
+                "efficiency_detection",
+                "Detection efficiency function",
+                lambda f: cls.set_completeness(
+                    f, delta_saturation=default_delta_saturation,  selection="detected"
+                ),
+                data_path_survey,
+                data_path_others,
+            )
+            except:
+                print("No detection efficiency file found, skipping.")
+
+            # Try to load classification efficiency
+            try:
+                cls._load_file(
+                survey,
+                survey_config,
+                "efficiency_classification",
+                "Classification efficiency function",
+                lambda f: cls.set_completeness(
+                    f, delta_saturation=default_delta_saturation,  selection="classified"
+                ),
+                data_path_survey,
+                data_path_others,
+            )
+            except:
+                print("No classification efficiency file found, skipping.")
 
         # Load photometric error model (same for all bands)
         print("\nLoading photometric error model...")
