@@ -859,6 +859,7 @@ class SurveyFactory:
                 ),
                 data_path_survey,
                 data_path_others,
+                filename=survey_config.get("completeness"), # use same file as completeness
             )
             except:
                 print("No detection efficiency file found, skipping.")
@@ -875,6 +876,7 @@ class SurveyFactory:
                 ),
                 data_path_survey,
                 data_path_others,
+                filename=survey_config.get("completeness"), # use same file as completeness
             )
             except:
                 print("No classification efficiency file found, skipping.")
@@ -972,6 +974,7 @@ class SurveyFactory:
         loader_func: Callable,
         data_path_survey: str,
         data_path_others: str = None,
+        filename: str = None,
     ):
         """
         Load a single data file and attach it to the survey object.
@@ -994,7 +997,8 @@ class SurveyFactory:
             Fallback directory for shared data files.
         """
         # Get filename from config
-        filename = config.get(attr_name)
+        if filename is None:
+            filename = config.get(attr_name)
 
         if filename is None:
             print(f"  ⚠ Warning: '{attr_name}' not specified in config (skipping)")
@@ -1093,7 +1097,7 @@ class SurveyFactory:
 
         # Select efficiency column based on user choice
         if selection == "detected":
-            efficiencies = data["eff_star"]
+            efficiencies = data["detection_eff"]
         elif selection == "classified":
             efficiencies = data["classifiction_eff"]
         elif selection == "both":
