@@ -26,7 +26,7 @@ class Survey:
     name : str
         Survey identifier (e.g., 'lsst').
     release : str, optional
-        Survey data release version (e.g., 'yr1', 'yr10').
+        Survey data release version (e.g., 'yr1', 'yr5').
     bands : list of str, optional
         List of photometric bands available (e.g., ['g', 'r', 'i']).
         Default is an empty list.
@@ -140,7 +140,7 @@ class Survey:
         survey : str
             Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/version (e.g., 'yr1', 'yr10').
+            Survey release/version (e.g., 'yr1', 'yr5').
         config_file : dict, optional
             Custom configuration dictionary.
         **kwargs
@@ -159,7 +159,7 @@ class Survey:
 
         Load with custom systematic error:
 
-        >>> survey = Survey.load('lsst', release='yr10', sys_error=0.01)
+        >>> survey = Survey.load('lsst', release='yr5', sys_error=0.01)
         """
         return SurveyFactory.create_survey(survey, release, config_file, **kwargs)
 
@@ -521,7 +521,7 @@ class SurveyFactory:
         survey : str
             Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/data version (e.g., 'yr1', 'yr10').
+            Survey release/data version (e.g., 'yr1', 'yr5').
             If None, loads the base survey configuration.
         config_file : dict, optional
             Custom configuration dictionary to use instead of loading from file.
