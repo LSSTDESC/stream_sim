@@ -105,6 +105,13 @@ class StreamInjector:
                 Whether to save the output data. Default is False.
             folder : str or Path, optional
                 Output folder path if save=True.
+            dust_correction : bool, optional
+                Whether to apply dust correction to observed magnitudes. Default is True.
+            perfect_galstarsep : bool, optional
+                If True, also computes a flag assuming perfect star/galaxy separation
+                (detection efficiency only, no classification losses). Default is False.
+            verbose : bool, optional
+                Whether to print progress information. Default is True.
 
         Returns
         -------
@@ -113,7 +120,8 @@ class StreamInjector:
 
             - mag_<band>_obs : Observed magnitudes for each band
             - magerr_<band> : Photometric errors for each band
-            - flag_observed : Boolean flag (1=detected, 0=not detected)
+            - flag_observed : Boolean flag (True=detected, False=not detected). Includes both detection and classification efficiencies.
+            - flag_perfect_galstarsep : Boolean flag assuming perfect star/galaxy separation (detection efficiency only, no classification losses; only if requested with perfect_galstarsep=True)
             - ra, dec : Sky coordinates (if not already present)
 
         Raises
@@ -122,6 +130,7 @@ class StreamInjector:
             If required columns are missing or bands are not supported.
         """
         verbose = kwargs.get("verbose", True)
+        perfect_galstarsep = kwargs.pop("perfect_galstarsep", False)
 
         # Load data
         data = self._load_data(data)
@@ -137,6 +146,9 @@ class StreamInjector:
         nside = kwargs.pop("nside", 4096)
         pix = hp.ang2pix(nside, data["ra"], data["dec"], lonlat=True)
 
+        # Initialize detection flags (will be updated per band)
+        flag_completeness_r = None
+        flag_detection_only_r = None
 
         # Process each band
         for band in bands:
@@ -151,6 +163,9 @@ class StreamInjector:
                 pix_ebv = pix
             extinction_band = self.survey.get_extinction(band, pixel=pix_ebv)
 
+            # Calculate true apparent magnitudes (including extinction)
+            apparent_mag_true = data["mag_" + band] + extinction_band
+
             # Get magnitude limits
             nside_maglim = hp.get_nside(self.survey.maglim_maps[band])
             if nside_maglim != nside:
@@ -163,13 +178,13 @@ class StreamInjector:
             # Calculate photometric errors
             mag_err = self.survey.get_photo_error(
                 band,
-                data["mag_" + band] + extinction_band,
+                apparent_mag_true,
                 self.survey.get_maglim(band, pixel=pix_maglim),
             )
 
             # Sample measured magnitudes
             mag_obs = self.sample_measured_magnitudes(
-                data["mag_" + band] + extinction_band,
+                apparent_mag_true,
                 mag_err,
                 rng=rng,
                 seed=seed,
@@ -203,45 +218,73 @@ class StreamInjector:
             new_columns = new_columns.reset_index(drop=True)
             data = pd.concat([data, new_columns], axis=1)
 
-            # Compute detection flag for r-band (reference band)
-            if band == "r":
+            # Compute detection flags for r-band (reference band)
+            if band == "r":                
+                # Standard completeness (detection + classification)
                 flag_completeness_r = self.detect_flag(
                     pix_maglim,
-                    mag=data["mag_r"] + extinction_band,
+                    mag=apparent_mag_true,
                     band="r",
                     rng=rng,
                     seed=seed,
+                    perfect_galstarsep=False,
                     **kwargs,
                 )
 
-        # Apply detection threshold
+                # Detection-only efficiency (perfect star/galaxy separation)
+                if perfect_galstarsep:
+                    flag_detection_only_r = self.detect_flag(
+                        pix_maglim,
+                        mag=apparent_mag_true,
+                        band="r",
+                        rng=rng,
+                        seed=seed,
+                        perfect_galstarsep=True,
+                        **kwargs,
+                    )
+
+        # Validate that r-band was processed
         if flag_completeness_r is None:
-            if "r" in bands:
-                raise ValueError(
-                    "flag_completeness_r must be computed for detection in r band."
-                )
-            else:
-                raise ValueError("Detection flag requires 'r' band to be in bands.")
+            raise ValueError(
+                "Detection flag requires 'r' band to be in bands list."
+            )
 
-        # Check for negative fluxes (set to 'BAD_MAG')
-        flag_r = data["mag_r_obs"] != "BAD_MAG"
-
-        # Combine flags
-        flag_observed = flag_r & flag_completeness_r
-
+        # Build combined detection flags
+        # Start with flux validity check (not BAD_MAG)
+        flag_valid_flux = data["mag_r_obs"] != "BAD_MAG"
         if "g" in bands:
-            flag_observed &= data["mag_g_obs"] != "BAD_MAG"
+            flag_valid_flux &= data["mag_g_obs"] != "BAD_MAG"
 
-        # Apply SNR cuts if requested
+        # Combine with completeness
+        flag_observed = flag_valid_flux & flag_completeness_r
+        if perfect_galstarsep:
+            flag_perfect = flag_valid_flux & flag_detection_only_r
+
+        # Apply SNR cuts
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
         SNR_min = 5.0
+        
         for band in detection_mag_cut:
+            if band not in bands:
+                if verbose:
+                    print(f"Warning: SNR cut requested for {band}-band but it's not in bands list. Skipping.")
+                continue
             if verbose:
-                print("Applying detection cut on", band, "band with SNR >=", SNR_min)
-            SNR = 1 / data["magerr_" + band]
+                print(f"Applying detection cut on {band}-band with SNR >= {SNR_min}")
+            SNR = 1.0 / data["magerr_" + band]
             flag_observed &= SNR >= SNR_min
+            if perfect_galstarsep:
+                flag_perfect &= SNR >= SNR_min
 
+        # Force SNR cut on r-band for perfect gal/star separation (because it's not included in the detection efficiency functions, while it is for the completeness functions)
+        if perfect_galstarsep:
+            SNR_r = 1.0 / data["magerr_r"]
+            flag_perfect &= SNR_r >= SNR_min
+
+        # Store flags in DataFrame
         data["flag_observed"] = flag_observed
+        if perfect_galstarsep:
+            data["flag_perfect_galstarsep"] = flag_perfect
 
         # Save if requested
         if kwargs.get("save"):
@@ -878,6 +921,8 @@ class StreamInjector:
                 Random number generator instance.
             seed : int, optional
                 Random seed if rng is not provided.
+            perfect_galstarsep : bool, optional
+                If True, assumes perfect star/galaxy separation. Default is False.
 
         Returns
         -------
@@ -898,7 +943,11 @@ class StreamInjector:
         # Select the appropriate magnitude and map depending on the band
         maglim = self.survey.get_maglim(band, pixel=pix)
 
-        compl = self.survey.get_completeness(band, mag, maglim)
+        perfect_galstarsep = kwargs.get("perfect_galstarsep", False)
+        if perfect_galstarsep:
+            compl = self.survey.get_detection_efficiency(band, mag, maglim)
+        else:
+            compl = self.survey.get_completeness(band, mag, maglim)
 
         # Set the threshold using completeness
         threshold = rng.uniform(size=len(mag)) <= compl
