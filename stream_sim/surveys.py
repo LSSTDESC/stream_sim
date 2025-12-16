@@ -546,28 +546,32 @@ class SurveyFactory:
         # Return cached survey if available
         if cache_key in cls._cached_surveys:
             print(f"✓ Using cached survey data for '{cache_key}'")
-            return cls._cached_surveys[cache_key]
-
-        print(f"Loading survey data for '{cache_key}'...")
-
-        # Load or use provided configuration
-        if config_file:
-            config = copy.deepcopy(config_file)
         else:
-            config = cls._load_config(survey, release)
+            print(f"Loading survey data for '{cache_key}'...")
 
-        # Apply any custom overrides
-        config.update(**kwargs)
+            # Load or use provided configuration
+            if config_file:
+                config = copy.deepcopy(config_file)
+            else:
+                config = cls._load_config(survey, release)
 
-        # Create empty survey object and populate with data
-        survey_obj = Survey(name=survey, release=release)
-        cls._load_survey_data(survey_obj, config)
+            # Apply any custom overrides
+            config.update(**kwargs)
 
-        # Cache for future use
-        cls._cached_surveys[cache_key] = survey_obj
-        print(f"✓ Survey '{cache_key}' loaded and cached successfully")
+            # Create empty survey object and populate with data
+            survey_obj = Survey(name=survey, release=release)
+            cls._load_survey_data(survey_obj, config)
 
-        return survey_obj
+            # Cache for future use
+            cls._cached_surveys[cache_key] = survey_obj
+            print(f"✓ Survey '{cache_key}' loaded and cached successfully")
+
+        uniform = kwargs.get("uniform_survey", False)
+        if uniform:
+            cls._save_uniform_survey(cls._cached_surveys[cache_key])
+
+        return cls._cached_surveys[cache_key]
+
 
     @classmethod
     def clear_cache(cls, survey: Optional[str] = None, release: Optional[str] = None):
@@ -628,6 +632,45 @@ class SurveyFactory:
             Names of cached surveys in format "survey_release" or "survey".
         """
         return list(cls._cached_surveys.keys())
+    
+    @classmethod
+    def _save_uniform_survey(cls, survey: Survey, verbose=True):
+        """
+        Save a uniform version of the survey with constant magnitude limits.
+
+        Parameters
+        ----------
+        survey : Survey
+            Survey object to convert to uniform.
+        verbose : bool, optional
+            Whether to print progress messages. Default is True.
+        """
+
+        uniform_key = f"{survey.name}_{survey.release}_uniform" if survey.release else f"{survey.name}_uniform"
+        if uniform_key in cls._cached_surveys:
+            if verbose:
+                print(f"✓ Uniform survey '{uniform_key}' already in cache")
+            return
+        
+        if verbose:
+            print(f"\nCreating uniform version of survey '{survey.name}'...")
+
+        # Make a copy of the survey to modify
+        survey_uniform = copy.deepcopy(survey)
+
+        # Set uniform magnitude limits
+        for band, maglim_map in survey_uniform.maglim_maps.items():
+            uniform_limit = np.nanmedian(maglim_map)
+            survey_uniform.maglim_maps[band] = uniform_limit * maglim_map 
+            if verbose:
+                print(f"  Set uniform magnitude limit for {band}-band: {uniform_limit:.2f} mag")
+       
+        # Save to cache
+        
+        cls._cached_surveys[uniform_key] = survey_uniform
+        if verbose:
+
+            print(f"✓ Uniform survey '{uniform_key}' saved to cache")
 
     @classmethod
     def _load_config(cls, survey: str, release: Optional[str] = None) -> dict:
