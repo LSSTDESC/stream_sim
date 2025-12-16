@@ -568,7 +568,7 @@ class SurveyFactory:
 
         uniform = kwargs.get("uniform_survey", False)
         if uniform:
-            cls._save_uniform_survey(cls._cached_surveys[cache_key])
+            cls._save_uniform_survey(cls._cached_surveys[cache_key], **kwargs)
 
         return cls._cached_surveys[cache_key]
 
@@ -634,7 +634,7 @@ class SurveyFactory:
         return list(cls._cached_surveys.keys())
     
     @classmethod
-    def _save_uniform_survey(cls, survey: Survey, verbose=True):
+    def _save_uniform_survey(cls, survey: Survey, **kwargs):
         """
         Save a uniform version of the survey with constant magnitude limits.
 
@@ -645,7 +645,7 @@ class SurveyFactory:
         verbose : bool, optional
             Whether to print progress messages. Default is True.
         """
-
+        verbose = kwargs.get("verbose", True)
         uniform_key = f"{survey.name}_{survey.release}_uniform" if survey.release else f"{survey.name}_uniform"
         if uniform_key in cls._cached_surveys:
             if verbose:
@@ -660,8 +660,10 @@ class SurveyFactory:
 
         # Set uniform magnitude limits
         for band, maglim_map in survey_uniform.maglim_maps.items():
-            uniform_limit = np.nanmedian(maglim_map)
-            survey_uniform.maglim_maps[band] = uniform_limit * maglim_map 
+            uniform_limit = cls._get_median_value(maglim_map,survey = survey_uniform,**kwargs)
+            survey_uniform.maglim_maps[band] = np.where(
+                np.isnan(maglim_map), np.nan, uniform_limit)
+            
             if verbose:
                 print(f"  Set uniform magnitude limit for {band}-band: {uniform_limit:.2f} mag")
        
@@ -671,6 +673,51 @@ class SurveyFactory:
         if verbose:
 
             print(f"✓ Uniform survey '{uniform_key}' saved to cache")
+
+    @classmethod
+    def _get_median_value(cls, maglim_map: np.ndarray, **kwargs) -> float:
+        """
+        Calculate median magnitude limit for a band, ignoring NaNs.
+        Parameters
+        ----------
+        maglim_map : np.ndarray
+            HEALPix map of magnitude limits.
+        Returns
+        -------
+        float
+            Median magnitude limit value.
+        """
+        verbose = kwargs.get("verbose", True)
+        mask_type = kwargs.get("uniform_survey_mask_type", ["nan", "dust"])
+
+        if isinstance(mask_type, str):
+            mask_type = [mask_type]  # Convert to list for easier checking
+        
+        if verbose:
+            print(f"  Calculating median magnitude limit with mask types: {mask_type}")
+
+        valid_pixels = np.ones_like(maglim_map, dtype=bool)
+        for mtype in mask_type:
+            if mtype == "nan":
+                valid_pixels &= ~np.isnan(maglim_map)
+            elif mtype == "dust":
+                survey = kwargs.get("survey", None)
+                if survey is None:
+                    raise ValueError("Survey object must be provided for 'dust' uniform_survey_mask_type.")
+                
+                if hasattr(survey, 'ebv_map') and survey.ebv_map is not None:
+                    nside_maglim = hp.get_nside(maglim_map)
+                    nside_ebv = hp.get_nside(survey.ebv_map)
+                    if nside_maglim != nside_ebv:
+                        ebv_map_resampled = hp.ud_grade(survey.ebv_map, nside_out=nside_maglim)
+                    else:
+                        ebv_map_resampled = survey.ebv_map
+                    valid_pixels &= (ebv_map_resampled < 0.2)  #  Select only low dust pixels
+                else:
+                    raise ValueError("E(B-V) map not available in survey for 'dust' mask type.")
+        
+        median_value = np.nanmedian(maglim_map[valid_pixels])
+        return median_value
 
     @classmethod
     def _load_config(cls, survey: str, release: Optional[str] = None) -> dict:
