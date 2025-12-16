@@ -144,8 +144,8 @@ class Survey:
         config_file : dict, optional
             Custom configuration dictionary.
         **kwargs
-            Additional parameters to override config values.
-
+            Additional keyword arguments passed to ``SurveyFactory.create_survey()``
+            to override config values
         Returns
         -------
         Survey
@@ -153,13 +153,14 @@ class Survey:
 
         Examples
         --------
-        Load LSST DC2 survey:
+        Load LSST year 5 survey:
 
-        >>> survey = Survey.load('lsst', release='dc2')
+        >>> lsst_yr5 = Survey.load('lsst', release='yr5')
 
-        Load with custom systematic error:
+        Load with uniform survey variant:
 
-        >>> survey = Survey.load('lsst', release='yr5', sys_error=0.01)
+        >>> lsst_yr4 = Survey.load('lsst', release='yr4', uniform_survey=True)
+        >>> lsst_yr4_uniform = SurveyFactory._cached_surveys['lsst_yr4_uniform']
         """
         return SurveyFactory.create_survey(survey, release, config_file, **kwargs)
 
@@ -527,7 +528,12 @@ class SurveyFactory:
             Custom configuration dictionary to use instead of loading from file.
             If provided, bypasses the standard config file loading.
         **kwargs
-            Additional parameters to override values in the config file.
+            uniform_survey : bool, optional
+                If True, also creates and caches a uniform version of the survey
+                with constant magnitude limits. The uniform survey can be accessed
+                via ``SurveyFactory._cached_surveys['{survey}_{release}_uniform']``.
+                Default is False.
+            Additional keyword arguments override config values
 
         Returns
         -------
@@ -538,8 +544,18 @@ class SurveyFactory:
         -----
         - First call: Loads all data files and caches the result.
         - Subsequent calls: Returns cached instance (much faster).
-        - Use clear_cache() to force reloading from files.
+        - Use ``clear_cache()`` to force reloading from files.
+        - When ``uniform_survey=True``, the original survey is returned, but a
+          uniform variant is also cached for later retrieval.
+
+        See Also
+        --------
+        _save_uniform_survey : Creates the uniform survey variant.
+        clear_cache : Clears cached surveys.
+        list_cached_surveys : Lists all cached survey keys.
         """
+        uniform_survey = kwargs.pop("uniform_survey", False)
+
         # Generate unique cache key
         cache_key = f"{survey}_{release}" if release else survey
 
@@ -566,8 +582,8 @@ class SurveyFactory:
             cls._cached_surveys[cache_key] = survey_obj
             print(f"✓ Survey '{cache_key}' loaded and cached successfully")
 
-        uniform = kwargs.get("uniform_survey", False)
-        if uniform:
+        
+        if uniform_survey:
             cls._save_uniform_survey(cls._cached_surveys[cache_key], **kwargs)
 
         return cls._cached_surveys[cache_key]
@@ -636,88 +652,128 @@ class SurveyFactory:
     @classmethod
     def _save_uniform_survey(cls, survey: Survey, **kwargs):
         """
-        Save a uniform version of the survey with constant magnitude limits.
+        Create and cache a uniform version of the survey with constant magnitude limits.
+
+        This method creates a copy of the survey where the magnitude limit maps
+        are replaced with a single uniform value (the median of valid pixels).
+        This is useful for studying selection effects independent of survey depth
+        variations.
 
         Parameters
         ----------
         survey : Survey
             Survey object to convert to uniform.
-        verbose : bool, optional
-            Whether to print progress messages. Default is True.
+        **kwargs
+            Additional keyword arguments:
+
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
+            uniform_survey_mask_type : list of str, optional
+                Mask types to apply when computing median. Options are 'nan'
+                (exclude NaN pixels) and 'dust' (exclude high-extinction regions).
+                Default is ['nan', 'dust'].
+
+        See Also
+        --------
+        _get_median_value : Computes the median magnitude limit.
         """
         verbose = kwargs.get("verbose", True)
         uniform_key = f"{survey.name}_{survey.release}_uniform" if survey.release else f"{survey.name}_uniform"
+        
         if uniform_key in cls._cached_surveys:
             if verbose:
-                print(f"✓ Uniform survey '{uniform_key}' already in cache")
+                print(f"✓ Uniform survey '{uniform_key}' already cached")
             return
         
         if verbose:
-            print(f"\nCreating uniform version of survey '{survey.name}'...")
+            print(f"Creating uniform survey '{uniform_key}'...")
 
-        # Make a copy of the survey to modify
+        # Make a deep copy to avoid modifying the original
         survey_uniform = copy.deepcopy(survey)
 
-        # Set uniform magnitude limits
+        # Set uniform magnitude limits for each band
         for band, maglim_map in survey_uniform.maglim_maps.items():
-            uniform_limit = cls._get_median_value(maglim_map,survey = survey_uniform,**kwargs)
+            uniform_limit = cls._get_median_value(maglim_map, survey=survey_uniform, verbose=False, **kwargs)
             survey_uniform.maglim_maps[band] = np.where(
-                np.isnan(maglim_map), np.nan, uniform_limit)
-            
+                np.isnan(maglim_map), np.nan, uniform_limit
+            ) # Set uniform value, keep NaNs - not observed areas
             if verbose:
-                print(f"  Set uniform magnitude limit for {band}-band: {uniform_limit:.2f} mag")
+                print(f"  {band}-band: uniform maglim = {uniform_limit:.2f} mag")
        
-        # Save to cache
-        
         cls._cached_surveys[uniform_key] = survey_uniform
         if verbose:
-
-            print(f"✓ Uniform survey '{uniform_key}' saved to cache")
+            print(f"✓ Uniform survey cached as '{uniform_key}'")
 
     @classmethod
     def _get_median_value(cls, maglim_map: np.ndarray, **kwargs) -> float:
         """
-        Calculate median magnitude limit for a band, ignoring NaNs.
+        Calculate median magnitude limit, optionally masking invalid regions.
+
         Parameters
         ----------
         maglim_map : np.ndarray
             HEALPix map of magnitude limits.
+        **kwargs
+            Additional keyword arguments:
+
+            survey : Survey, optional
+                Survey object (required if 'dust' is in mask_type).
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
+            uniform_survey_mask_type : list of str or str, optional
+                Types of masking to apply before computing the median:
+
+                - 'nan' : Exclude NaN pixels (always recommended).
+                - 'dust' : Exclude high-extinction regions (E(B-V) >= 0.2).
+
+                Default is ['nan', 'dust'].
+
         Returns
         -------
         float
-            Median magnitude limit value.
+            Median magnitude limit of valid pixels.
+
+        Raises
+        ------
+        ValueError
+            If 'dust' mask is requested but survey object or E(B-V) map is unavailable.
         """
         verbose = kwargs.get("verbose", True)
         mask_type = kwargs.get("uniform_survey_mask_type", ["nan", "dust"])
 
         if isinstance(mask_type, str):
-            mask_type = [mask_type]  # Convert to list for easier checking
-        
-        if verbose:
-            print(f"  Calculating median magnitude limit with mask types: {mask_type}")
+            mask_type = [mask_type]
 
+        # Build valid pixel mask
         valid_pixels = np.ones_like(maglim_map, dtype=bool)
+        
         for mtype in mask_type:
             if mtype == "nan":
                 valid_pixels &= ~np.isnan(maglim_map)
-            elif mtype == "dust":
-                survey = kwargs.get("survey", None)
-                if survey is None:
-                    raise ValueError("Survey object must be provided for 'dust' uniform_survey_mask_type.")
                 
-                if hasattr(survey, 'ebv_map') and survey.ebv_map is not None:
-                    nside_maglim = hp.get_nside(maglim_map)
-                    nside_ebv = hp.get_nside(survey.ebv_map)
-                    if nside_maglim != nside_ebv:
-                        ebv_map_resampled = hp.ud_grade(survey.ebv_map, nside_out=nside_maglim)
-                    else:
-                        ebv_map_resampled = survey.ebv_map
-                    valid_pixels &= (ebv_map_resampled < 0.2)  #  Select only low dust pixels
+            elif mtype == "dust":
+                survey = kwargs.get("survey")
+                if survey is None:
+                    raise ValueError("Survey object required for 'dust' mask type.")
+                if not hasattr(survey, 'ebv_map') or survey.ebv_map is None:
+                    raise ValueError("E(B-V) map not available for 'dust' mask type.")
+                
+                # Resample E(B-V) map if needed
+                nside_maglim = hp.get_nside(maglim_map)
+                nside_ebv = hp.get_nside(survey.ebv_map)
+                if nside_maglim != nside_ebv:
+                    ebv_map = hp.ud_grade(survey.ebv_map, nside_out=nside_maglim)
                 else:
-                    raise ValueError("E(B-V) map not available in survey for 'dust' mask type.")
+                    ebv_map = survey.ebv_map
+                    
+                valid_pixels &= (ebv_map < 0.2)
         
-        median_value = np.nanmedian(maglim_map[valid_pixels])
-        return median_value
+        if verbose:
+            n_valid = np.sum(valid_pixels)
+            n_total = len(maglim_map)
+            print(f"  Computing median from {n_valid}/{n_total} pixels (mask: {mask_type})")
+        
+        return np.nanmedian(maglim_map[valid_pixels])
 
     @classmethod
     def _load_config(cls, survey: str, release: Optional[str] = None) -> dict:
