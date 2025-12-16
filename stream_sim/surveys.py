@@ -819,35 +819,7 @@ class SurveyFactory:
         survey.bands = sorted(available_bands)
         print(f"Available bands: {', '.join(survey.bands)}\n")
 
-        # Load band-specific magnitude limit maps
-        print("Loading magnitude limit maps...")
-        for band in survey.bands:
-            attr_name = f"maglim_map_{band}"
-            filename = survey_config.get(attr_name)
-            extension = os.path.splitext(filename)[1] if filename else ""
-
-            if filename is None:
-                print(
-                    f"  ⚠ Warning: '{attr_name}' not specified in config (skipping {band}-band)"
-                )
-                continue
-
-            full_path = cls._find_file(filename, data_path_survey, data_path_others)
-
-            if full_path is None:
-                print(f"  ✗ {band}-band magnitude limit: File not found - {filename}")
-                continue
-
-            try:
-                if extension.lower() == ".hsp":
-                    survey.maglim_maps[band] = cls.open_map_sparse(full_path)
-                else:
-                    survey.maglim_maps[band] = hp.read_map(full_path)
-                print(f"  ✓ Success for {band}-band magnitude limit")
-            except Exception as e:
-                print(f"    ✗ Failed to load {band}-band maglim map: {e}")
-                survey.maglim_maps[band] = None
-
+        
         # Load survey properties per band
         print("\nLoading survey properties...")
 
@@ -870,6 +842,35 @@ class SurveyFactory:
         for band in survey.bands:
             sys_key = f"sys_error_{band}"
             survey.sys_error[band] = props.get(sys_key, default_sys_error)
+
+        # Load band-specific magnitude limit maps
+        print("Loading magnitude limit maps...")
+        for band in survey.bands:
+            attr_name = f"maglim_map_{band}"
+            filename = survey_config.get(attr_name)
+            extension = os.path.splitext(filename)[1] if filename else ""
+
+            if filename is None:
+                print(
+                    f"  ⚠ Warning: '{attr_name}' not specified in config (skipping {band}-band)"
+                )
+                continue
+
+            full_path = cls._find_file(filename, data_path_survey, data_path_others)
+
+            if full_path is None:
+                print(f"  ✗ {band}-band magnitude limit: File not found - {filename}")
+                continue
+
+            try:
+                if extension.lower() == ".hsp":
+                    survey.maglim_maps[band] = cls.open_map_sparse(full_path, map_min = survey.saturation[band])
+                else:
+                    survey.maglim_maps[band] = hp.read_map(full_path)
+                print(f"  ✓ Success for {band}-band magnitude limit")
+            except Exception as e:
+                print(f"    ✗ Failed to load {band}-band maglim map: {e}")
+                survey.maglim_maps[band] = None
 
         # Load completeness function (same for all bands)
         print("\nLoading completeness/efficiency function...")
@@ -1089,6 +1090,12 @@ class SurveyFactory:
         nest = False  # by default set to True in hsp, but to False in healpy
         map_hpx = hsp_map.generate_healpix_map(nside=nside_sparse, nest=nest)
         map_hpx = np.where(map_hpx == hp.UNSEEN, np.nan, map_hpx)
+
+        map_min, map_max = kwargs.get("map_min", None), kwargs.get("map_max", None)
+        if map_min is not None:
+            map_hpx = np.where(map_hpx < map_min, np.nan, map_hpx)
+        if map_max is not None:
+            map_hpx = np.where(map_hpx > map_max, np.nan, map_hpx)
 
         return map_hpx
 
