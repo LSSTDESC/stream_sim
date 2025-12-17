@@ -354,7 +354,7 @@ class Survey:
         return self.get_efficiency(
             band, magnitude, maglim, type="detection_efficiency", **kwargs
         )
-    
+
     def get_classification_efficiency(
         self, band: str, magnitude: float, maglim: float, **kwargs
     ) -> float:
@@ -405,7 +405,7 @@ class Survey:
             True apparent magnitude(s).
         maglim : float or np.ndarray
             Magnitude limit(s) at the position(s).
-        
+
         **kwargs
             Additional keyword arguments:
             type : str, optional
@@ -582,12 +582,10 @@ class SurveyFactory:
             cls._cached_surveys[cache_key] = survey_obj
             print(f"✓ Survey '{cache_key}' loaded and cached successfully")
 
-        
         if uniform_survey:
             cls._save_uniform_survey(cls._cached_surveys[cache_key], **kwargs)
 
         return cls._cached_surveys[cache_key]
-
 
     @classmethod
     def clear_cache(cls, survey: Optional[str] = None, release: Optional[str] = None):
@@ -648,7 +646,7 @@ class SurveyFactory:
             Names of cached surveys in format "survey_release" or "survey".
         """
         return list(cls._cached_surveys.keys())
-    
+
     @classmethod
     def _save_uniform_survey(cls, survey: Survey, **kwargs):
         """
@@ -678,13 +676,17 @@ class SurveyFactory:
         _get_median_value : Computes the median magnitude limit.
         """
         verbose = kwargs.get("verbose", True)
-        uniform_key = f"{survey.name}_{survey.release}_uniform" if survey.release else f"{survey.name}_uniform"
-        
+        uniform_key = (
+            f"{survey.name}_{survey.release}_uniform"
+            if survey.release
+            else f"{survey.name}_uniform"
+        )
+
         if uniform_key in cls._cached_surveys:
             if verbose:
                 print(f"✓ Uniform survey '{uniform_key}' already cached")
             return
-        
+
         if verbose:
             print(f"Creating uniform survey '{uniform_key}'...")
 
@@ -693,13 +695,15 @@ class SurveyFactory:
 
         # Set uniform magnitude limits for each band
         for band, maglim_map in survey_uniform.maglim_maps.items():
-            uniform_limit = cls._get_median_value(maglim_map, survey=survey_uniform, verbose=False, **kwargs)
+            uniform_limit = cls._get_median_value(
+                maglim_map, survey=survey_uniform, verbose=False, **kwargs
+            )
             survey_uniform.maglim_maps[band] = np.where(
                 np.isnan(maglim_map), np.nan, uniform_limit
-            ) # Set uniform value, keep NaNs - not observed areas
+            )  # Set uniform value, keep NaNs - not observed areas
             if verbose:
                 print(f"  {band}-band: uniform maglim = {uniform_limit:.2f} mag")
-       
+
         cls._cached_surveys[uniform_key] = survey_uniform
         if verbose:
             print(f"✓ Uniform survey cached as '{uniform_key}'")
@@ -746,18 +750,18 @@ class SurveyFactory:
 
         # Build valid pixel mask
         valid_pixels = np.ones_like(maglim_map, dtype=bool)
-        
+
         for mtype in mask_type:
             if mtype == "nan":
                 valid_pixels &= ~np.isnan(maglim_map)
-                
+
             elif mtype == "dust":
                 survey = kwargs.get("survey")
                 if survey is None:
                     raise ValueError("Survey object required for 'dust' mask type.")
-                if not hasattr(survey, 'ebv_map') or survey.ebv_map is None:
+                if not hasattr(survey, "ebv_map") or survey.ebv_map is None:
                     raise ValueError("E(B-V) map not available for 'dust' mask type.")
-                
+
                 # Resample E(B-V) map if needed
                 nside_maglim = hp.get_nside(maglim_map)
                 nside_ebv = hp.get_nside(survey.ebv_map)
@@ -765,14 +769,16 @@ class SurveyFactory:
                     ebv_map = hp.ud_grade(survey.ebv_map, nside_out=nside_maglim)
                 else:
                     ebv_map = survey.ebv_map
-                    
-                valid_pixels &= (ebv_map < 0.2)
-        
+
+                valid_pixels &= ebv_map < 0.2
+
         if verbose:
             n_valid = np.sum(valid_pixels)
             n_total = len(maglim_map)
-            print(f"  Computing median from {n_valid}/{n_total} pixels (mask: {mask_type})")
-        
+            print(
+                f"  Computing median from {n_valid}/{n_total} pixels (mask: {mask_type})"
+            )
+
         return np.nanmedian(maglim_map[valid_pixels])
 
     @classmethod
@@ -922,7 +928,6 @@ class SurveyFactory:
         survey.bands = sorted(available_bands)
         print(f"Available bands: {', '.join(survey.bands)}\n")
 
-        
         # Load survey properties per band
         print("\nLoading survey properties...")
 
@@ -967,7 +972,9 @@ class SurveyFactory:
 
             try:
                 if extension.lower() == ".hsp":
-                    survey.maglim_maps[band] = cls.open_map_sparse(full_path, map_min = survey.saturation[band])
+                    survey.maglim_maps[band] = cls.open_map_sparse(
+                        full_path, map_min=survey.saturation[band]
+                    )
                 else:
                     survey.maglim_maps[band] = hp.read_map(full_path)
                 print(f"  ✓ Success for {band}-band magnitude limit")
@@ -986,7 +993,7 @@ class SurveyFactory:
                 "completeness",
                 "Completeness/efficiency function",
                 lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation,  selection="both"
+                    f, delta_saturation=default_delta_saturation, selection="both"
                 ),
                 data_path_survey,
                 data_path_others,
@@ -997,34 +1004,42 @@ class SurveyFactory:
             # Try to load detection efficiency
             try:
                 cls._load_file(
-                survey,
-                survey_config,
-                "efficiency_detection",
-                "Detection efficiency function",
-                lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation,  selection="detected"
-                ),
-                data_path_survey,
-                data_path_others,
-                filename=survey_config.get("completeness"), # use same file as completeness
-            )
+                    survey,
+                    survey_config,
+                    "efficiency_detection",
+                    "Detection efficiency function",
+                    lambda f: cls.set_completeness(
+                        f,
+                        delta_saturation=default_delta_saturation,
+                        selection="detected",
+                    ),
+                    data_path_survey,
+                    data_path_others,
+                    filename=survey_config.get(
+                        "completeness"
+                    ),  # use same file as completeness
+                )
             except:
                 print("No detection efficiency file found, skipping.")
 
             # Try to load classification efficiency
             try:
                 cls._load_file(
-                survey,
-                survey_config,
-                "efficiency_classification",
-                "Classification efficiency function",
-                lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation,  selection="classified"
-                ),
-                data_path_survey,
-                data_path_others,
-                filename=survey_config.get("completeness"), # use same file as completeness
-            )
+                    survey,
+                    survey_config,
+                    "efficiency_classification",
+                    "Classification efficiency function",
+                    lambda f: cls.set_completeness(
+                        f,
+                        delta_saturation=default_delta_saturation,
+                        selection="classified",
+                    ),
+                    data_path_survey,
+                    data_path_others,
+                    filename=survey_config.get(
+                        "completeness"
+                    ),  # use same file as completeness
+                )
             except:
                 print("No classification efficiency file found, skipping.")
 

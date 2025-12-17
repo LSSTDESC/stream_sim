@@ -73,7 +73,7 @@ class StreamInjector:
             self.survey = survey
         else:
             raise ValueError("survey must be a string or Survey instance.")
-        
+
         # Instance attribute to store the last used gc_frame
         self._last_gc_frame = None
 
@@ -194,7 +194,9 @@ class StreamInjector:
             dust_correction = kwargs.get("dust_correction", True)
             if dust_correction:
                 if verbose:
-                    print(f"Applying dust correction for {band}-band on observed magnitudes.")
+                    print(
+                        f"Applying dust correction for {band}-band on observed magnitudes."
+                    )
                 # Correct observed magnitudes for extinction (only for valid detections)
                 valid_mask = mag_obs != "BAD_MAG"
                 # Create a float array for corrected magnitudes
@@ -219,7 +221,7 @@ class StreamInjector:
             data = pd.concat([data, new_columns], axis=1)
 
             # Compute detection flags for r-band (reference band)
-            if band == "r":                
+            if band == "r":
                 # Standard completeness (detection + classification)
                 flag_completeness_r = self.detect_flag(
                     pix_maglim,
@@ -245,9 +247,7 @@ class StreamInjector:
 
         # Validate that r-band was processed
         if flag_completeness_r is None:
-            raise ValueError(
-                "Detection flag requires 'r' band to be in bands list."
-            )
+            raise ValueError("Detection flag requires 'r' band to be in bands list.")
 
         # Build combined detection flags
         # Start with flux validity check (not BAD_MAG)
@@ -263,11 +263,13 @@ class StreamInjector:
         # Apply SNR cuts
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
         SNR_min = 5.0
-        
+
         for band in detection_mag_cut:
             if band not in bands:
                 if verbose:
-                    print(f"Warning: SNR cut requested for {band}-band but it's not in bands list. Skipping.")
+                    print(
+                        f"Warning: SNR cut requested for {band}-band but it's not in bands list. Skipping."
+                    )
                 continue
             if verbose:
                 print(f"Applying detection cut on {band}-band with SNR >= {SNR_min}")
