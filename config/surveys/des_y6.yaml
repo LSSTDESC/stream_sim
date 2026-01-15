@@ -6,12 +6,12 @@ survey_files:
     file_path: ''
 
     # Band-specific magnitude limit maps
-    maglim_map_g: des_y6_maglim_band_g_nside_128.hsp # y6a2_decasu_g_maglim_wmean.hs
-    maglim_map_r: des_y6_maglim_band_r_nside_128.hsp # 
+    maglim_map_g: des_y6_maglim_band_g_nside_512.hs # y6a2_decasu_g_maglim_wmean.hs
+    maglim_map_r: des_y6_maglim_band_r_nside_512.hs # 
     # Band-independent maps
     ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits
-    completeness: des_stellar_efficiency.csv #https://github.com/DarkEnergySurvey/ugali/blob/b59979cd09f4235567aec2f710c1893f5e475e76/ugali/scratch/simulation/simulate_population.yaml#L61
-    log_photo_error: des_photoerror_r.csv
+    completeness: des_y6_stellar_efficiency.csv #https://github.com/DarkEnergySurvey/ugali/blob/b59979cd09f4235567aec2f710c1893f5e475e76/ugali/scratch/simulation/simulate_population.yaml#L61
+    log_photo_error: des_y6_photoerror_r.csv
 
 survey_properties: 
   bands: ['g', 'r', 'i', 'z', 'Y']
