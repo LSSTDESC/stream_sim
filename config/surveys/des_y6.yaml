@@ -4,8 +4,8 @@ release: y6
 survey_files: 
     # Path to data files (leave empty for default location)
     # hardcoded some paths here open to suggestions on how to improve
-    file_path: '/astro/users/pferguso/software/stream_sim/data/surveys/des_y6/'
-    file_path_others: '/astro/users/pferguso/software/stream_sim/data/surveys/des_y6/'
+    file_path: ''
+    
     # Band-specific magnitude limit maps
     maglim_map_g: des_y6_5_sig_maglim_band_g_nside_512.hsp # median g-band depth is 24.56
     maglim_map_r: des_y6_5_sig_maglim_band_r_nside_512.hsp # 

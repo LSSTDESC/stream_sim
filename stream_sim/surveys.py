@@ -594,17 +594,14 @@ class SurveyFactory:
         # Get file configuration and determine data path
         survey_config = config.get("survey_files", {})
         data_path_survey = survey_config.get("file_path", "")
-        data_path_others = survey_config.get("file_path_others", "")    
 
         # Find data directory where might be stored additional files
         current_dir = os.path.dirname(os.path.abspath(__file__))
         survey_name = (
             f"{survey.name}_{survey.release}" if survey.release else survey.name
         )
-        if not data_path_others:
-            data_path_others = os.path.join(
-                current_dir, "..", "data", "others"
-                )
+        # if not data_path_others:
+        data_path_others = os.path.join(current_dir, "..", "data", "others")
         # Use default path if not specified
         if not data_path_survey:
             data_path_survey = os.path.join(
