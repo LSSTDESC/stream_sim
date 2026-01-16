@@ -600,7 +600,6 @@ class SurveyFactory:
         survey_name = (
             f"{survey.name}_{survey.release}" if survey.release else survey.name
         )
-        # if not data_path_others:
         data_path_others = os.path.join(current_dir, "..", "data", "others")
         # Use default path if not specified
         if not data_path_survey:
