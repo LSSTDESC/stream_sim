@@ -180,7 +180,7 @@ class StreamInjector:
             new_columns = new_columns.reset_index(drop=True)
             data = pd.concat([data, new_columns], axis=1)
 
-            # Compute detection flag for r-band (reference band)
+            # Compute detection flag for completeness-band (reference band)
             if band == self.survey.completeness_band:
                 flag_completeness_band = self.detect_flag(
                     pix_maglim,

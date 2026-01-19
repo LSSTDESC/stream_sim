@@ -53,6 +53,10 @@ class Survey:
     completeness : callable, optional
         Efficiency function f(magnitude) -> efficiency [0, 1].
         Same function used for all bands, obtained from r band.
+    delta_saturation : float, optional
+        Magnitude difference for saturation threshold in the initial functions.
+    completeness_band : str, optional
+        Band used to derive completeness function (e.g., 'r').
     log_photo_error : callable, optional
         Photometric error model f(delta_mag) -> log10(mag_error).
         Same function used for all bands, obtained from r band.
