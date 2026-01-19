@@ -13,7 +13,7 @@ survey_files:
     # because of hard coded file_path_others I had to create a symlink for the ebv_map
     ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits 
     completeness: des_y6_stellar_efficiency_beta.csv # currently we are using mag_g (that I renamed to mag_r)
-    # the completeness file has no delta mag column....
+    completeness_band: g # the completenesshas been obtained in g-band
     log_photo_error: des_y6_photoerror_r.csv # dont know the band for this one, assuming r for now
 
 survey_properties: 
