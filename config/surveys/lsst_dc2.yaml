@@ -11,8 +11,8 @@ survey_files:
 
     # Band-independent maps
     ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits
-    completeness: stellar_efficiency_cutr.csv
-    log_photo_error: photoerror_r.csv
+    completeness: lsst_stellar_efficiency_cutr.csv
+    log_photo_error: lsst_photoerror_r.csv
     #coverage: supreme_dc2_dr6d_v3_gr_fracdet.fits.gz # Optional coverage map, if not provided, coverage is built using maglim maps
 
 survey_properties: 
