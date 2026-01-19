@@ -103,6 +103,7 @@ class Survey:
 
     # Band-independent functions (same for all bands)
     completeness: Optional[Callable] = None
+    completeness_band: Optional[str] = None
     log_photo_error: Optional[Callable] = None
 
     # Band-independent maps
@@ -687,6 +688,7 @@ class SurveyFactory:
 
         # Load completeness function (same for all bands)
         print("\nLoading completeness/efficiency function...")
+        survey.completeness_band = survey_config.get("completeness_band", "r") # default to r band
         if "completeness" in survey_config:
             # Use default saturation if not band-specific
             default_delta_saturation = props.get("delta_saturation", -10.4)
