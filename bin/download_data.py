@@ -21,7 +21,7 @@ import tempfile
 # =============================================================================
 
 # Base URL where data archive is hosted
-BASE_DATA_URL = "https://zenodo.org/records/17589908/files/"
+BASE_DATA_URL = "https://zenodo.org/records/18298544/files/"
 
 # Name of the data archive file (should be a zip file)
 DATA_ARCHIVE_NAME = "data.zip"
@@ -30,7 +30,7 @@ DATA_ARCHIVE_NAME = "data.zip"
 DATA_ARCHIVE_URL = BASE_DATA_URL + DATA_ARCHIVE_NAME
 
 # Expected size (approximate, for user information)
-ARCHIVE_SIZE_MB = 800
+ARCHIVE_SIZE_MB = 30 #Mb
 
 # =============================================================================
 # =============================================================================

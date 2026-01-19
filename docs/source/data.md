@@ -179,7 +179,7 @@ If you need to add or modify data files:
    ```
    
 2. **Upload to Zenodo**:
-   - Go to https://zenodo.org/records/17589908
+   - Go to https://zenodo.org/records/18298544
    - Create a new version
    - Upload the `data.zip` file
    - Add release notes describing changes
