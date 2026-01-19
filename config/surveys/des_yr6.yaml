@@ -35,3 +35,4 @@ survey_properties:
 
   # Saturation limits per band, or could be specified as saturation_g, saturation_r, etc
   saturation: 16.0
+  delta_saturation: -5.23 # Smallest delta_saturation in completeness file
