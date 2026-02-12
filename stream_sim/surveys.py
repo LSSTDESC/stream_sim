@@ -53,6 +53,10 @@ class Survey:
     completeness : callable, optional
         Efficiency function f(magnitude) -> efficiency [0, 1].
         Same function used for all bands, obtained from r band.
+    delta_saturation : float, optional
+        Magnitude difference for saturation threshold in the initial functions.
+    completeness_band : str, optional
+        Band used to derive completeness function (e.g., 'r').
     log_photo_error : callable, optional
         Photometric error model f(delta_mag) -> log10(mag_error).
         Same function used for all bands, obtained from r band.
@@ -103,6 +107,8 @@ class Survey:
 
     # Band-independent functions (same for all bands)
     completeness: Optional[Callable] = None
+    completeness_band: Optional[str] = None
+    delta_saturation: Optional[float] = None
     log_photo_error: Optional[Callable] = None
 
     # Band-independent maps
@@ -258,7 +264,7 @@ class Survey:
         if self.log_photo_error is None:
             raise ValueError("Photo error model not loaded")
 
-        delta_saturation = kwargs.get("delta_saturation", -10.4)
+        delta_saturation = kwargs.get("delta_saturation", self.delta_saturation)
 
         # Calculate delta_mag
         delta_mag = magnitude - maglim
@@ -320,7 +326,7 @@ class Survey:
         if self.completeness is None:
             raise ValueError("Completeness function not loaded")
 
-        delta_saturation = kwargs.get("delta_saturation", -10.4)
+        delta_saturation = kwargs.get("delta_saturation", self.delta_saturation)
 
         # Calculate delta_mag
         delta_mag = magnitude - maglim
@@ -687,16 +693,17 @@ class SurveyFactory:
 
         # Load completeness function (same for all bands)
         print("\nLoading completeness/efficiency function...")
+        survey.completeness_band = survey_config.get("completeness_band", "r") # default to r band
+        survey.delta_saturation = props.get("delta_saturation", -10.4)
         if "completeness" in survey_config:
             # Use default saturation if not band-specific
-            default_delta_saturation = props.get("delta_saturation", -10.4)
             cls._load_file(
                 survey,
                 survey_config,
                 "completeness",
                 "Completeness/efficiency function",
                 lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation
+                    f, delta_saturation=survey.delta_saturation
                 ),
                 data_path_survey,
                 data_path_others,
@@ -706,14 +713,13 @@ class SurveyFactory:
         print("\nLoading photometric error model...")
         if "log_photo_error" in survey_config:
             # Use default saturation if not band-specific
-            default_delta_saturation = props.get("delta_saturation", -10.4)
             cls._load_file(
                 survey,
                 survey_config,
                 "log_photo_error",
                 "Photometric error model",
                 lambda f: cls.set_photo_error(
-                    f, delta_saturation=default_delta_saturation
+                    f, delta_saturation=survey.delta_saturation
                 ),
                 data_path_survey,
                 data_path_others,
@@ -929,6 +935,10 @@ class SurveyFactory:
         # Extend efficiency to bright end (force to zero at saturation)
         if delta_mags.min() > delta_saturation:
             delta_mags = np.insert(delta_mags, 0, delta_saturation)
+            efficiencies = np.insert(efficiencies, 0, 0.0)
+        elif delta_mags.min() == delta_saturation:
+            # Ensure efficiency is zero at magnitude very near saturation
+            delta_mags = np.insert(delta_mags, 0, delta_saturation-1e-5)
             efficiencies = np.insert(efficiencies, 0, 0.0)
         else:
             # Ensure efficiency is zero at saturation

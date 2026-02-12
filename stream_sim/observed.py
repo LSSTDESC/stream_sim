@@ -180,31 +180,31 @@ class StreamInjector:
             new_columns = new_columns.reset_index(drop=True)
             data = pd.concat([data, new_columns], axis=1)
 
-            # Compute detection flag for r-band (reference band)
-            if band == "r":
-                flag_completeness_r = self.detect_flag(
+            # Compute detection flag for completeness-band (reference band)
+            if band == self.survey.completeness_band:
+                flag_completeness_band = self.detect_flag(
                     pix_maglim,
-                    mag=data["mag_r"] + extinction_band,
-                    band="r",
+                    mag=data["mag_" + band] + extinction_band,
+                    band=band,
                     rng=rng,
                     seed=seed,
                     **kwargs,
                 )
 
         # Apply detection threshold
-        if flag_completeness_r is None:
-            if "r" in bands:
+        if flag_completeness_band is None:
+            if self.survey.completeness_band in bands:
                 raise ValueError(
-                    "flag_completeness_r must be computed for detection in r band."
+                    f"flag_completeness_{self.survey.completeness_band} must be computed for detection in {self.survey.completeness_band} band."
                 )
             else:
-                raise ValueError("Detection flag requires 'r' band to be in bands.")
+                raise ValueError(f"Detection flag requires '{self.survey.completeness_band}' band to be in bands.")
 
         # Check for negative fluxes (set to 'BAD_MAG')
         flag_r = data["mag_r_obs"] != "BAD_MAG"
 
         # Combine flags
-        flag_observed = flag_r & flag_completeness_r
+        flag_observed = flag_r & flag_completeness_band
 
         if "g" in bands:
             flag_observed &= data["mag_g_obs"] != "BAD_MAG"
