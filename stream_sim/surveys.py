@@ -26,7 +26,7 @@ class Survey:
     name : str
         Survey identifier (e.g., 'lsst').
     release : str, optional
-        Survey data release version (e.g., 'yr1', 'yr10').
+        Survey data release version (e.g., 'yr1', 'yr5').
     bands : list of str, optional
         List of photometric bands available (e.g., ['g', 'r', 'i']).
         Default is an empty list.
@@ -140,12 +140,12 @@ class Survey:
         survey : str
             Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/version (e.g., 'yr1', 'yr10').
+            Survey release/version (e.g., 'yr1', 'yr5').
         config_file : dict, optional
             Custom configuration dictionary.
         **kwargs
-            Additional parameters to override config values.
-
+            Additional keyword arguments passed to ``SurveyFactory.create_survey()``
+            to override config values (including verbose: bool = True)
         Returns
         -------
         Survey
@@ -153,13 +153,14 @@ class Survey:
 
         Examples
         --------
-        Load LSST DC2 survey:
+        Load LSST year 5 survey:
 
-        >>> survey = Survey.load('lsst', release='dc2')
+        >>> lsst_yr5 = Survey.load('lsst', release='yr5')
 
-        Load with custom systematic error:
+        Load with uniform survey variant:
 
-        >>> survey = Survey.load('lsst', release='yr10', sys_error=0.01)
+        >>> lsst_yr4 = Survey.load('lsst', release='yr4', uniform_survey=True)
+        >>> lsst_yr4_uniform = SurveyFactory._cached_surveys['lsst_yr4_uniform']
         """
         return SurveyFactory.create_survey(survey, release, config_file, **kwargs)
 
@@ -279,7 +280,7 @@ class Survey:
         )  # saturation at the bright end
 
         # Add band-specific systematic error in quadrature
-        sys_err = self.sys_error.get(band, 0.0)
+        sys_err = self.sys_error.get(band, 0.005)
         total_error = np.sqrt(mag_err_stat**2 + sys_err**2)
 
         return total_error
@@ -288,7 +289,112 @@ class Survey:
         self, band: str, magnitude: float, maglim: float, **kwargs
     ) -> float:
         """
-        Get detection completeness/efficiency.
+        Get detection completeness (combined detection and classification efficiency).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="completeness"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Detection efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_detection_efficiency : Detection-only efficiency.
+        get_classification_efficiency : Classification-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="completeness", **kwargs
+        )
+
+    def get_detection_efficiency(
+        self, band: str, magnitude: float, maglim: float, **kwargs
+    ) -> float:
+        """
+        Get detection-only efficiency (ignoring classification).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="detection_efficiency"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Detection efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_completeness : Combined detection and classification efficiency.
+        get_classification_efficiency : Classification-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="detection_efficiency", **kwargs
+        )
+
+    def get_classification_efficiency(
+        self, band: str, magnitude: float, maglim: float, **kwargs
+    ) -> float:
+        """
+        Get classification-only efficiency (star/galaxy separation).
+
+        This is a convenience wrapper around :meth:`get_efficiency` with
+        ``type="classification_efficiency"``.
+
+        Parameters
+        ----------
+        band : str
+            Band identifier (e.g., 'g', 'r').
+        magnitude : float or np.ndarray
+            True apparent magnitude(s).
+        maglim : float or np.ndarray
+            Magnitude limit(s) at the position(s).
+        **kwargs
+            Additional keyword arguments passed to :meth:`get_efficiency`.
+
+        Returns
+        -------
+        float or np.ndarray
+            Classification efficiency in range [0, 1].
+
+        See Also
+        --------
+        get_efficiency : Full documentation of efficiency calculation.
+        get_completeness : Combined detection and classification efficiency.
+        get_detection_efficiency : Detection-only efficiency.
+        """
+        return self.get_efficiency(
+            band, magnitude, maglim, type="classification_efficiency", **kwargs
+        )
+
+    def get_efficiency(
+        self, band: str, magnitude: float, maglim: float, type="completeness", **kwargs
+    ) -> float:
+        """
+        Get efficiency function values.
 
         Parameters
         ----------
@@ -299,9 +405,12 @@ class Survey:
             True apparent magnitude(s).
         maglim : float or np.ndarray
             Magnitude limit(s) at the position(s).
+
         **kwargs
             Additional keyword arguments:
-
+            type : str, optional
+                Type of efficiency function to use. Options are "completeness", "detection_efficiency", or "classification_efficiency".
+                Default is "completeness".
             delta_saturation : float, optional
                 Magnitude difference for saturation threshold in the initial completeness function.
                 Default is -10.4.
@@ -315,10 +424,45 @@ class Survey:
         Raises
         ------
         ValueError
-            If completeness function is not loaded.
+            If the efficiency function for the requested ``type`` is not loaded,
+            or if ``type`` is not one of the recognized values.
+
+        Notes
+        -----
+        The efficiency is set to 0 in the following cases:
+
+        - Source is brighter than saturation limit (``magnitude < saturation``)
+        - Survey does not cover the position (``maglim < saturation`` or ``maglim`` is NaN)
+        - Source is too faint for reliable detection
+
+        Examples
+        --------
+        Get completeness for a single source:
+
+        >>> maglim = survey.get_maglim('r', pixel=10000)
+        >>> eff = survey.get_efficiency('r', 24.0, maglim)
+
+        Get detection efficiency for an array of magnitudes:
+
+        >>> mags = np.linspace(18, 28, 100)
+        >>> eff = survey.get_efficiency('r', mags, maglim, type="detection_efficiency")
+
+        See Also
+        --------
+        get_completeness : Convenience wrapper for combined efficiency.
+        get_detection_efficiency : Convenience wrapper for detection-only.
+        get_classification_efficiency : Convenience wrapper for classification-only.
         """
-        if self.completeness is None:
-            raise ValueError("Completeness function not loaded")
+        if type == "completeness":
+            func = self.completeness
+        elif type == "detection_efficiency":
+            func = self.efficiency_detection
+        elif type == "classification_efficiency":
+            func = self.efficiency_classification
+        else:
+            raise ValueError(f"Efficiency type '{type}' not recognized.")
+        if func is None:
+            raise ValueError(f"Efficiency function for type '{type}' not loaded")
 
         delta_saturation = kwargs.get("delta_saturation", -10.4)
 
@@ -329,7 +473,7 @@ class Survey:
         compl = np.where(
             (magnitude > self.saturation[band]) & (delta_mag <= delta_saturation),
             1.0,
-            self.completeness(delta_mag),
+            func(delta_mag),
         )  # 1 padded
 
         compl = np.where(
@@ -378,13 +522,20 @@ class SurveyFactory:
         survey : str
             Survey name (e.g., 'lsst').
         release : str, optional
-            Survey release/data version (e.g., 'yr1', 'yr10').
+            Survey release/data version (e.g., 'yr1', 'yr5').
             If None, loads the base survey configuration.
         config_file : dict, optional
             Custom configuration dictionary to use instead of loading from file.
             If provided, bypasses the standard config file loading.
         **kwargs
-            Additional parameters to override values in the config file.
+            uniform_survey : bool, optional
+                If True, also creates and caches a uniform version of the survey
+                with constant magnitude limits. The uniform survey can be accessed
+                via ``SurveyFactory._cached_surveys['{survey}_{release}_uniform']``.
+                Default is False.
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
+            Additional keyword arguments override config values
 
         Returns
         -------
@@ -395,39 +546,57 @@ class SurveyFactory:
         -----
         - First call: Loads all data files and caches the result.
         - Subsequent calls: Returns cached instance (much faster).
-        - Use clear_cache() to force reloading from files.
+        - Use ``clear_cache()`` to force reloading from files.
+        - When ``uniform_survey=True``, the original survey is returned, but a
+          uniform variant is also cached for later retrieval.
+
+        See Also
+        --------
+        _save_uniform_survey : Creates the uniform survey variant.
+        clear_cache : Clears cached surveys.
+        list_cached_surveys : Lists all cached survey keys.
         """
+        verbose = kwargs.get("verbose", True)
+        uniform_survey = kwargs.pop("uniform_survey", False)
+
         # Generate unique cache key
         cache_key = f"{survey}_{release}" if release else survey
 
         # Return cached survey if available
         if cache_key in cls._cached_surveys:
-            print(f"✓ Using cached survey data for '{cache_key}'")
-            return cls._cached_surveys[cache_key]
-
-        print(f"Loading survey data for '{cache_key}'...")
-
-        # Load or use provided configuration
-        if config_file:
-            config = copy.deepcopy(config_file)
+            if verbose:
+                print(f"✓ Using cached survey data for '{cache_key}'")
         else:
-            config = cls._load_config(survey, release)
+            if verbose:
+                print(f"Loading survey data for '{cache_key}'...")
 
-        # Apply any custom overrides
-        config.update(**kwargs)
+            # Load or use provided configuration
+            if config_file:
+                config = copy.deepcopy(config_file)
+            else:
+                config = cls._load_config(survey, release, **kwargs)
 
-        # Create empty survey object and populate with data
-        survey_obj = Survey(name=survey, release=release)
-        cls._load_survey_data(survey_obj, config)
+            # Apply any custom overrides
+            config.update(**kwargs)
 
-        # Cache for future use
-        cls._cached_surveys[cache_key] = survey_obj
-        print(f"✓ Survey '{cache_key}' loaded and cached successfully")
+            # Create empty survey object and populate with data
+            survey_obj = Survey(name=survey, release=release)
+            cls._load_survey_data(survey_obj, config, **kwargs)
 
-        return survey_obj
+            # Cache for future use
+            cls._cached_surveys[cache_key] = survey_obj
+            if verbose:
+                print(f"✓ Survey '{cache_key}' loaded and cached successfully")
+
+        if uniform_survey:
+            cls._save_uniform_survey(cls._cached_surveys[cache_key], **kwargs)
+
+        return cls._cached_surveys[cache_key]
 
     @classmethod
-    def clear_cache(cls, survey: Optional[str] = None, release: Optional[str] = None):
+    def clear_cache(
+        cls, survey: Optional[str] = None, release: Optional[str] = None, **kwargs
+    ):
         """
         Clear cached survey data to free memory or force reload.
 
@@ -437,6 +606,9 @@ class SurveyFactory:
             Survey name to clear. If None, clears all cached surveys.
         release : str, optional
             Survey release to clear. Only used if survey is specified.
+        **kwargs
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
 
         Examples
         --------
@@ -452,11 +624,13 @@ class SurveyFactory:
 
         >>> SurveyFactory.clear_cache('lsst', 'yr1')
         """
+        verbose = kwargs.get("verbose", True)
         if survey is None:
             # Clear entire cache
             num_cleared = len(cls._cached_surveys)
             cls._cached_surveys.clear()
-            print(f"✓ Cleared {num_cleared} cached survey(s)")
+            if verbose:
+                print(f"✓ Cleared {num_cleared} cached survey(s)")
         else:
             # Clear specific survey(s)
             if release is None:
@@ -465,14 +639,17 @@ class SurveyFactory:
                 ] + ([survey] if survey in cls._cached_surveys else [])
                 for key in keys_to_clear:
                     del cls._cached_surveys[key]
-                    print(f"✓ Cleared cached survey '{key}'")
+                    if verbose:
+                        print(f"✓ Cleared cached survey '{key}'")
             else:
                 cache_key = f"{survey}_{release}"
                 if cache_key in cls._cached_surveys:
                     del cls._cached_surveys[cache_key]
-                    print(f"✓ Cleared cached survey '{cache_key}'")
+                    if verbose:
+                        print(f"✓ Cleared cached survey '{cache_key}'")
                 else:
-                    print(f"⚠ Survey '{cache_key}' not found in cache")
+                    if verbose:
+                        print(f"⚠ Survey '{cache_key}' not found in cache")
 
     @classmethod
     def list_cached_surveys(cls) -> list:
@@ -487,7 +664,141 @@ class SurveyFactory:
         return list(cls._cached_surveys.keys())
 
     @classmethod
-    def _load_config(cls, survey: str, release: Optional[str] = None) -> dict:
+    def _save_uniform_survey(cls, survey: Survey, **kwargs):
+        """
+        Create and cache a uniform version of the survey with constant magnitude limits.
+
+        This method creates a copy of the survey where the magnitude limit maps
+        are replaced with a single uniform value (the median of valid pixels).
+        This is useful for studying selection effects independent of survey depth
+        variations.
+
+        Parameters
+        ----------
+        survey : Survey
+            Survey object to convert to uniform.
+        **kwargs
+            Additional keyword arguments:
+
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
+            uniform_survey_mask_type : list of str, optional
+                Mask types to apply when computing median. Options are 'nan'
+                (exclude NaN pixels) and 'dust' (exclude high-extinction regions).
+                Default is ['nan', 'dust'].
+
+        See Also
+        --------
+        _get_median_value : Computes the median magnitude limit.
+        """
+        verbose = kwargs.get("verbose", True)
+        uniform_key = (
+            f"{survey.name}_{survey.release}_uniform"
+            if survey.release
+            else f"{survey.name}_uniform"
+        )
+
+        if uniform_key in cls._cached_surveys:
+            if verbose:
+                print(f"✓ Uniform survey '{uniform_key}' already cached")
+            return
+
+        if verbose:
+            print(f"Creating uniform survey '{uniform_key}'...")
+
+        # Make a deep copy to avoid modifying the original
+        survey_uniform = copy.deepcopy(survey)
+
+        # Set uniform magnitude limits for each band
+        for band, maglim_map in survey_uniform.maglim_maps.items():
+            uniform_limit = cls._get_median_value(
+                maglim_map, survey=survey_uniform, **kwargs
+            )
+            survey_uniform.maglim_maps[band] = np.where(
+                np.isnan(maglim_map), np.nan, uniform_limit
+            )  # Set uniform value, keep NaNs - not observed areas
+            if verbose:
+                print(f"  {band}-band: uniform maglim = {uniform_limit:.2f} mag")
+
+        cls._cached_surveys[uniform_key] = survey_uniform
+        if verbose:
+            print(f"✓ Uniform survey cached as '{uniform_key}'")
+
+    @classmethod
+    def _get_median_value(cls, maglim_map: np.ndarray, **kwargs) -> float:
+        """
+        Calculate median magnitude limit, optionally masking invalid regions.
+
+        Parameters
+        ----------
+        maglim_map : np.ndarray
+            HEALPix map of magnitude limits.
+        **kwargs
+            Additional keyword arguments:
+
+            survey : Survey, optional
+                Survey object (required if 'dust' is in mask_type).
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
+            uniform_survey_mask_type : list of str or str, optional
+                Types of masking to apply before computing the median:
+
+                - 'nan' : Exclude NaN pixels (always recommended).
+                - 'dust' : Exclude high-extinction regions (E(B-V) >= 0.2).
+
+                Default is ['nan', 'dust'].
+
+        Returns
+        -------
+        float
+            Median magnitude limit of valid pixels.
+
+        Raises
+        ------
+        ValueError
+            If 'dust' mask is requested but survey object or E(B-V) map is unavailable.
+        """
+        verbose = kwargs.get("verbose", True)
+        mask_type = kwargs.get("uniform_survey_mask_type", ["nan", "dust"])
+
+        if isinstance(mask_type, str):
+            mask_type = [mask_type]
+
+        # Build valid pixel mask
+        valid_pixels = np.ones_like(maglim_map, dtype=bool)
+
+        for mtype in mask_type:
+            if mtype == "nan":
+                valid_pixels &= ~np.isnan(maglim_map)
+
+            elif mtype == "dust":
+                survey = kwargs.get("survey")
+                if survey is None:
+                    raise ValueError("Survey object required for 'dust' mask type.")
+                if not hasattr(survey, "ebv_map") or survey.ebv_map is None:
+                    raise ValueError("E(B-V) map not available for 'dust' mask type.")
+
+                # Resample E(B-V) map if needed
+                nside_maglim = hp.get_nside(maglim_map)
+                nside_ebv = hp.get_nside(survey.ebv_map)
+                if nside_maglim != nside_ebv:
+                    ebv_map = hp.ud_grade(survey.ebv_map, nside_out=nside_maglim)
+                else:
+                    ebv_map = survey.ebv_map
+
+                valid_pixels &= ebv_map < 0.2
+
+        if verbose:
+            n_valid = np.sum(valid_pixels)
+            n_total = len(maglim_map)
+            print(
+                f"  Computing median from {n_valid}/{n_total} pixels (mask: {mask_type})"
+            )
+
+        return np.nanmedian(maglim_map[valid_pixels])
+
+    @classmethod
+    def _load_config(cls, survey: str, release: Optional[str] = None, **kwargs) -> dict:
         """
         Load survey configuration from YAML or JSON file.
 
@@ -497,6 +808,9 @@ class SurveyFactory:
             Survey name.
         release : str, optional
             Survey release identifier.
+        **kwargs
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
 
         Returns
         -------
@@ -510,6 +824,7 @@ class SurveyFactory:
         ValueError
             If the loaded config doesn't match the requested survey/release.
         """
+        verbose = kwargs.get("verbose", True)
         # Construct path to config directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
         config_dir = os.path.join(current_dir, "..", "config/surveys/")
@@ -534,7 +849,8 @@ class SurveyFactory:
             )
 
         # Load configuration file
-        print(f"  Loading config from: {os.path.basename(config_path)}")
+        if verbose:
+            print(f"  Loading config from: {os.path.basename(config_path)}")
         if config_path.endswith(".yaml"):
             import yaml
 
@@ -567,7 +883,7 @@ class SurveyFactory:
         return config_data
 
     @classmethod
-    def _load_survey_data(cls, survey: Survey, config: dict):
+    def _load_survey_data(cls, survey: Survey, config: dict, **kwargs):
         """
         Load all survey data files into the Survey object.
 
@@ -586,10 +902,15 @@ class SurveyFactory:
             Empty Survey object to populate.
         config : dict
             Configuration dictionary with 'survey_files' and 'survey_properties' keys.
+        **kwargs
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
         """
-        print("\n" + "=" * 70)
-        print("LOADING SURVEY DATA FILES")
-        print("=" * 70)
+        verbose = kwargs.get("verbose", True)
+        if verbose:
+            print("\n" + "=" * 70)
+            print("LOADING SURVEY DATA FILES")
+            print("=" * 70)
 
         # Get file configuration and determine data path
         survey_config = config.get("survey_files", {})
@@ -607,8 +928,9 @@ class SurveyFactory:
                 current_dir, "..", "data", "surveys", survey_name
             )
 
-        print(f"Survey data directory: {data_path_survey}\n")
-        print(f"Fallback directory for shared data files: {data_path_others}\n")
+        if verbose:
+            print(f"Survey data directory: {data_path_survey}\n")
+            print(f"Fallback directory for shared data files: {data_path_others}\n")
 
         # Determine available bands from config
         # Look for maglim_map_* entries to discover bands
@@ -631,39 +953,12 @@ class SurveyFactory:
             available_bands = ["g", "r"]
 
         survey.bands = sorted(available_bands)
-        print(f"Available bands: {', '.join(survey.bands)}\n")
-
-        # Load band-specific magnitude limit maps
-        print("Loading magnitude limit maps...")
-        for band in survey.bands:
-            attr_name = f"maglim_map_{band}"
-            filename = survey_config.get(attr_name)
-            extension = os.path.splitext(filename)[1] if filename else ""
-
-            if filename is None:
-                print(
-                    f"  ⚠ Warning: '{attr_name}' not specified in config (skipping {band}-band)"
-                )
-                continue
-
-            full_path = cls._find_file(filename, data_path_survey, data_path_others)
-
-            if full_path is None:
-                print(f"  ✗ {band}-band magnitude limit: File not found - {filename}")
-                continue
-
-            try:
-                if extension.lower() == ".hsp":
-                    survey.maglim_maps[band] = cls.open_map_sparse(full_path)
-                else:
-                    survey.maglim_maps[band] = hp.read_map(full_path)
-                print(f"  ✓ Success for {band}-band magnitude limit")
-            except Exception as e:
-                print(f"    ✗ Failed to load {band}-band maglim map: {e}")
-                survey.maglim_maps[band] = None
+        if verbose:
+            print(f"Available bands: {', '.join(survey.bands)}\n")
 
         # Load survey properties per band
-        print("\nLoading survey properties...")
+        if verbose:
+            print("\nLoading survey properties...")
 
         # Extinction coefficients per band
         default_extinc = {"g": 3.303, "r": 2.285, "i": 1.682, "z": 1.322, "y": 1.087}
@@ -685,8 +980,47 @@ class SurveyFactory:
             sys_key = f"sys_error_{band}"
             survey.sys_error[band] = props.get(sys_key, default_sys_error)
 
+        # Load band-specific magnitude limit maps
+        if verbose:
+            print("Loading magnitude limit maps...")
+        for band in survey.bands:
+            attr_name = f"maglim_map_{band}"
+            filename = survey_config.get(attr_name)
+            extension = os.path.splitext(filename)[1] if filename else ""
+
+            if filename is None:
+                if verbose:
+                    print(
+                        f"  ⚠ Warning: '{attr_name}' not specified in config (skipping {band}-band)"
+                    )
+                continue
+
+            full_path = cls._find_file(filename, data_path_survey, data_path_others)
+
+            if full_path is None:
+                if verbose:
+                    print(
+                        f"  ✗ {band}-band magnitude limit: File not found - {filename}"
+                    )
+                continue
+
+            try:
+                if extension.lower() == ".hsp":
+                    survey.maglim_maps[band] = cls.open_map_sparse(
+                        full_path, map_min=survey.saturation[band]
+                    )
+                else:
+                    survey.maglim_maps[band] = hp.read_map(full_path, verbose=False)
+                if verbose:
+                    print(f"  ✓ Success for {band}-band magnitude limit")
+            except Exception as e:
+                if verbose:
+                    print(f"    ✗ Failed to load {band}-band maglim map: {e}")
+                survey.maglim_maps[band] = None
+
         # Load completeness function (same for all bands)
-        print("\nLoading completeness/efficiency function...")
+        if verbose:
+            print("\nLoading completeness/efficiency function...")
         if "completeness" in survey_config:
             # Use default saturation if not band-specific
             default_delta_saturation = props.get("delta_saturation", -10.4)
@@ -696,14 +1030,64 @@ class SurveyFactory:
                 "completeness",
                 "Completeness/efficiency function",
                 lambda f: cls.set_completeness(
-                    f, delta_saturation=default_delta_saturation
+                    f, delta_saturation=default_delta_saturation, selection="both"
                 ),
                 data_path_survey,
                 data_path_others,
+                **kwargs,
             )
 
+            # Load detection and classification efficiencies separately, which can be usefull to study selection effects
+            # eg. perfect star-galaxy separation vs imperfect one
+            # Try to load detection efficiency
+            try:
+                cls._load_file(
+                    survey,
+                    survey_config,
+                    "efficiency_detection",
+                    "Detection efficiency function",
+                    lambda f: cls.set_completeness(
+                        f,
+                        delta_saturation=default_delta_saturation,
+                        selection="detected",
+                    ),
+                    data_path_survey,
+                    data_path_others,
+                    filename=survey_config.get(
+                        "completeness"
+                    ),  # use same file as completeness
+                    **kwargs,
+                )
+            except:
+                if verbose:
+                    print("No detection efficiency file found, skipping.")
+
+            # Try to load classification efficiency
+            try:
+                cls._load_file(
+                    survey,
+                    survey_config,
+                    "efficiency_classification",
+                    "Classification efficiency function",
+                    lambda f: cls.set_completeness(
+                        f,
+                        delta_saturation=default_delta_saturation,
+                        selection="classified",
+                    ),
+                    data_path_survey,
+                    data_path_others,
+                    filename=survey_config.get(
+                        "completeness"
+                    ),  # use same file as completeness
+                    **kwargs,
+                )
+            except:
+                if verbose:
+                    print("No classification efficiency file found, skipping.")
+
         # Load photometric error model (same for all bands)
-        print("\nLoading photometric error model...")
+        if verbose:
+            print("\nLoading photometric error model...")
         if "log_photo_error" in survey_config:
             # Use default saturation if not band-specific
             default_delta_saturation = props.get("delta_saturation", -10.4)
@@ -717,13 +1101,15 @@ class SurveyFactory:
                 ),
                 data_path_survey,
                 data_path_others,
+                **kwargs,
             )
 
         # Load band-independent maps
-        print("\nLoading band-independent maps...")
+        if verbose:
+            print("\nLoading band-independent maps...")
         band_independent = {
-            "ebv_map": ("E(B-V) extinction map", hp.read_map),
-            "coverage": ("Survey coverage map", hp.read_map),
+            "ebv_map": ("E(B-V) extinction map", lambda f: hp.read_map(f)),
+            "coverage": ("Survey coverage map", lambda f: hp.read_map(f)),
         }
         for attr_name, (description, loader_func) in band_independent.items():
             cls._load_file(
@@ -734,23 +1120,26 @@ class SurveyFactory:
                 loader_func,
                 data_path_survey,
                 data_path_others,
+                **kwargs,
             )
 
         if survey.coverage is None:
-            print("\nBuilding coverage map from magnitude limit maps...")
-            cls._build_coverage_map(survey)
+            if verbose:
+                print("\nBuilding coverage map from magnitude limit maps...")
+            cls._build_coverage_map(survey, **kwargs)
 
         # Print summary
-        print("\nSurvey properties summary:")
-        for band in survey.bands:
-            print(f"  {band}-band:")
-            print(f"    Extinction coefficient: {survey.coeff_extinc[band]:.3f}")
-            print(f"    Saturation limit: {survey.saturation[band]:.1f} mag")
-            print(f"    Systematic error: {survey.sys_error[band]:.4f} mag")
+        if verbose:
+            print("\nSurvey properties summary:")
+            for band in survey.bands:
+                print(f"  {band}-band:")
+                print(f"    Extinction coefficient: {survey.coeff_extinc[band]:.3f}")
+                print(f"    Saturation limit: {survey.saturation[band]:.1f} mag")
+                print(f"    Systematic error: {survey.sys_error[band]:.4f} mag")
 
-        print("\n" + "=" * 70)
-        print("SURVEY DATA LOADED SUCCESSFULLY")
-        print("=" * 70 + "\n")
+            print("\n" + "=" * 70)
+            print("SURVEY DATA LOADED SUCCESSFULLY")
+            print("=" * 70 + "\n")
 
     @classmethod
     def _find_file(
@@ -795,6 +1184,8 @@ class SurveyFactory:
         loader_func: Callable,
         data_path_survey: str,
         data_path_others: str = None,
+        filename: str = None,
+        **kwargs,
     ):
         """
         Load a single data file and attach it to the survey object.
@@ -815,12 +1206,20 @@ class SurveyFactory:
             Primary directory containing the data files.
         data_path_others : str, optional
             Fallback directory for shared data files.
+        filename : str, optional
+            Override filename from config.
+        **kwargs
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
         """
+        verbose = kwargs.get("verbose", True)
         # Get filename from config
-        filename = config.get(attr_name)
+        if filename is None:
+            filename = config.get(attr_name)
 
         if filename is None:
-            print(f"  ⚠ Warning: '{attr_name}' not specified in config (skipping)")
+            if verbose:
+                print(f"  ⚠ Warning: '{attr_name}' not specified in config (skipping)")
             return
 
         # Find file in data paths
@@ -829,18 +1228,22 @@ class SurveyFactory:
         )
 
         if full_path is None:
-            print(f"  ✗ {description}: File not found - {filename}")
+            if verbose:
+                print(f"  ✗ {description}: File not found - {filename}")
             return
 
         # Load the file
         try:
-            print(f"  Loading {description}...")
-            print(f"    File: {filename}")
+            if verbose:
+                print(f"  Loading {description}...")
+                print(f"    File: {filename}")
             data = loader_func(full_path)
             setattr(survey, attr_name, data)
-            print(f"    ✓ Success")
+            if verbose:
+                print(f"    ✓ Success")
         except Exception as e:
-            print(f"    ✗ Failed to load {attr_name}: {e}")
+            if verbose:
+                print(f"    ✗ Failed to load {attr_name}: {e}")
             setattr(survey, attr_name, None)
 
     @staticmethod
@@ -865,6 +1268,12 @@ class SurveyFactory:
         nest = False  # by default set to True in hsp, but to False in healpy
         map_hpx = hsp_map.generate_healpix_map(nside=nside_sparse, nest=nest)
         map_hpx = np.where(map_hpx == hp.UNSEEN, np.nan, map_hpx)
+
+        map_min, map_max = kwargs.get("map_min", None), kwargs.get("map_max", None)
+        if map_min is not None:
+            map_hpx = np.where(map_hpx < map_min, np.nan, map_hpx)
+        if map_max is not None:
+            map_hpx = np.where(map_hpx > map_max, np.nan, map_hpx)
 
         return map_hpx
 
@@ -916,7 +1325,7 @@ class SurveyFactory:
 
         # Select efficiency column based on user choice
         if selection == "detected":
-            efficiencies = data["eff_star"]
+            efficiencies = data["detection_eff"]
         elif selection == "classified":
             efficiencies = data["classifiction_eff"]
         elif selection == "both":
@@ -1000,7 +1409,7 @@ class SurveyFactory:
         return interpolator
 
     @classmethod
-    def _build_coverage_map(cls, survey: Survey):
+    def _build_coverage_map(cls, survey: Survey, **kwargs):
         """
         Build coverage map from magnitude limit maps.
 
@@ -1011,6 +1420,9 @@ class SurveyFactory:
         ----------
         survey : Survey
             Survey object with loaded magnitude limit maps.
+        **kwargs
+            verbose : bool, optional
+                Whether to print progress messages. Default is True.
 
         Returns
         -------
@@ -1018,6 +1430,7 @@ class SurveyFactory:
             HEALPix coverage map (1=observed, 0=not observed), or None if no
             magnitude limit maps are available.
         """
+        verbose = kwargs.get("verbose", True)
         nside = None
         coverage_map = None
 
@@ -1031,7 +1444,10 @@ class SurveyFactory:
                 nside = nside_candidate
 
         if nside is None:
-            print("  ⚠ Warning: No magnitude limit maps found, cannot build coverage")
+            if verbose:
+                print(
+                    "  ⚠ Warning: No magnitude limit maps found, cannot build coverage"
+                )
             return None
 
         # Initialize coverage map as all True
@@ -1056,8 +1472,9 @@ class SurveyFactory:
 
         # Convert boolean to float (1.0 = covered, 0.0 = not covered)
         survey.coverage = coverage_map.astype(float)
-        print(
-            f"  ✓ Built coverage map (nside={nside}, {np.sum(coverage_map)} pixels covered)"
-        )
+        if verbose:
+            print(
+                f"  ✓ Built coverage map (nside={nside}, {np.sum(coverage_map)} pixels covered)"
+            )
 
         return survey.coverage

@@ -11,21 +11,24 @@ survey_files:
 
     # Band-independent maps
     ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits
-    completeness: stellar_efficiency_cutr.csv
-    log_photo_error: photoerror_r.csv
+    completeness: lsst_stellar_efficiency_cutr.csv
+    log_photo_error: lsst_photoerror_r.csv
     #coverage: supreme_dc2_dr6d_v3_gr_fracdet.fits.gz # Optional coverage map, if not provided, coverage is built using maglim maps
 
 survey_properties: 
   bands: ['u', 'g', 'r', 'i', 'z', 'y']
 
   # Extinction coefficients per band (A_band / E(B-V)) 
-  # from Tab 6 of https://iopscience.iop.org/article/10.1088/0004-637X/737/2/103/pdf
-  coeff_extinc_u: 4.145
-  coeff_extinc_g: 3.237
-  coeff_extinc_r: 2.273
-  coeff_extinc_i: 1.684 
-  coeff_extinc_z: 1.323 
-  coeff_extinc_y: 1.088
+  # From rubin_sim (verions = 2.6.0, baseline version = 5.0.0)
+  # from rubin_sim.phot_utils import DustValues
+  # dust_values = DustValues()
+  # print(dust_values.r_x)
+  coeff_extinc_u: 4.757217815396922
+  coeff_extinc_g: 3.6605664439892625
+  coeff_extinc_r: 2.70136780871597
+  coeff_extinc_i: 2.0536599130965882
+  coeff_extinc_z: 1.5900964472616756
+  coeff_extinc_y: 1.3077049588254708
 
   # Systematic photometric errors (mag), or could be specified as sys_error_g, sys_error_r, etc
   sys_error : 0.005 # Error common to all bands
