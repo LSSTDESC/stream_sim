@@ -318,3 +318,32 @@ def plot_stream_in_mask(ra,dec,mask, nest=False, output_folder = None):
             plt.savefig(filename)
         
     return fig, ax
+
+
+def plot_healsparse_map(map):
+    if isinstance(map, np.ndarray): # healpix map
+        healpix_map = map
+    elif isinstance(map, str): # filename
+        healpix_map = hp.read_map(map, verbose=False)
+    elif 'healsparse' in globals():
+       import healsparse as hsp
+       if isinstance(map, hsp.HealSparseMap):
+           healsparse_map = map
+           nside_sparse = healsparse_map.nside_sparse 
+           nest = False  
+           healpix_map = healsparse_map.generate_healpix_map(nside=nside_sparse,nest=nest)
+    else:
+        raise ValueError("map must be a healpix map array, filename, or HealSparseMap object")
+         
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sp = skyproj.McBrydeSkyproj(ax=ax)
+    sp.draw_hpxmap(healpix_map, nest=False)
+    plt.colorbar()   
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def plot_maglim(maglim_map):
+    fig, ax = plot_healsparse_map(maglim_map)
+    return fig, ax

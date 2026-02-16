@@ -31,7 +31,7 @@ python bin/download_data.py --force         # Re-download/overwrite
 python bin/download_data.py --data-dir DIR  # Custom install location
 ```
 
-For troubleshooting and data structure, see [Citation](data.md).
+For troubleshooting and data structure, see [StreamSim Data Files](data.md).
 
 ## Dependences
 

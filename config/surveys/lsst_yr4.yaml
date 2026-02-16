@@ -1,13 +1,13 @@
 # Configuration file for the survey LSST
 name: lsst
-release: yr1
+release: yr4
 survey_files: 
     # Path to data files (leave empty for default location)
     file_path: ''
 
     # Band-specific magnitude limit maps
-    maglim_map_g: baseline_v5.0.0_year_1.0_band_g_nside_128.hsp
-    maglim_map_r: baseline_v5.0.0_year_1.0_band_r_nside_128.hsp
+    maglim_map_g: baseline_v5.0.0_year_4.0_band_g_nside_128.hsp
+    maglim_map_r: baseline_v5.0.0_year_4.0_band_r_nside_128.hsp
 
     # Band-independent maps
     ebv_map: ebv_sfd98_lowres_nside_512_ring_equatorial.fits
@@ -36,4 +36,4 @@ survey_properties:
 
   # Saturation limits per band, or could be specified as saturation_g, saturation_r, etc
   saturation: 16.0
-  saturation_u: 15.0  # Override for u-band
+  #saturation_u: 15.0  # Override for u-band
