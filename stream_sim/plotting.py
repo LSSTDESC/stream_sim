@@ -75,7 +75,7 @@ def plot_stream(phi1, phi2):
 ###############################################################################
 
 
-def plot_inject(data, survey, bands=None, **kwargs):
+def plot_inject(data, survey, bands=None,range=None, **kwargs):
     """
     Plot injection results showing observed vs unobserved stars.
     
@@ -147,10 +147,14 @@ def plot_inject(data, survey, bands=None, **kwargs):
     try:
         maglim_map = survey.maglim_maps[band1]
         nside = hp.get_nside(maglim_map)
-        
-        # Determine RA/Dec range from data with some padding
-        ra_min, ra_max = data['ra'].min() - 5, data['ra'].max() + 5
-        dec_min, dec_max = data['dec'].min() - 5, data['dec'].max() + 5
+
+        if range is not None:
+            ra_min, ra_max = range[0], range[1]
+            dec_min, dec_max = range[2], range[3]
+        else:
+            # Determine RA/Dec range from data with some padding
+            ra_min, ra_max = data['ra'].min() - 5, data['ra'].max() + 5
+            dec_min, dec_max = data['dec'].min() - 5, data['dec'].max() + 5
         
         # Create grid for the map
         x = np.linspace(ra_min, ra_max, 200)
@@ -162,6 +166,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
         ZZ[ZZ < 0] = np.nan  # Mask invalid pixels
         
         # Plot magnitude limit map
+        # PF: I would consider using skyproj for this spatial plot to get a proper sky projection
         mesh = ax[0].pcolormesh(XX, YY, ZZ, shading="auto", cmap='viridis')
         fig.colorbar(mesh, ax=ax[0], label=f"Mag Limit ({band1})")
         
@@ -181,6 +186,7 @@ def plot_inject(data, survey, bands=None, **kwargs):
         color="red",
         label="Observed",
     )
+    ax[0].invert_xaxis()
     ax[0].set_xlabel("RA (deg)")
     ax[0].set_ylabel("Dec (deg)")
     ax[0].legend()

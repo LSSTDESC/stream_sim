@@ -131,3 +131,4 @@ dmypy.json
 # Surveys files
 data/surveys/*
 data/others/*
+.DS_Store
