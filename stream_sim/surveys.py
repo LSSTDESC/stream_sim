@@ -1055,7 +1055,7 @@ class SurveyFactory:
                     "Detection efficiency function",
                     lambda f: cls.set_completeness(
                         f,
-                        delta_saturation=default_delta_saturation,
+                        delta_saturation=survey.delta_saturation,
                         selection="detected",
                     ),
                     data_path_survey,
@@ -1078,7 +1078,7 @@ class SurveyFactory:
                     "Classification efficiency function",
                     lambda f: cls.set_completeness(
                         f,
-                        delta_saturation=default_delta_saturation,
+                        delta_saturation=survey.delta_saturation,
                         selection="classified",
                     ),
                     data_path_survey,
