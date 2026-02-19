@@ -147,8 +147,8 @@ class StreamInjector:
         pix = hp.ang2pix(nside, data["ra"], data["dec"], lonlat=True)
 
         # Initialize detection flags (will be updated per band)
-        flag_completeness_r = None
-        flag_detection_only_r = None
+        flag_completeness_band = None
+        flag_detection_only_band = None
 
         # Process each band
         for band in bands:
@@ -224,13 +224,23 @@ class StreamInjector:
             if band == self.survey.completeness_band:
                 flag_completeness_band = self.detect_flag(
                     pix_maglim,
-                    mag=data["mag_" + band] + extinction_band,
+                    mag=apparent_mag_true,
                     band=band,
                     rng=rng,
                     seed=seed,
                     perfect_galstarsep=False,
                     **kwargs,
                 )
+                if perfect_galstarsep:
+                    flag_detection_only_band = self.detect_flag(
+                        pix_maglim,
+                        mag=apparent_mag_true,
+                        band=band,
+                        rng=rng,
+                        seed=seed,
+                        perfect_galstarsep=True,
+                        **kwargs,
+                    )
 
         # Apply detection threshold
         if flag_completeness_band is None:
@@ -241,12 +251,6 @@ class StreamInjector:
             else:
                 raise ValueError(f"Detection flag requires '{self.survey.completeness_band}' band to be in bands.")
 
-        # Check for negative fluxes (set to 'BAD_MAG')
-        flag_r = data["mag_r_obs"] != "BAD_MAG"
-
-        # Combine flags
-        flag_observed = flag_r & flag_completeness_band
-
         # Build combined detection flags
         # Start with flux validity check (not BAD_MAG)
         flag_valid_flux = data["mag_r_obs"] != "BAD_MAG"
@@ -254,9 +258,9 @@ class StreamInjector:
             flag_valid_flux &= data["mag_g_obs"] != "BAD_MAG"
 
         # Combine with completeness
-        flag_observed = flag_valid_flux & flag_completeness_r
+        flag_observed = flag_valid_flux & flag_completeness_band if flag_completeness_band is not None else flag_valid_flux 
         if perfect_galstarsep:
-            flag_perfect = flag_valid_flux & flag_detection_only_r
+            flag_perfect = flag_valid_flux & flag_detection_only_band if flag_detection_only_band is not None else flag_valid_flux
 
         # Apply SNR cuts
         detection_mag_cut = kwargs.get("detection_mag_cut", ["g"])
