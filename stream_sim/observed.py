@@ -224,7 +224,7 @@ class StreamInjector:
             if band == self.survey.completeness_band:
                 flag_completeness_band = self.detect_flag(
                     pix_maglim,
-                    mag=data["mag_" + band] + extinction_band,
+                    mag=apparent_mag_true,
                     band=band,
                     rng=rng,
                     seed=seed,
@@ -234,7 +234,7 @@ class StreamInjector:
                 if perfect_galstarsep:
                     flag_detection_only_band = self.detect_flag(
                         pix_maglim,
-                        mag=data["mag_" + band] + extinction_band,
+                        mag=apparent_mag_true,
                         band=band,
                         rng=rng,
                         seed=seed,
