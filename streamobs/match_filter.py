@@ -100,39 +100,53 @@ def _get_default_errors(survey=None, release=None):
             "baseline_error": 0.001,
             "exp_pivot": 27.09,
             "exp_scale": 1.09,
-        } # DES 2018: https://arxiv.org/pdf/1801.03097
-        if release=="yr6":
-            default_errors = {'baseline_error': 0.0048165602901473065, 
-                              'exp_pivot': 26.622941095709994, 
-                              'exp_scale': 0.9228496000874585
-                              } # Fitted on DES Y6 catalog error model
-    elif survey =="lsst":
-        if release=="yr1":
-            default_errors = {'baseline_error': 0.004800818381447672, 
-                              'exp_pivot': 26.880468738326915, 
-                              'exp_scale': 0.9450932038257565} # Fitted on LSST Y1 catalog error model
-        elif release=="yr4":
-            default_errors = {'baseline_error': 0.004832499118223667, 
-                              'exp_pivot': 27.702832261572617, 
-                              'exp_scale': 0.94286492190896} # Fitted on LSST Y4 catalog error model
-        elif release=="yr5":
-            default_errors = {'baseline_error': 0.00483623259650458,
-                              'exp_pivot': 27.81736043093501,
-                              'exp_scale': 0.9425830473455459} # Fitted on LSST Y5 catalog error model
-    elif survey =="euclid":
-        default_errors = {'baseline_error': 0.004973059252368059,
-                          'exp_pivot': 29.272651474700446,
-                          'exp_scale': 1.299322205107494} # Fitted on Euclid catalog error model
-    elif survey =="roman":
-        default_errors = {'baseline_error': 0.004861259453700118,
-                          'exp_pivot': 29.055127840569437,
-                          'exp_scale': 1.3447251265254792} # Fitted on Roman catalog error model (DC2)
-    elif survey =="delve":
-        default_errors = {{'baseline_error': 0.010145299219516157,
-                           'exp_pivot': 25.719668020083876, 
-                           'exp_scale': 0.7769367685720466}} # Fitted on DELVE DR3 Gold catalog error model
+        }  # DES 2018: https://arxiv.org/pdf/1801.03097
+        if release == "yr6":
+            default_errors = {
+                "baseline_error": 0.0048165602901473065,
+                "exp_pivot": 26.622941095709994,
+                "exp_scale": 0.9228496000874585,
+            }  # Fitted on DES Y6 catalog error model
+    elif survey == "lsst":
+        if release == "yr1":
+            default_errors = {
+                "baseline_error": 0.004800818381447672,
+                "exp_pivot": 26.880468738326915,
+                "exp_scale": 0.9450932038257565,
+            }  # Fitted on LSST Y1 catalog error model
+        elif release == "yr4":
+            default_errors = {
+                "baseline_error": 0.004832499118223667,
+                "exp_pivot": 27.702832261572617,
+                "exp_scale": 0.94286492190896,
+            }  # Fitted on LSST Y4 catalog error model
+        elif release == "yr5":
+            default_errors = {
+                "baseline_error": 0.00483623259650458,
+                "exp_pivot": 27.81736043093501,
+                "exp_scale": 0.9425830473455459,
+            }  # Fitted on LSST Y5 catalog error model
+    elif survey == "euclid":
+        default_errors = {
+            "baseline_error": 0.004973059252368059,
+            "exp_pivot": 29.272651474700446,
+            "exp_scale": 1.299322205107494,
+        }  # Fitted on Euclid catalog error model
+    elif survey == "roman":
+        default_errors = {
+            "baseline_error": 0.004861259453700118,
+            "exp_pivot": 29.055127840569437,
+            "exp_scale": 1.3447251265254792,
+        }  # Fitted on Roman catalog error model (DC2)
+    elif survey == "delve":
+        default_errors = {
+            {
+                "baseline_error": 0.010145299219516157,
+                "exp_pivot": 25.719668020083876,
+                "exp_scale": 0.7769367685720466,
+            }
+        }  # Fitted on DELVE DR3 Gold catalog error model
     return default_errors
-
 
 
 def error_model(

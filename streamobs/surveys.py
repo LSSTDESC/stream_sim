@@ -1297,7 +1297,9 @@ class SurveyFactory:
                 survey.maglim_maps[band] = None
 
             # Process the maglim map to handle saturation and NaNs
-            survey.maglim_maps[band] = cls._process_maglim_map(survey.maglim_maps[band], map_min=survey.saturation[band])
+            survey.maglim_maps[band] = cls._process_maglim_map(
+                survey.maglim_maps[band], map_min=survey.saturation[band]
+            )
 
         # Load completeness function (same for all bands)
         if verbose:
@@ -1656,7 +1658,7 @@ class SurveyFactory:
 
         if maglim_map is None:
             return None
-        
+
         maglim_map = np.where(maglim_map == hp.UNSEEN, np.nan, maglim_map)
 
         map_min, map_max = kwargs.get("map_min", None), kwargs.get("map_max", None)
