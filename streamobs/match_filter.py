@@ -56,17 +56,6 @@ DEFAULT_ERROR_MULTIPLIER = [2.0, 2.0]  # Error scaling [blue_side, red_side]
 MSTO_ABSOLUTE_MAG = 3.5
 DEFAULT_RGB_CLIP_MAG = 0.2  # Clip RGB at (MSTO - 0.2) mag
 
-default_errors_des2018 = {
-    "baseline_error": 0.001,
-    "exp_pivot": 27.09,
-    "exp_scale": 1.09,
-}
-default_errors = {
-    "baseline_error": 0.004775486092612673,
-    "exp_pivot": 28.421419633248796,
-    "exp_scale": 1.0011829218659076,
-}  # fitted on DC2 mag err
-
 # Per-survey defaults for color_min/color_max clipping applied to spline edges.
 # These keep the polygon bounded regardless of the exponential error model.
 # For LSST g-r the MS+RGB locus lives in [~0, ~0.7]; we allow [-0.5, 1.5].
@@ -96,11 +85,54 @@ _DEFAULT_APP_MAG_MAX = 30.0
 _POLYGON_GRID_POINTS = 200
 
 
+def _get_default_errors(survey=None, release=None):
+    """
+    Return default photometric error model parameters for a given survey and release.
+    """
+    default_errors = {
+        "baseline_error": 0.004775486092612673,
+        "exp_pivot": 28.421419633248796,
+        "exp_scale": 1.0011829218659076,
+    }  # fitted on DC2 mag err
+    survey = (survey or "").lower()
+    if survey == "des":
+        default_errors = {
+            "baseline_error": 0.001,
+            "exp_pivot": 27.09,
+            "exp_scale": 1.09,
+        } # DES 2018: https://arxiv.org/pdf/1801.03097
+        if release=="yr6":
+            default_errors = {'baseline_error': 0.0048165602901473065, 
+                              'exp_pivot': 26.622941095709994, 
+                              'exp_scale': 0.9228496000874585
+                              } # Fitted on DES Y6 catalog error model
+    elif survey =="lsst":
+        if release=="yr1":
+            default_errors = {'baseline_error': 0.004800818381447672, 
+                              'exp_pivot': 26.880468738326915, 
+                              'exp_scale': 0.9450932038257565} # Fitted on LSST Y1 catalog error model
+        elif release=="yr4":
+            default_errors = {'baseline_error': 0.004832499118223667, 
+                              'exp_pivot': 27.702832261572617, 
+                              'exp_scale': 0.94286492190896} # Fitted on LSST Y4 catalog error model
+    elif survey =="euclid":
+        default_errors = {'baseline_error': 0.004973059252368059,
+                          'exp_pivot': 29.272651474700446,
+                          'exp_scale': 1.299322205107494} # Fitted on Euclid catalog error model
+    elif survey =="roman":
+        default_errors = {'baseline_error': 0.004861259453700118,
+                          'exp_pivot': 29.055127840569437,
+                          'exp_scale': 1.3447251265254792} # Fitted on Roman catalog error model (DC2)
+
+    return default_errors
+
+
+
 def error_model(
     magnitude,
-    baseline_error=default_errors["baseline_error"],
-    exp_pivot=default_errors["exp_pivot"],
-    exp_scale=default_errors["exp_scale"],
+    baseline_error=_get_default_errors()["baseline_error"],
+    exp_pivot=_get_default_errors()["exp_pivot"],
+    exp_scale=_get_default_errors()["exp_scale"],
     verbose=False,
 ):
     """Compute the median photometric error as a function of magnitude.
@@ -326,6 +358,7 @@ def build_match_filter(
     band_2="r",
     survey_1=None,
     survey_2=None,
+    release=None,
 ):
     """Build an isochrone matched-filter polygon in color-magnitude space.
 
@@ -374,7 +407,8 @@ def build_match_filter(
     verbose : bool, optional
         Print diagnostic information.
     error_kwargs : dict, optional
-        Extra keyword arguments forwarded to :func:`error_model`.
+        Extra keyword arguments forwarded to :func:`error_model`, overriding
+        the calibrated error model of ``survey_1`` / ``release``.
     survey : str, optional
         Survey (ugali filter set) of both bands, unless ``survey_1`` /
         ``survey_2`` say otherwise.
@@ -391,8 +425,11 @@ def build_match_filter(
         Surveys (ugali filter sets) of ``band_1`` and ``band_2``; ``survey``
         if omitted. They may differ, for a colour across surveys, e.g.
         ``band_1='g', survey_1='des', band_2='VIS', survey_2='euclid'`` for
-        DES g − Euclid VIS against DES g. The per-survey color clip limits
-        and absolute-magnitude cut are those of ``survey_1``.
+        DES g − Euclid VIS against DES g. The per-survey color clip limits,
+        absolute-magnitude cut and error model are those of ``survey_1``.
+    release : str, optional
+        Release of ``survey_1`` (e.g. ``'yr6'`` for DES), selecting its
+        calibrated error model (:func:`_get_default_errors`).
 
     Returns
     -------
@@ -408,9 +445,9 @@ def build_match_filter(
     - The isochrone is in AB for every survey (ugali converts Roman from Vega
       when reading it), so the polygon is in the same photometric system as
       the data.
-    - The color error is a single curve (:func:`error_model`, tuned with
-      ``error_kwargs``) evaluated at the band_1 magnitude, also for a colour
-      across surveys.
+    - The color error is a single curve (:func:`error_model`, calibrated on
+      ``survey_1`` / ``release`` and tuned with ``error_kwargs``) evaluated at
+      the band_1 magnitude, also for a colour across surveys.
     """
     survey_1 = survey if survey_1 is None else survey_1
     survey_2 = survey if survey_2 is None else survey_2
@@ -441,7 +478,10 @@ def build_match_filter(
 
     # --- Build spline-based color boundaries ---
     # The err callable accepts apparent magnitudes; we wrap error_model with
-    # any user-supplied error_kwargs.
+    # the calibrated survey_1/release parameters and any user-supplied
+    # error_kwargs.
+    error_kwargs = {**_get_default_errors(survey_lower, release), **error_kwargs}
+
     def _err(m):
         return error_model(m, **error_kwargs)
 
