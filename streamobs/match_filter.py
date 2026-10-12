@@ -115,6 +115,10 @@ def _get_default_errors(survey=None, release=None):
             default_errors = {'baseline_error': 0.004832499118223667, 
                               'exp_pivot': 27.702832261572617, 
                               'exp_scale': 0.94286492190896} # Fitted on LSST Y4 catalog error model
+        elif release=="yr5":
+            default_errors = {'baseline_error': 0.00483623259650458,
+                              'exp_pivot': 27.81736043093501,
+                              'exp_scale': 0.9425830473455459} # Fitted on LSST Y5 catalog error model
     elif survey =="euclid":
         default_errors = {'baseline_error': 0.004973059252368059,
                           'exp_pivot': 29.272651474700446,
@@ -123,7 +127,10 @@ def _get_default_errors(survey=None, release=None):
         default_errors = {'baseline_error': 0.004861259453700118,
                           'exp_pivot': 29.055127840569437,
                           'exp_scale': 1.3447251265254792} # Fitted on Roman catalog error model (DC2)
-
+    elif survey =="delve":
+        default_errors = {{'baseline_error': 0.010145299219516157,
+                           'exp_pivot': 25.719668020083876, 
+                           'exp_scale': 0.7769367685720466}} # Fitted on DELVE DR3 Gold catalog error model
     return default_errors
 
 
