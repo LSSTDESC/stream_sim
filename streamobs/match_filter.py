@@ -66,7 +66,8 @@ _SURVEY_COLOR_LIMITS = {
     "des": (-0.5, 1.5),
     "sdss": (-0.5, 1.5),
     "roman": (-0.5, 1.5),
-    "default": (-0.5, 1.5),
+    "euclid": (-0.5, 1.),
+    "default": (-0.5, 2.0), # wider for unknown surveys to avoid issue for combined colors for example
 }
 
 # Per-survey bright absolute magnitude cut (points brighter are noisier/RGB clutter)
@@ -371,6 +372,7 @@ def build_match_filter(
     rgb_clip_mag=DEFAULT_RGB_CLIP_MAG,
     color_cut=True,
     red_cap_mode="error_shrunk",
+    red_cap_value=None,
     verbose=False,
     error_kwargs={},
     survey="lsst",
@@ -425,6 +427,8 @@ def build_match_filter(
           at the near edge so the polygon stays simple instead of
           self-crossing.
         - ``'constant'``: cap at ``color_max - 0.25`` at all magnitudes.
+    red_cap_value : float, optional
+        If provided, overrides the default red cap value.
     verbose : bool, optional
         Print diagnostic information.
     error_kwargs : dict, optional
@@ -549,7 +553,10 @@ def build_match_filter(
     # Optional color cut: cap the red (far) edge so the polygon does not
     # extend to very red stars.
     if color_cut:
-        red_cap = color_max - 0.25
+        if red_cap_value is not None:
+            red_cap = red_cap_value
+        else:
+            red_cap = color_max - 0.25
         if red_cap_mode == "constant":
             far_colors = np.minimum(far_colors, red_cap)
         elif red_cap_mode == "error_shrunk":
