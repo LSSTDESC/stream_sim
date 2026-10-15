@@ -1296,6 +1296,11 @@ class SurveyFactory:
                     print(f"    ✗ Failed to load {band}-band maglim map: {e}")
                 survey.maglim_maps[band] = None
 
+            # Process the maglim map to handle saturation and NaNs
+            survey.maglim_maps[band] = cls._process_maglim_map(
+                survey.maglim_maps[band], map_min=survey.saturation[band]
+            )
+
         # Load completeness function (same for all bands)
         if verbose:
             print("\nLoading completeness/efficiency function...")
@@ -1632,15 +1637,37 @@ class SurveyFactory:
         nside_sparse = hsp_map.nside_sparse
         nest = False  # by default set to True in hsp, but to False in healpy
         map_hpx = hsp_map.generate_healpix_map(nside=nside_sparse, nest=nest)
-        map_hpx = np.where(map_hpx == hp.UNSEEN, np.nan, map_hpx)
+        return map_hpx
+
+    @staticmethod
+    def _process_maglim_map(maglim_map, **kwargs):
+        """
+        Process the magnitude limit map for a given band.
+
+        This method applies any necessary transformations or checks on the
+        magnitude limit map, such as ensuring that the map is in the correct
+        format and that it has valid values.
+
+        Parameters
+        ----------
+        survey : Survey
+            The survey object containing the magnitude limit maps.
+        band : str
+            The band for which to process the magnitude limit map.
+        """
+
+        if maglim_map is None:
+            return None
+
+        maglim_map = np.where(maglim_map == hp.UNSEEN, np.nan, maglim_map)
 
         map_min, map_max = kwargs.get("map_min", None), kwargs.get("map_max", None)
         if map_min is not None:
-            map_hpx = np.where(map_hpx < map_min, np.nan, map_hpx)
+            maglim_map = np.where(maglim_map < map_min, np.nan, maglim_map)
         if map_max is not None:
-            map_hpx = np.where(map_hpx > map_max, np.nan, map_hpx)
+            maglim_map = np.where(maglim_map > map_max, np.nan, maglim_map)
 
-        return map_hpx
+        return maglim_map
 
     @staticmethod
     def set_completeness(filename, selection="both"):

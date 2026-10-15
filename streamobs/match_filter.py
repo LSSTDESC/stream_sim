@@ -8,7 +8,7 @@ import scipy.interpolate
 from matplotlib.path import Path
 from ugali.analysis.isochrone import factory as isochrone_factory
 
-from streamobs.model import ROMAN_VEGA_TO_AB
+from streamobs.model import IsochroneModel
 
 """
 Match filter module for stellar stream analysis.
@@ -56,17 +56,6 @@ DEFAULT_ERROR_MULTIPLIER = [2.0, 2.0]  # Error scaling [blue_side, red_side]
 MSTO_ABSOLUTE_MAG = 3.5
 DEFAULT_RGB_CLIP_MAG = 0.2  # Clip RGB at (MSTO - 0.2) mag
 
-default_errors_des2018 = {
-    "baseline_error": 0.001,
-    "exp_pivot": 27.09,
-    "exp_scale": 1.09,
-}
-default_errors = {
-    "baseline_error": 0.004775486092612673,
-    "exp_pivot": 28.421419633248796,
-    "exp_scale": 1.0011829218659076,
-}  # fitted on DC2 mag err
-
 # Per-survey defaults for color_min/color_max clipping applied to spline edges.
 # These keep the polygon bounded regardless of the exponential error model.
 # For LSST g-r the MS+RGB locus lives in [~0, ~0.7]; we allow [-0.5, 1.5].
@@ -77,7 +66,8 @@ _SURVEY_COLOR_LIMITS = {
     "des": (-0.5, 1.5),
     "sdss": (-0.5, 1.5),
     "roman": (-0.5, 1.5),
-    "default": (-0.5, 1.5),
+    "euclid": (-0.5, 1.),
+    "default": (-0.5, 2.0), # wider for unknown surveys to avoid issue for combined colors for example
 }
 
 # Per-survey bright absolute magnitude cut (points brighter are noisier/RGB clutter)
@@ -96,11 +86,75 @@ _DEFAULT_APP_MAG_MAX = 30.0
 _POLYGON_GRID_POINTS = 200
 
 
+def _get_default_errors(survey=None, release=None):
+    """
+    Return default photometric error model parameters for a given survey and release.
+    """
+    default_errors = {
+        "baseline_error": 0.004775486092612673,
+        "exp_pivot": 28.421419633248796,
+        "exp_scale": 1.0011829218659076,
+    }  # fitted on DC2 mag err
+    survey = (survey or "").lower()
+    if survey == "des":
+        default_errors = {
+            "baseline_error": 0.001,
+            "exp_pivot": 27.09,
+            "exp_scale": 1.09,
+        }  # DES 2018: https://arxiv.org/pdf/1801.03097
+        if release == "yr6":
+            default_errors = {
+                "baseline_error": 0.0048165602901473065,
+                "exp_pivot": 26.622941095709994,
+                "exp_scale": 0.9228496000874585,
+            }  # Fitted on DES Y6 catalog error model
+    elif survey == "lsst":
+        if release == "yr1":
+            default_errors = {
+                "baseline_error": 0.004800818381447672,
+                "exp_pivot": 26.880468738326915,
+                "exp_scale": 0.9450932038257565,
+            }  # Fitted on LSST Y1 catalog error model
+        elif release == "yr4":
+            default_errors = {
+                "baseline_error": 0.004832499118223667,
+                "exp_pivot": 27.702832261572617,
+                "exp_scale": 0.94286492190896,
+            }  # Fitted on LSST Y4 catalog error model
+        elif release == "yr5":
+            default_errors = {
+                "baseline_error": 0.00483623259650458,
+                "exp_pivot": 27.81736043093501,
+                "exp_scale": 0.9425830473455459,
+            }  # Fitted on LSST Y5 catalog error model
+    elif survey == "euclid":
+        default_errors = {
+            "baseline_error": 0.004973059252368059,
+            "exp_pivot": 29.272651474700446,
+            "exp_scale": 1.299322205107494,
+        }  # Fitted on Euclid catalog error model
+    elif survey == "roman":
+        default_errors = {
+            "baseline_error": 0.004861259453700118,
+            "exp_pivot": 29.055127840569437,
+            "exp_scale": 1.3447251265254792,
+        }  # Fitted on Roman catalog error model (DC2)
+    elif survey == "delve":
+        default_errors = {
+            {
+                "baseline_error": 0.010145299219516157,
+                "exp_pivot": 25.719668020083876,
+                "exp_scale": 0.7769367685720466,
+            }
+        }  # Fitted on DELVE DR3 Gold catalog error model
+    return default_errors
+
+
 def error_model(
     magnitude,
-    baseline_error=default_errors["baseline_error"],
-    exp_pivot=default_errors["exp_pivot"],
-    exp_scale=default_errors["exp_scale"],
+    baseline_error=_get_default_errors()["baseline_error"],
+    exp_pivot=_get_default_errors()["exp_pivot"],
+    exp_scale=_get_default_errors()["exp_scale"],
     verbose=False,
 ):
     """Compute the median photometric error as a function of magnitude.
@@ -274,6 +328,40 @@ def build_filter_splines(
     return spline_near, spline_far
 
 
+def _isochrone_locus(
+    isochrone_model, age, metallicity, band_1, survey_1, band_2, survey_2
+):
+    """Isochrone colour (band_1 − band_2) and absolute band_1 magnitude.
+
+    Both bands from one survey: ``ugali``'s own colour and magnitude. Bands
+    from two surveys: one isochrone per filter set (same population), with
+    band_2 interpolated in initial mass at band_1's isochrone points — the
+    files of two filter sets do not share their mass points — the same way the
+    injected true magnitudes are computed.
+    """
+    if survey_1.lower() == survey_2.lower():
+        isochrone = isochrone_factory(
+            isochrone_model,
+            age=age,
+            z=metallicity,
+            survey=survey_1,
+            band_1=band_1,
+            band_2=band_2,
+        )
+        return isochrone.color, isochrone.mag
+
+    iso_1, iso_2 = (
+        isochrone_factory(
+            isochrone_model, age=age, z=metallicity, survey=s, band_1=b, band_2=b
+        )
+        for s, b in ((survey_1, band_1), (survey_2, band_2))
+    )
+    sel = slice(iso_1.index)
+    mag_1 = iso_1.data[band_1][sel]
+    mag_2 = IsochroneModel._absolute_mags(iso_2, iso_1.mass_init[sel], [band_2])[band_2]
+    return mag_1 - mag_2, mag_1
+
+
 def build_match_filter(
     distance_modulus,
     age=DEFAULT_AGE_GYR,
@@ -284,12 +372,16 @@ def build_match_filter(
     rgb_clip_mag=DEFAULT_RGB_CLIP_MAG,
     color_cut=True,
     red_cap_mode="error_shrunk",
+    red_cap_value=None,
     verbose=False,
     error_kwargs={},
     survey="lsst",
     isochrone_model="Marigo2017",
     band_1="g",
     band_2="r",
+    survey_1=None,
+    survey_2=None,
+    release=None,
 ):
     """Build an isochrone matched-filter polygon in color-magnitude space.
 
@@ -335,23 +427,34 @@ def build_match_filter(
           at the near edge so the polygon stays simple instead of
           self-crossing.
         - ``'constant'``: cap at ``color_max - 0.25`` at all magnitudes.
+    red_cap_value : float, optional
+        If provided, overrides the default red cap value.
     verbose : bool, optional
         Print diagnostic information.
     error_kwargs : dict, optional
-        Extra keyword arguments forwarded to :func:`error_model`.
+        Extra keyword arguments forwarded to :func:`error_model`, overriding
+        the calibrated error model of ``survey_1`` / ``release``.
     survey : str, optional
-        Survey name passed to the ugali isochrone factory.  Also controls
-        per-survey color clip limits and absolute-magnitude cuts.
+        Survey (ugali filter set) of both bands, unless ``survey_1`` /
+        ``survey_2`` say otherwise.
     isochrone_model : str, optional
         Ugali isochrone model name (e.g. ``'Marigo2017'``).
     band_1, band_2 : str, optional
         Bands defining the CMD: color = band_1 − band_2, magnitude = band_1.
         Defaults (``'g'``, ``'r'``) preserve the historical LSST behaviour.
         For Roman pass e.g. ``band_1='F106'``, ``band_2='F158'``.
-        Roman isochrone magnitudes are returned by ugali in Vega and are
-        converted to AB here (via the ``ROMAN_VEGA_TO_AB`` table that the
-        injection path uses), so the filter selects on the same photometric
-        system as the injected catalogs.
+        ugali (>= 1.9) returns the isochrone magnitudes in AB (it converts
+        the Vega-based Roman files itself), so the filter selects on the same
+        photometric system as the injected catalogs.
+    survey_1, survey_2 : str, optional
+        Surveys (ugali filter sets) of ``band_1`` and ``band_2``; ``survey``
+        if omitted. They may differ, for a colour across surveys, e.g.
+        ``band_1='g', survey_1='des', band_2='VIS', survey_2='euclid'`` for
+        DES g − Euclid VIS against DES g. The per-survey color clip limits,
+        absolute-magnitude cut and error model are those of ``survey_1``.
+    release : str, optional
+        Release of ``survey_1`` (e.g. ``'yr6'`` for DES), selecting its
+        calibrated error model (:func:`_get_default_errors`).
 
     Returns
     -------
@@ -364,10 +467,16 @@ def build_match_filter(
     Notes
     -----
     - Uses Marigo2017 isochrone models from the ugali package by default.
-    - The Vega→AB conversion for Roman bands is applied before any spline
-      fitting, so the polygon is in the same photometric system as the data.
+    - The isochrone is in AB for every survey (ugali converts Roman from Vega
+      when reading it), so the polygon is in the same photometric system as
+      the data.
+    - The color error is a single curve (:func:`error_model`, calibrated on
+      ``survey_1`` / ``release`` and tuned with ``error_kwargs``) evaluated at
+      the band_1 magnitude, also for a colour across surveys.
     """
-    survey_lower = survey.lower() if isinstance(survey, str) else "default"
+    survey_1 = survey if survey_1 is None else survey_1
+    survey_2 = survey if survey_2 is None else survey_2
+    survey_lower = survey_1.lower() if isinstance(survey_1, str) else "default"
 
     # Look up per-survey color clip limits
     color_min, color_max = _SURVEY_COLOR_LIMITS.get(
@@ -375,24 +484,13 @@ def build_match_filter(
     )
     abs_mag_min = _SURVEY_ABS_MAG_MIN.get(survey_lower, _SURVEY_ABS_MAG_MIN["default"])
 
-    # --- Generate isochrone model ---
-    isochrone = isochrone_factory(
-        isochrone_model,
-        age=age,
-        z=metallicity,
-        survey=survey,
-        band_1=band_1,
-        band_2=band_2,
+    # --- Isochrone locus: color = band_1 - band_2, absolute band_1 magnitude ---
+    # ugali (>= 1.9) returns every isochrone in AB, converting the Vega-based
+    # Roman files itself, so the filter is already in the photometric system of
+    # the catalogs/maglim maps and of the injected stream.
+    isochrone_color, isochrone_absolute_mag = _isochrone_locus(
+        isochrone_model, age, metallicity, band_1, survey_1, band_2, survey_2
     )
-
-    # ugali returns Roman isochrones in Vega; our catalogs/maglim maps are AB.
-    # AB = Vega + offset (a no-op for non-Roman bands) — same convention as
-    # StreamInjector._to_ab, so the filter and the injected stream share one
-    # photometric system.
-    ab_1 = ROMAN_VEGA_TO_AB.get(band_1, 0.0)
-    ab_2 = ROMAN_VEGA_TO_AB.get(band_2, 0.0)
-    isochrone_color = isochrone.color + (ab_1 - ab_2)  # band_1 - band_2
-    isochrone_absolute_mag = isochrone.mag + ab_1  # absolute band_1 magnitude
 
     # --- Optional: Clip the Red Giant Branch ---
     if rgb_clip_mag is not None:
@@ -405,7 +503,10 @@ def build_match_filter(
 
     # --- Build spline-based color boundaries ---
     # The err callable accepts apparent magnitudes; we wrap error_model with
-    # any user-supplied error_kwargs.
+    # the calibrated survey_1/release parameters and any user-supplied
+    # error_kwargs.
+    error_kwargs = {**_get_default_errors(survey_lower, release), **error_kwargs}
+
     def _err(m):
         return error_model(m, **error_kwargs)
 
@@ -452,7 +553,10 @@ def build_match_filter(
     # Optional color cut: cap the red (far) edge so the polygon does not
     # extend to very red stars.
     if color_cut:
-        red_cap = color_max - 0.25
+        if red_cap_value is not None:
+            red_cap = red_cap_value
+        else:
+            red_cap = color_max - 0.25
         if red_cap_mode == "constant":
             far_colors = np.minimum(far_colors, red_cap)
         elif red_cap_mode == "error_shrunk":
@@ -486,7 +590,9 @@ def is_in_match_filter(
 
     ``mag_1``/``mag_2`` are the same two bands the polygon was built with
     (color = mag_1 − mag_2, magnitude axis = mag_1) — ``'g'``/``'r'`` for
-    LSST, e.g. ``'F106'``/``'F158'`` for Roman.
+    LSST, e.g. ``'F106'``/``'F158'`` for Roman, or two surveys' columns such
+    as ``des_yr6_g_obs``/``euclid_q1_VIS_obs``. Stars missing either magnitude
+    (NaN, e.g. not observed by one survey) are not selected.
 
     Parameters
     ----------
